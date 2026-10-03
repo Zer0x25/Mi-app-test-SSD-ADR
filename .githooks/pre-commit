@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Pre-commit hook: Impide confirmar cambios si el Quality Gate no pasa con código 0
+set -e
+
+echo "--> [Git Hook] Ejecutando Quality Gate previo al commit..."
+./scripts/verify.sh

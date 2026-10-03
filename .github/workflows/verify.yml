@@ -1,0 +1,38 @@
+name: Quality Gate Determinista
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    name: Ejecución de Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+
+      - name: Instalar dependencias (si aplica)
+        run: |
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          elif [ -f "package.json" ]; then
+            npm install
+          else
+            echo "Repositorio en fase de semilla (Hito 0): omitiendo instalación de paquetes."
+          fi
+
+      - name: Permisos de ejecución para scripts
+        run: chmod +x scripts/*.sh
+
+      - name: Ejecutar Quality Gate
+        run: ./scripts/verify.sh
