@@ -1,0 +1,31 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Instalacion {
+  id           String                   @id @default(uuid())
+  nombre       String                   @unique
+  ubicacion    String
+  activa       Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  operadores   AsignacionOperador[]
+
+  @@map("instalaciones")
+}
+
+model AsignacionOperador {
+  id            String       @id @default(uuid())
+  instalacionId String
+  usuarioId     String
+  createdAt     DateTime     @default(now())
+  instalacion   Instalacion  @relation(fields: [instalacionId], references: [id])
+
+  @@unique([instalacionId, usuarioId])
+  @@map("asignaciones_operadores")
+}
