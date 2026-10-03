@@ -15,6 +15,7 @@ model Instalacion {
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
   operadores   AsignacionOperador[]
+  medidores    Medidor[]
 
   @@map("instalaciones")
 }
@@ -28,4 +29,34 @@ model AsignacionOperador {
 
   @@unique([instalacionId, usuarioId])
   @@map("asignaciones_operadores")
+}
+
+model TipoMedidor {
+  id           String    @id @default(uuid())
+  nombre       String    @unique
+  recurso      String    // AGUA, LUZ, GAS, PETROLEO, OTRO
+  unidad       String    // LITROS, M3, KWH, PORCENTAJE, OTRO
+  tipoMedicion String    // ACUMULATIVO, INSTANTANEO, NIVEL
+  activo       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  medidores    Medidor[]
+
+  @@map("tipos_medidor")
+}
+
+model Medidor {
+  id               String       @id @default(uuid())
+  instalacionId    String
+  tipoMedidorId    String
+  codigo           String       @unique
+  numeroSerie      String?
+  ubicacionInterna String
+  activo           Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  instalacion      Instalacion  @relation(fields: [instalacionId], references: [id])
+  tipoMedidor      TipoMedidor  @relation(fields: [tipoMedidorId], references: [id])
+
+  @@map("medidores")
 }

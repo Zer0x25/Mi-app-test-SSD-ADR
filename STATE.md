@@ -7,9 +7,9 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ## 🧭 Fase Actual: Hito 1 (Desarrollo Activo de Features)
 
 - **Proyecto:** `Medidores`
-- **Estado:** `feat-001` completada exitosamente. Listo para el siguiente caso de uso (`feat-002`).
-- **Acción requerida para comenzar:** Definir el siguiente requerimiento en `specs/feat-002-catalogo-medidores.md`.
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, código de salida 0).
+- **Estado:** `feat-002` completada exitosamente. Listo para el caso de uso de lecturas (`feat-003`).
+- **Acción requerida para comenzar:** Definir el siguiente requerimiento en `specs/feat-003-registro-lecturas.md`.
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 36/36 tests, código de salida 0).
 
 ---
 
@@ -26,15 +26,15 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Quality Gate verificado con salida exitosa 0.
 - [ ] **Hito 1: Desarrollo de Features de Dominio (En Progreso)**
   - [x] `specs/feat-001-instalaciones-y-usuarios.md` (Completado: Módulo de Instalaciones y Asignaciones)
-  - [ ] `specs/feat-002-catalogo-medidores.md` (Pendiente: Catálogo de Tipos de Medidores y Medidores)
-  - [ ] `specs/feat-003-registro-lecturas.md` (Pendiente: Ingesta de Lecturas con Invariantes)
+  - [x] `specs/feat-002-catalogo-medidores.md` (Completado: Catálogo de Tipos de Medidores y Medidores)
+  - [ ] `specs/feat-003-registro-lecturas.md` (Pendiente: Ingesta de Lecturas con Invariantes Duras)
   - [ ] `specs/feat-004-dashboard-admin.md` (Pendiente: Métricas y Reportes)
 
 ---
 
 ## 🎯 Especificación Activa
 - **Archivo:** *Ninguno actualmente (esperando siguiente requerimiento).*
-- **Módulo objetivo:** *Pendiente (`medidores`).*
+- **Módulo objetivo:** *Pendiente (`lecturas`).*
 
 ---
 
@@ -44,3 +44,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Inicialización del Blueprint agnóstico Hito 0 | Semilla creada y vinculada a GitHub |
 | 2026-10-03 | Antigravity | Ejecución y Auto-Sellado de Hito 0 (Sistema Medidores) | ADR 0001, entorno configurado y Quality Gate superado |
 | 2026-10-03 | Antigravity | Implementación de `feat-001-instalaciones-y-usuarios` | Ciclo TDD completado, 19/19 tests pasando, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `feat-002-catalogo-medidores` | Ciclo TDD completado, 36/36 tests pasando, Quality Gate 0 |
