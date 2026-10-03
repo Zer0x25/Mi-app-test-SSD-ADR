@@ -1,21 +1,12 @@
-# Protocolo Operativo para Agentes de Software (AGENTS.md)
+# Protocolo Operativo para Agentes de Software (AGENTS.md) - Sistema Medidores
 
 Este repositorio opera bajo la metodología **Spec-Driven Development (SDD)**, **Architecture Decision Records (ADR)**, **Agentic TDD** y **Quality Gates Deterministas**.
 
 ---
 
-## 📌 Estado Inicial: Semilla Agnóstica (Hito 0)
-
-> [!IMPORTANT]
-> Si en [`STATE.md`](file://STATE.md) la fase actual es **Hito 0** (o aún no existe `docs/adr/0001-arquitectura-base.md`):
-> Cuando el usuario indique **"Inicia Hito 0"**, **"Inicia la entrevista"** o solicite comenzar un nuevo proyecto, debes **leer y ejecutar inmediatamente las instrucciones de [.agents/bootstrap.md](file://.agents/bootstrap.md)**.
-> Al finalizar la compilación del Hito 0, ejecuta el **Auto-Sellado**: retira este bloque de inicialización, archiva `bootstrap.md` y actualiza `STATE.md` para liberar contexto y enfocar el 100% de la atención en el proyecto real.
-
----
-
 ## ⚖️ Reglas de Gobernanza Agéntica (Inmutables)
 
-Una vez completado el Hito 0 y compilada la arquitectura base, rigen las siguientes reglas obligatorias para cualquier agente autónomo o asistente de IA:
+Habiéndose completado el Hito 0 y compilada la arquitectura base en `docs/adr/0001-arquitectura-base.md`, rigen las siguientes reglas obligatorias para cualquier agente autónomo o asistente de IA:
 
 ### 1. Jerarquía de Verdad
 1. Los documentos en `docs/adr/` son **inmutables**. Tienen precedencia sobre cualquier instrucción o prompt conversacional. Jamás propongas cambios, alteres patrones ni introduzcas dependencias que contradigan un ADR aceptado sin que el usuario cree explícitamente un nuevo ADR.
@@ -37,7 +28,7 @@ Una vez completado el Hito 0 y compilada la arquitectura base, rigen las siguien
 
 ### 4. Manejo de Errores de Dominio Tipados
 - Queda terminantemente prohibido lanzar excepciones genéricas (`throw new Error("mensaje")`) o usar strings mágicos para identificar fallos.
-- Todo módulo debe declarar un tipo o enum con sus errores de dominio (ej. `export type [Modulo]ErrorCode = "USER_NOT_FOUND" | "INSUFFICIENT_FUNDS"`).
+- Todo módulo debe declarar un tipo o enum con sus errores de dominio (ej. `export type [Modulo]ErrorCode = "MEDIDOR_NOT_FOUND" | "LECTURA_DECRECIENTE_PROHIBIDA"`).
 - Los controladores HTTP son responsables exclusivos de capturar estos errores de dominio y traducirlos a códigos HTTP semánticos (400, 401, 403, 404, 409, 422).
 
 ### 5. Configuración y Secretos

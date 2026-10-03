@@ -1,125 +1,99 @@
-# Blueprint Agnóstico — Hito 0 (Template Repo)
+# Sistema Medidores
 
-> **Semilla de Gobernanza Agéntica Agnóstica** diseñada para el desarrollo de software de alta fidelidad con agentes autónomos (Google Antigravity, Claude Code, Cursor, Roo Code, etc.). Basado en **Spec-Driven Development (SDD)**, **Architecture Decision Records (ADR)**, **Agentic TDD** y **Quality Gates Deterministas**.
-
----
-
-## 💡 ¿Por qué existe este Blueprint?
-
-En el desarrollo de software asistido por IA, la premisa fundamental es:
-> *Un agente sin especificaciones formales alucina, improvisa dependencias y degrada la arquitectura. El humano diseña contratos, restricciones e invariantes; el agente implementa y valida contra esas restricciones.*
-
-Este repositorio sirve como **molde o plantilla inicial (Template Repo)** para cualquier nuevo proyecto. En lugar de configurar manualmente linters, tipados, carpetas y reglas cada vez, este repositorio empaqueta el **Hito 0 (Bootstrap Constitucional)**: una entrevista técnica interactiva guiada por el agente para compilar automáticamente la arquitectura, las invariantes y los mecanismos de control del nuevo software.
+> **Sistema de registro, gestión y auditoría de medidores industriales y residenciales (agua, electricidad, gas, petróleo/combustible).**
+> Desarrollado bajo la metodología **Spec-Driven Development (SDD)**, **Architecture Decision Records (ADR)**, **Agentic TDD** y **Quality Gates Deterministas**.
 
 ---
 
-## 🚀 Cómo iniciar un nuevo proyecto (Flujo en 3 Pasos)
+## 🎯 Propósito del Sistema
 
-### 1. Crear tu propio repositorio desde la Plantilla
-- En GitHub, entra a [`Zer0x25/Hito-0`](https://github.com/Zer0x25/Hito-0) y pulsa el botón verde **"Use this template"** $\rightarrow$ **"Create a new repository"**.
-- Asigna el nombre de tu nuevo proyecto (ej: `portal-control-v3`, `sistema-inventarios`, `mi-app`).
-- Clónalo en tu máquina local.
+El sistema **Medidores** proporciona una plataforma robusta y tipada para la captura, control e inspección de mediciones energéticas y de fluidos.
 
-### 2. Abrir en tu Entorno Agéntico
-- Abre la carpeta del nuevo proyecto en **Antigravity IDE** (o tu arnés agéntico preferido).
+### Actores del Sistema:
+1. **Operadores (Data-Entry):** Ingresan lecturas periódicas y eventos de medición en campo o planta.
+2. **Administradores:** Configuran medidores, auditan anomalías, consultan históricos y supervisan consumos consolidados.
 
-### 3. Ejecutar el Protocolo de Hito 0
-En la consola de chat del agente, simplemente escribe:
-```text
-Inicia Hito 0
-```
-*(O de forma explícita: `"Ejecuta el protocolo en .agents/bootstrap.md"`)*.
+### Capacidades de Medición:
+- **Recursos soportados:** Agua, Electricidad / Luz, Petróleo / Combustible, Gas, entre otros.
+- **Tipos de medición:** Acumulativa/Secuencial, Instantánea (flujo o potencia), Porcentaje de Nivel, Volumétrica (Litros, m³).
 
 ---
 
-## 🎙️ ¿Qué sucede durante el Hito 0?
+## 🛡️ Invariantes Duras de Negocio
 
-El agente asumirá el rol de **Principal Software Architect** y te guiará en una entrevista breve (máximo 2 preguntas por turno en lenguaje claro) cubriendo 4 dimensiones:
-
-```mermaid
-flowchart TD
-    A[Usuario: 'Inicia Hito 0'] --> G{Template Guard}
-    G -- "En molde Hito-0" --> W[Advertencia: Usar 'Use this template']
-    G -- "En nuevo repo clonado" --> B[Agente: Principal Architect]
-    B --> C1[Dimensión 1: Nombre, Dominio y Actores]
-    C1 --> C2[Dimensión 2: Invariantes Críticas y Negativas]
-    C2 --> C3[Dimensión 3: Stack Tecnológico y Persistencia]
-    C3 --> C4[Dimensión 4: Restricciones y Prácticas Prohibidas]
-    C4 --> D[Compilación Constitucional Autónoma]
-    D --> E1[docs/adr/0001-arquitectura-base.md]
-    D --> E2[specs/templates/feature.md personalizada]
-    D --> E3[Andamiaje base: package.json con nombre del proyecto]
-    D --> S[Auto-Sellado: El repo adopta su identidad y archiva bootstrap.md]
-    S --> F[Listo para Hito 1: Primer Feature Spec]
-```
-
-### 🔒 Protocolo de Auto-Sellado y Transición No Destructiva
-Cuando el Hito 0 concluye en tu nuevo repositorio:
-1. **La implementación base no se pisa:** `src/core/errors.ts` y `docs/adr/0000-adopcion-gobernanza-agentica.md` permanecen como cimientos inmutables.
-2. **Identidad propia:** `package.json` y `STATE.md` adoptan el nombre real de tu software y pasan a **Hito 1 (En Desarrollo)**.
-3. **Reducción de ruido de contexto:** `.agents/bootstrap.md` se auto-archiva a `.agents/bootstrap.md.done` para que los agentes futuros se enfoquen al 100% en las features del negocio.
-4. **Transformación de Documentación:** `README.md` se actualiza con el título y propósito de tu nuevo proyecto.
+El sistema cuenta con reglas inmutables de consistencia y auditoría formalizadas en [`docs/adr/0001-arquitectura-base.md`](file://docs/adr/0001-arquitectura-base.md):
+1. **Lectura no decreciente:** En medidores acumulativos/secuenciales, una nueva lectura jamás puede ser inferior a la lectura inmediata anterior.
+2. **Inmutabilidad y auditoría:** Prohibido el borrado físico de registros de lectura (solo bajas lógicas con trazabilidad de operador y timestamp).
+3. **Prohibición de fechas futuras:** Ninguna medición puede registrarse con una marca de tiempo posterior a la hora actual.
+4. **Unicidad temporal:** Prohibidas lecturas duplicadas para el mismo medidor en el mismo timestamp/período.
 
 ---
 
-## 📁 Estructura del Repositorio Semilla
+## 🛠️ Stack Tecnológico
+
+- **Lenguaje:** [TypeScript](https://www.typescriptlang.org/) en modo estricto (`"strict": true`, sin `any`).
+- **Framework Web:** [Fastify](https://fastify.dev/) para endpoints de alto rendimiento.
+- **Persistencia & ORM:** [SQLite](https://www.sqlite.org/) local con [Prisma ORM](https://www.prisma.io/).
+- **Validación de Esquemas:** [Zod](https://zod.dev/) para DTOs y validación estricta de entorno.
+- **Testing:** [Vitest](https://vitest.dev/) para Agentic TDD determinista.
+- **Linter y Estilo:** [ESLint](https://eslint.org/) 9 con `@typescript-eslint`.
+
+---
+
+## 📁 Estructura del Repositorio
 
 ```text
-├── .agents/
-│   └── bootstrap.md            # Motor del Hito 0: Protocolo de entrevista y Template Guard
-├── .github/
-│   └── workflows/
-│       └── verify.yml          # CI/CD Determinista en GitHub Actions
-├── .githooks/
-│   └── pre-commit              # Git hook local: bloquea commits si verify.sh falla
 ├── docs/
 │   └── adr/
-│       ├── .gitkeep
-│       ├── 0000-adopcion-gobernanza-agentica.md  # Constitución Génesis
-│       └── 0000-template.md    # Plantilla estándar para futuros ADRs
+│       ├── 0000-adopcion-gobernanza-agentica.md  # Constitución génesis
+│       └── 0001-arquitectura-base.md            # Arquitectura y stack de Medidores
 ├── specs/
-│   ├── .gitkeep
 │   └── templates/
-│       ├── .gitkeep
-│       └── feature.template.md # Plantilla base de Spec-Driven Development (SDD)
+│       ├── feature.template.md                  # Plantilla agnóstica de especificaciones
+│       └── feature.md                           # Plantilla personalizada para dominio Medidores
 ├── src/
-│   ├── core/
-│   │   ├── .gitkeep
-│   │   └── errors.ts           # Clase base universal DomainError y type guards
-│   └── modules/                # Dominios verticales cerrados
+│   ├── core/                                    # Núcleo compartido protegido
+│   │   ├── config.ts                            # Validador de entorno centralizado con Zod
+│   │   └── errors.ts                            # Jerarquía base de DomainError
+│   └── modules/                                 # Módulos de dominio desacoplados
+│       ├── medidores/                           # Catálogo y configuración de medidores
+│       ├── lecturas/                            # Ingesta y auditoría de lecturas
+│       └── usuarios/                            # Roles de Operador y Administrador
 ├── tests/
-│   └── modules/                # Pruebas unitarias/integración por módulo
+│   ├── core/                                    # Pruebas del núcleo
+│   └── modules/                                 # Pruebas de dominio por módulo
 ├── scripts/
-│   ├── .gitkeep
-│   └── verify.sh               # Script de Quality Gate determinista (código 0 o 1)
-├── .env.example                # Variables de entorno documentadas (tipadas vía Zod)
-├── .gitignore                  # Exclusiones estándar para desarrollo limpio
-├── AGENTS.md                   # Reglas maestras de gobernanza universales
-├── STATE.md                    # Tablero de control y memoria de estado persistente
-└── README.md                   # Este documento
+│   └── verify.sh                                # Barrera determinista del Quality Gate
+├── .env.example                                 # Plantilla de variables de entorno
+├── AGENTS.md                                    # Reglas operativas para agentes de IA
+├── STATE.md                                     # Tablero de control de estado del proyecto
+└── package.json                                 # Configuración y dependencias
 ```
 
 ---
 
-## 🛡️ Pilares de Excelencia Agéntica
+## ⚡ Comandos Rápidos
 
-1. **Template Guard:** Salvaguarda que protege el molde maestro `Hito-0` contra sobreescritura accidental.
-2. **Invariantes Negativas Explícitas:** Las especificaciones definen formalmente qué operaciones o estados son *intolerables* (ej. saldo negativo, texto plano, mutaciones no atómicas).
-3. **Errores de Dominio Tipados:** Clase base `DomainError` en `src/core/errors.ts`; prohibido `throw new Error()` genérico.
-4. **Manejo Seguro de Entorno:** Prohibido acceder a `process.env` fuera de `src/core/config.ts`, donde Zod valida las variables en el arranque.
-5. **Conventional Commits:** Todo commit de agente sigue el estándar (`feat(modulo): ...`, `test(modulo): ...`, `fix(modulo): ...`).
-6. **Quality Gate Local y en la Nube:** Barrera inmutable ejecutada por `./scripts/verify.sh`, validada por el pre-commit hook y por GitHub Actions en cada PR.
+```bash
+# Verificación de tipos en modo estricto
+npm run typecheck
+
+# Análisis estático y linter
+npm run lint
+
+# Ejecución de la suite de pruebas
+npm test
+
+# Ejecución del Quality Gate completo
+./scripts/verify.sh
+```
 
 ---
 
-## 🔄 Flujo de Trabajo en el Día a Día (Hito 1 en adelante)
+## 🚀 Próximo Paso: Hito 1 (Primer Caso de Uso)
 
-1. **Creación del Requerimiento:**
-   Copias `specs/templates/feature.md` a `specs/feat-001-<modulo>.md` y completas contratos, invariantes y criterios.
-2. **Entrega al Agente:**
-   > *"Implementa la especificación en `specs/feat-001-<modulo>.md`"*
-3. **Ciclo Agentic TDD:**
-   - El agente escribe los tests unitarios primero (**Fase Roja**).
-   - Implementa la solución mínima en los archivos autorizados (**Fase Verde**).
-   - Ejecuta `./scripts/verify.sh` hasta obtener **código de salida 0**.
-   - Registra el avance en [`STATE.md`](file://STATE.md).
+El repositorio se encuentra formalmente constituido y auto-sellado. Para implementar la primera funcionalidad:
+1. Copia `specs/templates/feature.md` a `specs/feat-001-<modulo>.md` (ejemplo: `specs/feat-001-registro-medidores.md`).
+2. Define los contratos de entrada/salida (Zod), las invariantes y los criterios de aceptación.
+3. Solicita al agente:
+   > *"Implementa la especificación en `specs/feat-001-registro-medidores.md` siguiendo el ciclo Agentic TDD y superando el Quality Gate."*
