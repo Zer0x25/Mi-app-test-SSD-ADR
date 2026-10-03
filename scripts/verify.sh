@@ -62,6 +62,16 @@ fi
 # FASE B: Verificación de Código de Producción (Post Hito 0 / Hito 1+)
 echo -e "${BLUE}[ESTADO] Entorno compilado detectado (package.json presente).${NC}"
 
+# Asegurar entorno y configuración determinista si no existe .env
+if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+  echo -e "${YELLOW}[CONFIG] No se detectó .env. Creando .env desde .env.example para pruebas...${NC}"
+  cp .env.example .env
+fi
+
+if [ -f "prisma/schema.prisma" ]; then
+  npx prisma generate > /dev/null 2>&1 || true
+fi
+
 # 1. Chequeo de Tipos Estricto
 echo -e "\n${BLUE}--> [Paso 1/3] Verificación de Tipos (Typecheck)...${NC}"
 if npm run typecheck; then

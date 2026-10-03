@@ -10,6 +10,11 @@ jobs:
   verify:
     name: Ejecución de Quality Gate
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "file:./prisma/dev.db"
+      JWT_SECRET: "super_secreto_medidores_ci_github_actions_123456"
+      JWT_EXPIRES_IN: "8h"
 
     steps:
       - name: Clonar repositorio
@@ -29,6 +34,18 @@ jobs:
             npm install
           else
             echo "Repositorio en fase de semilla (Hito 0): omitiendo instalación de paquetes."
+          fi
+
+      - name: Generar cliente de Prisma
+        run: |
+          if [ -f "prisma/schema.prisma" ]; then
+            npx prisma generate
+          fi
+
+      - name: Preparar entorno
+        run: |
+          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            cp .env.example .env
           fi
 
       - name: Permisos de ejecución para scripts
