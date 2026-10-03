@@ -57,6 +57,22 @@ model Medidor {
   updatedAt        DateTime     @updatedAt
   instalacion      Instalacion  @relation(fields: [instalacionId], references: [id])
   tipoMedidor      TipoMedidor  @relation(fields: [tipoMedidorId], references: [id])
+  lecturas         Lectura[]
 
   @@map("medidores")
+}
+
+model Lectura {
+  id           String    @id @default(uuid())
+  medidorId    String
+  operadorId   String
+  valor        Float
+  fechaLectura DateTime  @default(now())
+  notas        String?
+  createdAt    DateTime  @default(now())
+  medidor      Medidor   @relation(fields: [medidorId], references: [id])
+
+  @@unique([medidorId, fechaLectura])
+  @@index([medidorId, fechaLectura(sort: Desc)])
+  @@map("lecturas")
 }

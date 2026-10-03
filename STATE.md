@@ -7,9 +7,9 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ## 🧭 Fase Actual: Hito 1 (Desarrollo Activo de Features)
 
 - **Proyecto:** `Medidores`
-- **Estado:** `feat-002` completada exitosamente. Listo para el caso de uso de lecturas (`feat-003`).
-- **Acción requerida para comenzar:** Definir el siguiente requerimiento en `specs/feat-003-registro-lecturas.md`.
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 36/36 tests, código de salida 0).
+- **Estado:** `feat-003` completada exitosamente. Listo para el módulo de dashboard (`feat-004`).
+- **Acción requerida para comenzar:** Definir el siguiente requerimiento en `specs/feat-004-dashboard-admin.md`.
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 51/51 tests, código de salida 0).
 
 ---
 
@@ -27,14 +27,14 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 - [ ] **Hito 1: Desarrollo de Features de Dominio (En Progreso)**
   - [x] `specs/feat-001-instalaciones-y-usuarios.md` (Completado: Módulo de Instalaciones y Asignaciones)
   - [x] `specs/feat-002-catalogo-medidores.md` (Completado: Catálogo de Tipos de Medidores y Medidores)
-  - [ ] `specs/feat-003-registro-lecturas.md` (Pendiente: Ingesta de Lecturas con Invariantes Duras)
+  - [x] `specs/feat-003-registro-lecturas.md` (Completado: Ingesta de Lecturas con Invariantes Duras)
   - [ ] `specs/feat-004-dashboard-admin.md` (Pendiente: Métricas y Reportes)
 
 ---
 
 ## 🎯 Especificación Activa
 - **Archivo:** *Ninguno actualmente (esperando siguiente requerimiento).*
-- **Módulo objetivo:** *Pendiente (`lecturas`).*
+- **Módulo objetivo:** *Pendiente (`dashboard`).*
 
 ---
 
@@ -45,3 +45,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Ejecución y Auto-Sellado de Hito 0 (Sistema Medidores) | ADR 0001, entorno configurado y Quality Gate superado |
 | 2026-10-03 | Antigravity | Implementación de `feat-001-instalaciones-y-usuarios` | Ciclo TDD completado, 19/19 tests pasando, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-002-catalogo-medidores` | Ciclo TDD completado, 36/36 tests pasando, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `feat-003-registro-lecturas` | Ciclo TDD completado, 51/51 tests pasando, Quality Gate 0 |
