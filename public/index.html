@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Medidores — Dashboard & Ingesta en Terreno</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <!-- Header Principal -->
+  <header class="navbar" id="mainNavbar">
+    <div class="navbar-container">
+      <div class="brand-group">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Sistema Medidores</span>
+          <span class="brand-subtitle">Control Energético & Fluidos</span>
+        </div>
+      </div>
+
+      <nav class="role-switcher" id="roleSwitcher">
+        <button class="role-btn active" id="tabAdminBtn" onclick="switchRole('admin')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard Admin
+        </button>
+        <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Modo Terreno (Operador)
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" id="btnSeedDemo" onclick="seedDemoData()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Cargar Datos Demo
+        </button>
+        <div class="system-status">
+          <span class="status-pulse"></span>
+          <span class="status-text">En Línea</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="main-content">
+
+    <!-- ============================================================== -->
+    <!-- VISTA 1: DASHBOARD ADMINISTRADOR -->
+    <!-- ============================================================== -->
+    <section class="view-panel active" id="viewAdmin">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Tablero Ejecutivo de Medición</h1>
+          <p class="view-desc">Supervisión en tiempo real del parque de medidores, alertas de desatención y consumos consolidados.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btnOpenModalMedidor" onclick="openModal('modalMedidor')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo Medidor
+          </button>
+          <button class="btn btn-outline" id="btnOpenModalInstalacion" onclick="openModal('modalInstalacion')">
+            Nueva Instalación
+          </button>
+          <button class="btn btn-outline" id="btnOpenModalTipo" onclick="openModal('modalTipo')">
+            Nuevo Tipo
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card" id="kpiCardInstalaciones">
+          <div class="kpi-icon icon-blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Instalaciones Activas</span>
+            <span class="kpi-value" id="kpiTotalInstalaciones">--</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpiCardMedidores">
+          <div class="kpi-icon icon-emerald">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m14 14-4-4M12 6v2M12 16v2M6 12h2M16 12h2"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Medidores Físicos</span>
+            <span class="kpi-value" id="kpiTotalMedidores">--</span>
+          </div>
+          <div class="kpi-tags" id="kpiRecursosPills"></div>
+        </div>
+
+        <div class="kpi-card" id="kpiCardLecturas">
+          <div class="kpi-icon icon-indigo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Mediciones Registradas</span>
+            <span class="kpi-value" id="kpiTotalLecturas">--</span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-card-alert" id="kpiCardDesatendidos">
+          <div class="kpi-icon icon-amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Desatendidos (>24h)</span>
+            <span class="kpi-value alert-text" id="kpiTotalDesatendidos">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Split: Consumos & Alertas -->
+      <div class="dashboard-columns">
+        <!-- Alertas de Desatención -->
+        <div class="card panel-column">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">⚠️ Medidores que Requieren Lectura</h2>
+              <span class="badge badge-warning" id="badgeCountDesatendidos">0 pendientes</span>
+            </div>
+          </div>
+          <div class="desatendidos-list" id="listaDesatendidos">
+            <div class="empty-state">No hay medidores con retraso en lecturas.</div>
+          </div>
+        </div>
+
+        <!-- Consumo Neto por Sede -->
+        <div class="card panel-column">
+          <div class="card-header">
+            <h2 class="card-title">📈 Consumo Acumulado por Instalación</h2>
+          </div>
+          <div class="consumo-grid" id="listaConsumos">
+            <div class="empty-state">No hay consumos acumulados registrados aún.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed de Actividad Reciente -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🕒 Últimas Mediciones Ingresadas al Sistema</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarDashboard()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table" id="tablaActividad">
+            <thead>
+              <tr>
+                <th>Código Medidor</th>
+                <th>Instalación</th>
+                <th>Recurso</th>
+                <th>Valor Registrado</th>
+                <th>Fecha y Hora</th>
+                <th>Operador</th>
+                <th>Notas</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyActividad">
+              <tr><td colspan="7" class="text-center py-4 text-muted">Cargando mediciones recientes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 2: MODO TERRENO (OPERADOR) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewOperador">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Ingreso de Lecturas en Terreno</h1>
+          <p class="view-desc">Selecciona tu instalación asignada para capturar las mediciones del día.</p>
+        </div>
+        <div class="operator-facility-selector">
+          <label for="selectInstalacionOperador" class="form-label">Instalación Asignada:</label>
+          <select id="selectInstalacionOperador" class="form-select" onchange="cargarMedidoresOperador()">
+            <option value="">Cargando instalaciones...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grid de Medidores para Carga Rápida -->
+      <div class="medidores-grid" id="gridMedidoresOperador">
+        <div class="empty-state">Selecciona una instalación para ver los medidores a tu cargo.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGISTRAR LECTURA RÁPIDA (OPERADOR) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalLectura">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="modalLecturaTitulo">Registrar Medición</h3>
+          <span class="badge" id="modalLecturaBadgeTipo">AGUA · ACUMULATIVO</span>
+        </div>
+        <button class="btn-close" onclick="closeModal('modalLectura')">&times;</button>
+      </div>
+      <form id="formLectura" onsubmit="submitLectura(event)">
+        <input type="hidden" id="lecturaMedidorId">
+        <input type="hidden" id="lecturaTipoMedicion">
+        <input type="hidden" id="lecturaUltimoValor">
+
+        <div class="modal-body">
+          <div class="meter-quick-info">
+            <div class="info-block">
+              <span class="info-label">Código:</span>
+              <span class="info-val font-mono" id="infoMedidorCodigo">MED-000</span>
+            </div>
+            <div class="info-block">
+              <span class="info-label">Ubicación Interna:</span>
+              <span class="info-val" id="infoMedidorUbicacion">Sala Bombas</span>
+            </div>
+            <div class="info-block highlight-block">
+              <span class="info-label">Última Lectura:</span>
+              <span class="info-val" id="infoMedidorUltimaLectura">0.00 M3</span>
+            </div>
+          </div>
+
+          <div class="form-group mt-4">
+            <label for="inputLecturaValor" class="form-label">
+              Nuevo Valor de Medición (<span id="spanUnidadMedida">--</span>) *
+            </label>
+            <input 
+              type="number" 
+              step="any" 
+              id="inputLecturaValor" 
+              class="form-input form-input-lg" 
+              placeholder="Ej: 1250.5" 
+              required 
+              oninput="validarLecturaEnVivo()"
+            >
+            <div class="input-warning" id="warningLecturaDecreciente">
+              ⚠️ Invariante: La nueva lectura no puede ser menor a la anterior en medidores acumulativos.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputLecturaNotas" class="form-label">Notas u Observaciones (Opcional)</label>
+            <input type="text" id="inputLecturaNotas" class="form-input" placeholder="Ej. Medición rutinaria, inspección OK">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalLectura')">Cancelar</button>
+          <button type="submit" class="btn btn-success" id="btnGuardarLectura">
+            Confirmar y Guardar Lectura
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODALES DE ADMINISTRACIÓN -->
+  <!-- ============================================================== -->
+
+  <!-- Modal: Nueva Instalación -->
+  <div class="modal-backdrop" id="modalInstalacion">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Crear Nueva Instalación</h3>
+        <button class="btn-close" onclick="closeModal('modalInstalacion')">&times;</button>
+      </div>
+      <form id="formInstalacion" onsubmit="submitNuevaInstalacion(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputInstalacionNombre" class="form-label">Nombre de la Sede/Planta *</label>
+            <input type="text" id="inputInstalacionNombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
+          </div>
+          <div class="form-group">
+            <label for="inputInstalacionUbicacion" class="form-label">Dirección / Ubicación Geográfica *</label>
+            <input type="text" id="inputInstalacionUbicacion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalInstalacion')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Instalación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Nuevo Tipo de Medidor -->
+  <div class="modal-backdrop" id="modalTipo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Configurar Tipo de Medidor</h3>
+        <button class="btn-close" onclick="closeModal('modalTipo')">&times;</button>
+      </div>
+      <form id="formTipo" onsubmit="submitNuevoTipo(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputTipoNombre" class="form-label">Nombre Descriptivo *</label>
+            <input type="text" id="inputTipoNombre" class="form-input" placeholder="Ej. Agua Pozo Profundo, Diésel Turbina" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="selectTipoRecurso" class="form-label">Recurso *</label>
+              <select id="selectTipoRecurso" class="form-select" required>
+                <option value="AGUA">Agua</option>
+                <option value="LUZ">Electricidad (Luz)</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Petróleo / Combustible</option>
+                <option value="OTRO">Otro Recurso</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="selectTipoUnidad" class="form-label">Unidad de Medida *</label>
+              <select id="selectTipoUnidad" class="form-select" required>
+                <option value="LITROS">Litros (L)</option>
+                <option value="M3">Metros Cúbicos (m³)</option>
+                <option value="KWH">Kilowatt-hora (kWh)</option>
+                <option value="PORCENTAJE">Nivel Porcentual (%)</option>
+                <option value="OTRO">Otra Unidad</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="selectTipoModo" class="form-label">Modo de Medición *</label>
+            <select id="selectTipoModo" class="form-select" required>
+              <option value="ACUMULATIVO">Acumulativo / Secuencial (No decreciente)</option>
+              <option value="NIVEL">Nivel (Capacidad de tanque fluctuante)</option>
+              <option value="INSTANTANEO">Instantáneo (Potencia o flujo actual)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalTipo')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Tipo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Nuevo Medidor Físico -->
+  <div class="modal-backdrop" id="modalMedidor">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Registrar Nuevo Medidor Físico</h3>
+        <button class="btn-close" onclick="closeModal('modalMedidor')">&times;</button>
+      </div>
+      <form id="formMedidor" onsubmit="submitNuevoMedidor(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="selectMedidorInstalacion" class="form-label">Instalación / Sede *</label>
+              <select id="selectMedidorInstalacion" class="form-select" required>
+                <option value="">Selecciona instalación...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="selectMedidorTipo" class="form-label">Tipo de Medidor *</label>
+              <select id="selectMedidorTipo" class="form-select" required>
+                <option value="">Selecciona tipo...</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="inputMedidorCodigo" class="form-label">Código Identificador Único *</label>
+              <input type="text" id="inputMedidorCodigo" class="form-input" placeholder="Ej. MED-AG-001" required>
+            </div>
+            <div class="form-group">
+              <label for="inputMedidorSerie" class="form-label">N° de Serie Físico</label>
+              <input type="text" id="inputMedidorSerie" class="form-input" placeholder="Ej. SN-883492">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
+            <input type="text" id="inputMedidorUbicacion" class="form-input" placeholder="Ej. Sala de bombas piso -1, Caseta exterior" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalMedidor')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Medidor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

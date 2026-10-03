@@ -42,3 +42,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Bases de datos SQLite locales
+*.db
+*.db-journal
+prisma/prisma/
