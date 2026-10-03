@@ -44,7 +44,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Modificación de usuario (`PATCH /api/usuarios/:id`) con sincronización transaccional de instalaciones asignadas.
   - Restablecimiento administrativo de credenciales (`POST /api/usuarios/:id/reset-password`).
   - Interfaz gráfica integrada con Aurora Design System: vista de gestión de usuarios, modal de edición de sedes con checklist, modal de reset y modal de auto-servicio de clave.
-  - Suite de pruebas expandida: 87/87 tests pasando (100%), Quality Gate 0.
+  - Suite de pruebas expandida: 88/88 tests pasando (100%), Quality Gate 0.
+  - Sincronización remota: Commit 3d89173 desplegado en origin/main.
 
 ---
 
