@@ -53,13 +53,22 @@
           </svg>
           Dashboard Admin
         </button>
+        <button class="role-btn" id="tabUsuariosBtn" onclick="switchRole('usuarios')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Usuarios
+        </button>
         <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
             <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
-          Modo Terreno (Operador)
+          Modo Terreno
         </button>
       </nav>
 
@@ -273,6 +282,55 @@
       </div>
     </section>
 
+    <!-- ============================================================== -->
+    <!-- VISTA 3: GESTIÓN DE USUARIOS (ADMIN) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewUsuarios" aria-labelledby="headingUsuarios">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingUsuarios">Gestión Integral de Usuarios y Permisos</h1>
+          <p class="view-desc">Administra el directorio de usuarios, asignación de sedes operativas y restablecimiento de contraseñas.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btnOpenModalNuevoUsuario" onclick="openModal('modalNuevoUsuario')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <line x1="19" y1="8" x2="19" y2="14"/>
+              <line x1="16" y1="11" x2="22" y2="11"/>
+            </svg>
+            Nuevo Usuario
+          </button>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">👥 Directorio de Usuarios</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarUsuariosAdmin()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaUsuarios">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Instalaciones Asignadas</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyUsuarios">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando directorio de usuarios...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ============================================================== -->
@@ -452,6 +510,152 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalMedidor')">Cancelar</button>
           <button type="submit" class="btn btn-primary">Registrar Medidor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: CAMBIAR CONTRASEÑA (SELF-SERVICE) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalCambiarPassword" role="dialog" aria-modal="true" aria-labelledby="modalCambiarPassTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalCambiarPassTitulo">🔑 Cambiar Mi Contraseña</h3>
+        <button class="btn-close" onclick="closeModal('modalCambiarPassword')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formCambiarPassword" onsubmit="submitCambiarPassword(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputPasswordActual" class="form-label">Contraseña Actual *</label>
+            <input type="password" id="inputPasswordActual" class="form-input" placeholder="Tu contraseña vigente" required>
+          </div>
+          <div class="form-group">
+            <label for="inputPasswordNueva" class="form-label">Nueva Contraseña *</label>
+            <input type="password" id="inputPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" required>
+            <span class="form-hint">Debe contener al menos 8 caracteres para asegurar la cuenta.</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalCambiarPassword')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Actualizar Contraseña</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVO USUARIO (ADMIN) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalNuevoUsuario" role="dialog" aria-modal="true" aria-labelledby="modalNuevoUsuarioTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalNuevoUsuarioTitulo">👤 Crear Nuevo Usuario</h3>
+        <button class="btn-close" onclick="closeModal('modalNuevoUsuario')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formNuevoUsuario" onsubmit="submitNuevoUsuario(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputNuevoUsuarioNombre" class="form-label">Nombre Completo *</label>
+            <input type="text" id="inputNuevoUsuarioNombre" class="form-input" placeholder="Ej. Camila Morales" required>
+          </div>
+          <div class="form-group">
+            <label for="inputNuevoUsuarioEmail" class="form-label">Correo Electrónico Corporativo *</label>
+            <input type="email" id="inputNuevoUsuarioEmail" class="form-input font-mono" placeholder="usuario@planta.cl" required>
+          </div>
+          <div class="form-group">
+            <label for="inputNuevoUsuarioPassword" class="form-label">Contraseña Temporal *</label>
+            <input type="password" id="inputNuevoUsuarioPassword" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" required>
+          </div>
+          <div class="form-group">
+            <label for="selectNuevoUsuarioRol" class="form-label">Rol y Permisos *</label>
+            <select id="selectNuevoUsuarioRol" class="form-select" required>
+              <option value="OPERADOR">OPERADOR (Captura de lecturas en terreno)</option>
+              <option value="SUPERVISOR">SUPERVISOR (Creación de medidores en sedes asignadas)</option>
+              <option value="ADMIN">ADMIN (Control global, sedes y usuarios)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalNuevoUsuario')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR USUARIO & SEDES (ADMIN) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarUsuario" role="dialog" aria-modal="true" aria-labelledby="modalEditarUsuarioTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarUsuarioTitulo">✏️ Editar Usuario y Asignaciones</h3>
+        <button class="btn-close" onclick="closeModal('modalEditarUsuario')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarUsuario" onsubmit="submitEditarUsuario(event)">
+        <input type="hidden" id="editUsuarioId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editUsuarioNombre" class="form-label">Nombre *</label>
+            <input type="text" id="editUsuarioNombre" class="form-input" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="editUsuarioRol" class="form-label">Rol del Sistema *</label>
+              <select id="editUsuarioRol" class="form-select" required>
+                <option value="OPERADOR">OPERADOR</option>
+                <option value="SUPERVISOR">SUPERVISOR</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editUsuarioActivo" class="form-label">Estado de la Cuenta</label>
+              <select id="editUsuarioActivo" class="form-select">
+                <option value="true">Activo</option>
+                <option value="false">Desactivado / Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sedes / Instalaciones Asignadas</label>
+            <span class="form-hint" style="margin-bottom: 0.4rem; display: block;">Aplica para el alcance operativo de Supervisores y Operadores.</span>
+            <div class="checklist-container" id="editUsuarioInstalacionesList">
+              <!-- Checkboxes inyectados dinámicamente -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarUsuario')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: RESET PASSWORD (ADMIN) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalResetPassword" role="dialog" aria-modal="true" aria-labelledby="modalResetPassTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalResetPassTitulo">🔄 Restablecer Contraseña Administrativa</h3>
+        <button class="btn-close" onclick="closeModal('modalResetPassword')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formResetPassword" onsubmit="submitResetPassword(event)">
+        <input type="hidden" id="resetUsuarioId">
+        <div class="modal-body">
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Restablecerás la clave de acceso de <strong id="resetUsuarioNombre">--</strong>. El usuario podrá iniciar sesión inmediatamente con esta nueva contraseña.
+          </p>
+          <div class="form-group">
+            <label for="resetPasswordNueva" class="form-label">Nueva Contraseña *</label>
+            <input type="password" id="resetPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalResetPassword')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Restablecer Clave</button>
         </div>
       </form>
     </div>

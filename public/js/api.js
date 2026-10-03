@@ -90,9 +90,34 @@ class ApiClient {
         body: JSON.stringify(payload),
       }),
     me: () => this.request("/api/auth/me"),
+    cambiarPassword: (payload) =>
+      this.request("/api/auth/cambiar-password", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
     logout: () => {
       this.clearToken();
     },
+  };
+
+  // --- Dominio: Gestión de Usuarios & Roles (Admin) ---
+  usuarios = {
+    getAll: () => this.request("/api/usuarios"),
+    create: (payload) =>
+      this.request("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    update: (id, payload) =>
+      this.request(`/api/usuarios/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    resetPassword: (id, payload) =>
+      this.request(`/api/usuarios/${encodeURIComponent(id)}/reset-password`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
   };
 
   // --- Dominio: Dashboard & Métricas ---

@@ -34,6 +34,69 @@ export class PrismaUsuariosRepository implements IUsuariosRepository {
     return this.mapToEntity(u);
   }
 
+  async update(id: string, data: Partial<UsuarioEntity>): Promise<UsuarioEntity> {
+    const updateData: {
+      nombre?: string;
+      rol?: string;
+      activo?: boolean;
+      passwordHash?: string;
+    } = {};
+    if (data.nombre !== undefined) updateData.nombre = data.nombre;
+    if (data.rol !== undefined) updateData.rol = data.rol;
+    if (data.activo !== undefined) updateData.activo = data.activo;
+    if (data.passwordHash !== undefined) updateData.passwordHash = data.passwordHash;
+
+    const u = await this.prisma.usuario.update({
+      where: { id },
+      data: updateData,
+    });
+    return this.mapToEntity(u);
+  }
+
+  async listAll(): Promise<
+    (UsuarioEntity & { asignaciones: { instalacionId: string; instalacion: { id: string; nombre: string } }[] })[]
+  > {
+    const usuarios = await this.prisma.usuario.findMany({
+      orderBy: { nombre: "asc" },
+      include: {
+        asignaciones: {
+          include: {
+            instalacion: {
+              select: { id: true, nombre: true },
+            },
+          },
+        },
+      },
+    });
+
+    return usuarios.map((u) => ({
+      ...this.mapToEntity(u),
+      asignaciones: u.asignaciones.map((a) => ({
+        instalacionId: a.instalacionId,
+        instalacion: {
+          id: a.instalacion.id,
+          nombre: a.instalacion.nombre,
+        },
+      })),
+    }));
+  }
+
+  async syncAsignaciones(usuarioId: string, instalacionesIds: string[]): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.asignacionOperador.deleteMany({
+        where: { usuarioId },
+      });
+      if (instalacionesIds.length > 0) {
+        await tx.asignacionOperador.createMany({
+          data: instalacionesIds.map((instalacionId) => ({
+            usuarioId,
+            instalacionId,
+          })),
+        });
+      }
+    });
+  }
+
   async isUsuarioAssignedToInstalacion(usuarioId: string, instalacionId: string): Promise<boolean> {
     const asignacion = await this.prisma.asignacionOperador.findUnique({
       where: {

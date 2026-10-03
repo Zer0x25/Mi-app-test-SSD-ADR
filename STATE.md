@@ -37,12 +37,20 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - `specs/feat-005-autenticacion-rbac.md` implementado.
   - 3 Roles jerárquicos: `ADMIN` (acceso global), `SUPERVISOR` (limitado a sedes asignadas, crea medidores en sedes asignadas, no crea instalaciones), `OPERADOR` (captura en terreno).
   - Criptografía nativa con `node:crypto` (scrypt + JWT HS256), guardias preHandler de Fastify y 74/74 tests superados.
+- [x] **Hito 4: Gestión Integral de Usuarios y Contraseñas (Completado: 2026-10-03)**
+  - `specs/feat-006-gestion-usuarios-y-password.md` implementado bajo Agentic TDD.
+  - Auto-servicio de cambio de contraseña (`POST /api/auth/cambiar-password`) con validación de contraseña actual y error tipado `PasswordActualInvalidaError`.
+  - Directorio administrativo de usuarios (`GET /api/usuarios`) con asignaciones de instalaciones.
+  - Modificación de usuario (`PATCH /api/usuarios/:id`) con sincronización transaccional de instalaciones asignadas.
+  - Restablecimiento administrativo de credenciales (`POST /api/usuarios/:id/reset-password`).
+  - Interfaz gráfica integrada con Aurora Design System: vista de gestión de usuarios, modal de edición de sedes con checklist, modal de reset y modal de auto-servicio de clave.
+  - Suite de pruebas expandida: 87/87 tests pasando (100%), Quality Gate 0.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 3 concluido.*
-- **Módulo objetivo:** *Consolidación de Sistema Medidores.*
+- **Archivo:** *Hito 4 concluido (`specs/feat-006-gestion-usuarios-y-password.md`).*
+- **Módulo objetivo:** *Consolidación y auditoría de Sistema Medidores.*
 
 ---
 
@@ -58,3 +66,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Creación del Servidor HTTP y Dashboard Web Base | Fastify con SQLite y seed de datos demo, 60/60 tests pasando |
 | 2026-10-03 | Antigravity | Formalización de ADR 0002 y Frontend Design System | Tokens Claro/Oscuro, ApiClient desacoplado y componentes reutilizables |
 | 2026-10-03 | Antigravity | Implementación de `feat-005-autenticacion-rbac` | Roles Admin, Supervisor y Operador con guardias y JWT, 74/74 tests pasando |
+| 2026-10-03 | Antigravity | Implementación de `feat-006-gestion-usuarios-y-password` | CRUD usuarios admin, cambio y reset de claves, 87/87 tests pasando |

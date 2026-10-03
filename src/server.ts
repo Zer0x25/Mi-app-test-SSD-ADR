@@ -128,6 +128,22 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         }
       }
     }
+
+    // Regla RBAC 3: Gestión de Usuarios solo permitido para ADMIN
+    if (request.url.startsWith("/api/usuarios")) {
+      if (!user) {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Cabecera Authorization con formato Bearer <token> requerida.",
+        });
+      }
+      if (user.rol !== "ADMIN") {
+        return reply.status(403).send({
+          error: "ACCESO_DENEGADO",
+          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar usuarios.`,
+        });
+      }
+    }
   });
 
   // 3. Health check y Seed Demo

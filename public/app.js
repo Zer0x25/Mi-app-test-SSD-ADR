@@ -102,7 +102,7 @@ async function loginComo(rol) {
 function aplicarPermisosUI() {
   if (!currentUser) return;
 
-  // 1. Navbar: Usuario activo y badge de rol
+  // 1. Navbar: Usuario activo y badge de rol y botón de cambio de clave
   const userPill = document.getElementById("navUserPill");
   if (userPill) {
     const roleBadgeClasses = {
@@ -111,9 +111,12 @@ function aplicarPermisosUI() {
       OPERADOR: "badge-emerald",
     };
     userPill.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 0.6rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${currentUser.nombre}</span>
         <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}">${currentUser.rol}</span>
+        <button class="btn btn-outline btn-sm" onclick="openModal('modalCambiarPassword')" title="Cambiar mi contraseña" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+          🔑 Clave
+        </button>
       </div>
     `;
   }
@@ -132,6 +135,7 @@ function aplicarPermisosUI() {
   const btnNuevoTipo = document.getElementById("btnOpenModalTipo");
   const btnNuevoMedidor = document.getElementById("btnOpenModalMedidor");
   const tabAdminBtn = document.getElementById("tabAdminBtn");
+  const tabUsuariosBtn = document.getElementById("tabUsuariosBtn");
 
   if (btnNuevaInstalacion) {
     // REGLA: Supervisor y Operador NO pueden crear instalaciones
@@ -152,6 +156,11 @@ function aplicarPermisosUI() {
     // REGLA: OPERADOR no tiene acceso a Dashboard de auditoría
     tabAdminBtn.style.display = currentUser.rol === "OPERADOR" ? "none" : "inline-flex";
   }
+
+  if (tabUsuariosBtn) {
+    // REGLA: Solo ADMIN tiene acceso a Gestión de Usuarios
+    tabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  }
 }
 
 // ------------------------------------------------------------------------------
@@ -163,23 +172,33 @@ function switchRole(role) {
     return;
   }
 
+  if (role === "usuarios" && currentUser?.rol !== "ADMIN") {
+    window.Toast.warning("La gestión de usuarios está reservada para ADMIN.", "Permisos");
+    return;
+  }
+
   currentRoleTab = role;
   const tabAdmin = document.getElementById("tabAdminBtn");
+  const tabUsuarios = document.getElementById("tabUsuariosBtn");
   const tabOperador = document.getElementById("tabOperadorBtn");
   const viewAdmin = document.getElementById("viewAdmin");
+  const viewUsuarios = document.getElementById("viewUsuarios");
   const viewOperador = document.getElementById("viewOperador");
 
+  [tabAdmin, tabUsuarios, tabOperador].forEach((t) => t?.classList.remove("active"));
+  [viewAdmin, viewUsuarios, viewOperador].forEach((v) => v?.classList.remove("active"));
+
   if (role === "admin") {
-    tabAdmin.classList.add("active");
-    tabOperador.classList.remove("active");
-    viewAdmin.classList.add("active");
-    viewOperador.classList.remove("active");
+    tabAdmin?.classList.add("active");
+    viewAdmin?.classList.add("active");
     cargarDashboard();
+  } else if (role === "usuarios") {
+    tabUsuarios?.classList.add("active");
+    viewUsuarios?.classList.add("active");
+    cargarUsuariosAdmin();
   } else {
-    tabOperador.classList.add("active");
-    tabAdmin.classList.remove("active");
-    viewOperador.classList.add("active");
-    viewAdmin.classList.remove("active");
+    tabOperador?.classList.add("active");
+    viewOperador?.classList.add("active");
     cargarSelectorOperador();
   }
 }
@@ -519,6 +538,203 @@ async function seedDemoData() {
   }
 }
 
+// ------------------------------------------------------------------------------
+// 8. GESTIÓN DE USUARIOS & CAMBIO DE CONTRASEÑA (SPEC-006)
+// ------------------------------------------------------------------------------
+let usuariosCache = [];
+
+function escapeHtml(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function cargarUsuariosAdmin() {
+  const tbody = document.getElementById("tbodyUsuarios");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Cargando directorio de usuarios...</td></tr>';
+
+  try {
+    const usuarios = await window.api.usuarios.getAll();
+    usuariosCache = usuarios;
+
+    if (usuarios.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay usuarios registrados.</td></tr>';
+      return;
+    }
+
+    const roleBadgeClasses = {
+      ADMIN: "badge-blue",
+      SUPERVISOR: "badge-amber",
+      OPERADOR: "badge-emerald",
+    };
+
+    tbody.innerHTML = usuarios
+      .map((u) => {
+        const instalacionesBadges = (u.instalaciones && u.instalaciones.length > 0)
+          ? u.instalaciones
+              .map(
+                (i) =>
+                  `<span class="badge badge-muted" style="margin-right: 0.25rem; margin-bottom: 0.25rem; font-size: 0.75rem;">🏢 ${escapeHtml(
+                    i.nombre
+                  )}</span>`
+              )
+              .join("")
+          : u.rol === "ADMIN"
+          ? '<span style="font-size: 0.75rem; color: var(--text-muted);">Acceso Global</span>'
+          : '<span style="font-size: 0.75rem; color: var(--status-warning);">Sin sedes asignadas</span>';
+
+        const estadoBadge = u.activo
+          ? '<span class="badge badge-emerald">Activo</span>'
+          : '<span class="badge badge-muted">Inactivo</span>';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(u.nombre)}</div>
+            </td>
+            <td class="font-mono" style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(u.email)}</td>
+            <td>
+              <span class="badge ${roleBadgeClasses[u.rol] || 'badge-muted'}">${u.rol}</span>
+            </td>
+            <td>${estadoBadge}</td>
+            <td>${instalacionesBadges}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              <button class="btn btn-outline btn-sm" onclick="abrirModalEditarUsuario('${u.id}')" title="Editar datos y sedes" style="margin-right: 0.35rem;">
+                ✏️ Editar
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="abrirModalResetPassword('${u.id}')" title="Restablecer contraseña">
+                🔄 Reset Clave
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--status-danger);">Error al cargar usuarios: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function submitCambiarPassword(event) {
+  event.preventDefault();
+  const passwordActual = document.getElementById("inputPasswordActual").value;
+  const passwordNueva = document.getElementById("inputPasswordNueva").value;
+
+  try {
+    await window.api.auth.cambiarPassword({ passwordActual, passwordNueva });
+    window.Toast.success("Contraseña actualizada exitosamente.", "Seguridad");
+    document.getElementById("formCambiarPassword").reset();
+    window.Modal.close("modalCambiarPassword");
+  } catch (err) {
+    window.Toast.error(err.message || "Error al actualizar contraseña", "Fallo");
+  }
+}
+
+async function submitNuevoUsuario(event) {
+  event.preventDefault();
+  const nombre = document.getElementById("inputNuevoUsuarioNombre").value.trim();
+  const email = document.getElementById("inputNuevoUsuarioEmail").value.trim();
+  const password = document.getElementById("inputNuevoUsuarioPassword").value;
+  const rol = document.getElementById("selectNuevoUsuarioRol").value;
+
+  try {
+    await window.api.usuarios.create({ nombre, email, password, rol });
+    window.Toast.success(`Usuario «${nombre}» creado exitosamente.`, "Directorio");
+    document.getElementById("formNuevoUsuario").reset();
+    window.Modal.close("modalNuevoUsuario");
+    await cargarUsuariosAdmin();
+  } catch (err) {
+    window.Toast.error(err.message || "Error al crear usuario", "Fallo");
+  }
+}
+
+async function abrirModalEditarUsuario(usuarioId) {
+  const usuario = usuariosCache.find((u) => u.id === usuarioId);
+  if (!usuario) return;
+
+  document.getElementById("editUsuarioId").value = usuario.id;
+  document.getElementById("editUsuarioNombre").value = usuario.nombre;
+  document.getElementById("editUsuarioRol").value = usuario.rol;
+  document.getElementById("editUsuarioActivo").value = usuario.activo ? "true" : "false";
+
+  // Checkboxes de instalaciones
+  const listContainer = document.getElementById("editUsuarioInstalacionesList");
+  const assignedIds = new Set((usuario.instalaciones || []).map((i) => i.id));
+
+  listContainer.innerHTML = instalacionesCache
+    .map(
+      (inst) => `
+      <label class="checklist-item">
+        <input type="checkbox" name="editInstalacionCheck" value="${inst.id}" ${assignedIds.has(inst.id) ? "checked" : ""}>
+        <span>${escapeHtml(inst.nombre)} <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(inst.ubicacion)})</span></span>
+      </label>
+    `
+    )
+    .join("");
+
+  window.Modal.open("modalEditarUsuario");
+}
+
+async function submitEditarUsuario(event) {
+  event.preventDefault();
+  const id = document.getElementById("editUsuarioId").value;
+  const nombre = document.getElementById("editUsuarioNombre").value.trim();
+  const rol = document.getElementById("editUsuarioRol").value;
+  const activo = document.getElementById("editUsuarioActivo").value === "true";
+
+  const checkedCheckboxes = document.querySelectorAll('input[name="editInstalacionCheck"]:checked');
+  const instalacionesIds = Array.from(checkedCheckboxes).map((cb) => cb.value);
+
+  try {
+    await window.api.usuarios.update(id, {
+      nombre,
+      rol,
+      activo,
+      instalacionesIds,
+    });
+    window.Toast.success("Usuario y asignaciones actualizados exitosamente.", "Directorio");
+    window.Modal.close("modalEditarUsuario");
+    await cargarUsuariosAdmin();
+
+    if (currentUser?.id === id) {
+      currentUser.nombre = nombre;
+      currentUser.rol = rol;
+      aplicarPermisosUI();
+    }
+  } catch (err) {
+    window.Toast.error(err.message || "Error al actualizar usuario", "Fallo");
+  }
+}
+
+function abrirModalResetPassword(usuarioId) {
+  const usuario = usuariosCache.find((u) => u.id === usuarioId);
+  if (!usuario) return;
+
+  document.getElementById("resetUsuarioId").value = usuario.id;
+  document.getElementById("resetUsuarioNombre").innerText = `${usuario.nombre} (${usuario.email})`;
+  document.getElementById("formResetPassword").reset();
+  window.Modal.open("modalResetPassword");
+}
+
+async function submitResetPassword(event) {
+  event.preventDefault();
+  const id = document.getElementById("resetUsuarioId").value;
+  const passwordNueva = document.getElementById("resetPasswordNueva").value;
+
+  try {
+    await window.api.usuarios.resetPassword(id, { passwordNueva });
+    window.Toast.success("Contraseña restablecida exitosamente.", "Seguridad");
+    window.Modal.close("modalResetPassword");
+  } catch (err) {
+    window.Toast.error(err.message || "Error al restablecer contraseña", "Fallo");
+  }
+}
+
 // Enlace global para el DOM HTML
 window.switchRole = switchRole;
 window.loginComo = loginComo;
@@ -531,3 +747,11 @@ window.submitNuevoTipo = submitNuevoTipo;
 window.submitNuevoMedidor = submitNuevoMedidor;
 window.seedDemoData = seedDemoData;
 window.onOperadorInstalacionChange = onOperadorInstalacionChange;
+window.cargarUsuariosAdmin = cargarUsuariosAdmin;
+window.submitCambiarPassword = submitCambiarPassword;
+window.submitNuevoUsuario = submitNuevoUsuario;
+window.abrirModalEditarUsuario = abrirModalEditarUsuario;
+window.submitEditarUsuario = submitEditarUsuario;
+window.abrirModalResetPassword = abrirModalResetPassword;
+window.submitResetPassword = submitResetPassword;
+

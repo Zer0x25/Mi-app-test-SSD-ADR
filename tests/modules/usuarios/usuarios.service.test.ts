@@ -11,6 +11,7 @@ import {
   UsuarioInactivoError,
   AccesoDenegadoError,
   InstalacionNoAsignadaError,
+  PasswordActualInvalidaError,
 } from "../../../src/modules/usuarios/usuarios.schema.js";
 import { hashPassword } from "../../../src/modules/usuarios/auth.utils.js";
 
@@ -35,6 +36,38 @@ class InMemoryUsuariosRepository implements IUsuariosRepository {
     };
     this.usuarios.push(usuario);
     return usuario;
+  }
+
+  async update(id: string, data: Partial<UsuarioEntity>): Promise<UsuarioEntity> {
+    const idx = this.usuarios.findIndex((u) => u.id === id);
+    if (idx === -1) throw new Error("Usuario no encontrado en mock");
+    this.usuarios[idx] = {
+      ...this.usuarios[idx],
+      ...data,
+      updatedAt: new Date(),
+    };
+    return this.usuarios[idx];
+  }
+
+  async listAll(): Promise<
+    (UsuarioEntity & { asignaciones: { instalacionId: string; instalacion: { id: string; nombre: string } }[] })[]
+  > {
+    return this.usuarios.map((u) => ({
+      ...u,
+      asignaciones: this.asignaciones
+        .filter((a) => a.usuarioId === u.id)
+        .map((a) => ({
+          instalacionId: a.instalacionId,
+          instalacion: { id: a.instalacionId, nombre: `Sede ${a.instalacionId}` },
+        })),
+    }));
+  }
+
+  async syncAsignaciones(usuarioId: string, instalacionesIds: string[]): Promise<void> {
+    this.asignaciones = this.asignaciones.filter((a) => a.usuarioId !== usuarioId);
+    for (const instId of instalacionesIds) {
+      this.asignaciones.push({ usuarioId, instalacionId: instId });
+    }
   }
 
   async isUsuarioAssignedToInstalacion(usuarioId: string, instalacionId: string): Promise<boolean> {
@@ -196,6 +229,134 @@ describe("UsuariosService & RBAC Suite", () => {
       await expect(
         service.verificarPermisoCrearMedidor("OPERADOR", "usr-op-1", "inst-maipu")
       ).rejects.toThrow(AccesoDenegadoError);
+    });
+  });
+
+  describe("Cambio de Contraseña (Self-Service)", () => {
+    it("debe cambiar la contraseña exitosamente si la actual es correcta", async () => {
+      const passHash = await hashPassword("originalPass123");
+      const user = await repo.create({
+        email: "usuario@cambio.cl",
+        passwordHash: passHash,
+        nombre: "Usuario Cambio",
+        rol: "OPERADOR",
+        activo: true,
+      });
+
+      await expect(
+        service.cambiarPassword(user.id, {
+          passwordActual: "originalPass123",
+          passwordNueva: "nuevaSuperPass456",
+        })
+      ).resolves.not.toThrow();
+
+      // Debe poder autenticar con la nueva clave
+      const auth = await service.login({
+        email: "usuario@cambio.cl",
+        password: "nuevaSuperPass456",
+      });
+      expect(auth.token).toBeDefined();
+
+      // La clave antigua ya no debe funcionar
+      await expect(
+        service.login({
+          email: "usuario@cambio.cl",
+          password: "originalPass123",
+        })
+      ).rejects.toThrow(CredencialesInvalidasError);
+    });
+
+    it("debe rechazar el cambio si la contraseña actual es errónea", async () => {
+      const passHash = await hashPassword("originalPass123");
+      const user = await repo.create({
+        email: "usuario2@cambio.cl",
+        passwordHash: passHash,
+        nombre: "Usuario 2",
+        rol: "OPERADOR",
+        activo: true,
+      });
+
+      await expect(
+        service.cambiarPassword(user.id, {
+          passwordActual: "passwordEquivocada",
+          passwordNueva: "nuevaSuperPass456",
+        })
+      ).rejects.toThrow(PasswordActualInvalidaError);
+    });
+  });
+
+  describe("Gestión de Usuarios y Reset de Contraseña por Admin", () => {
+    it("debe permitir a ADMIN resetear contraseña sin requerir la anterior", async () => {
+      const passHash = await hashPassword("claveAntigua123");
+      const user = await repo.create({
+        email: "olvido@planta.cl",
+        passwordHash: passHash,
+        nombre: "Operador Olvidadizo",
+        rol: "OPERADOR",
+        activo: true,
+      });
+
+      await expect(
+        service.resetPasswordAdmin(user.id, {
+          passwordNueva: "claveReseteada789",
+        })
+      ).resolves.not.toThrow();
+
+      // Puede iniciar sesión con la clave reseteada
+      const auth = await service.login({
+        email: "olvido@planta.cl",
+        password: "claveReseteada789",
+      });
+      expect(auth.token).toBeDefined();
+    });
+
+    it("debe listar usuarios con sus instalaciones asignadas", async () => {
+      const passHash = await hashPassword("pass123456");
+      const u1 = await repo.create({
+        email: "sup1@planta.cl",
+        passwordHash: passHash,
+        nombre: "Supervisor 1",
+        rol: "SUPERVISOR",
+        activo: true,
+      });
+      const instId = crypto.randomUUID();
+      repo.asignaciones.push({ usuarioId: u1.id, instalacionId: instId });
+
+      const lista = await service.listarUsuarios();
+      expect(lista.length).toBeGreaterThan(0);
+      const sup = lista.find((u) => u.id === u1.id);
+      expect(sup?.instalaciones.length).toBe(1);
+      expect(sup?.instalaciones[0].id).toBe(instId);
+    });
+
+    it("debe editar nombre, rol, estado y sincronizar instalaciones del usuario", async () => {
+      const passHash = await hashPassword("pass123456");
+      const user = await repo.create({
+        email: "ascenso@planta.cl",
+        passwordHash: passHash,
+        nombre: "Operador Prometedor",
+        rol: "OPERADOR",
+        activo: true,
+      });
+
+      const instA = crypto.randomUUID();
+      const instB = crypto.randomUUID();
+
+      const editado = await service.editarUsuario(user.id, {
+        nombre: "Supervisor Promovido",
+        rol: "SUPERVISOR",
+        activo: true,
+        instalacionesIds: [instA, instB],
+      });
+
+      expect(editado.nombre).toBe("Supervisor Promovido");
+      expect(editado.rol).toBe("SUPERVISOR");
+
+      // Verificar que las instalaciones se sincronizaron en el repo
+      const asignadoA = await repo.isUsuarioAssignedToInstalacion(user.id, instA);
+      const asignadoB = await repo.isUsuarioAssignedToInstalacion(user.id, instB);
+      expect(asignadoA).toBe(true);
+      expect(asignadoB).toBe(true);
     });
   });
 });

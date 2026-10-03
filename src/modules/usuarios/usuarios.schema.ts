@@ -52,6 +52,36 @@ export const UsuarioResponseSchema = z.object({
 });
 export type UsuarioResponse = z.infer<typeof UsuarioResponseSchema>;
 
+// Esquemas de Cambio y Gestión de Contraseñas
+export const CambiarPasswordInputSchema = z.object({
+  passwordActual: z.string().min(1, "La contraseña actual es requerida"),
+  passwordNueva: z.string().min(8, "La nueva contraseña debe tener al menos 8 caracteres"),
+});
+export type CambiarPasswordInput = z.infer<typeof CambiarPasswordInputSchema>;
+
+export const ResetPasswordInputSchema = z.object({
+  passwordNueva: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordInputSchema>;
+
+export const EditarUsuarioInputSchema = z.object({
+  nombre: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres").optional(),
+  rol: RolUsuarioEnum.optional(),
+  activo: z.boolean().optional(),
+  instalacionesIds: z.array(z.string().uuid("ID de instalación inválido")).optional(),
+});
+export type EditarUsuarioInput = z.infer<typeof EditarUsuarioInputSchema>;
+
+export const UsuarioConAsignacionesResponseSchema = UsuarioResponseSchema.extend({
+  instalaciones: z.array(
+    z.object({
+      id: z.string().uuid(),
+      nombre: z.string(),
+    })
+  ),
+});
+export type UsuarioConAsignacionesResponse = z.infer<typeof UsuarioConAsignacionesResponseSchema>;
+
 export const AuthResponseSchema = z.object({
   token: z.string(),
   usuario: UsuarioResponseSchema,
@@ -77,6 +107,24 @@ export class CredencialesInvalidasError extends DomainError {
 
   constructor() {
     super("Correo electrónico o contraseña incorrectos.");
+  }
+}
+
+export class NoAutorizadoError extends DomainError {
+  readonly code = "UNAUTHORIZED";
+  readonly statusCode = 401;
+
+  constructor(mensaje = "Cabecera Authorization con formato Bearer <token> requerida.") {
+    super(mensaje);
+  }
+}
+
+export class PasswordActualInvalidaError extends DomainError {
+  readonly code = "PASSWORD_ACTUAL_INVALIDA";
+  readonly statusCode = 401;
+
+  constructor() {
+    super("La contraseña actual ingresada es incorrecta.");
   }
 }
 
