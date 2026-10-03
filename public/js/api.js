@@ -125,11 +125,12 @@ class ApiClient {
     getKpis: () => this.request("/api/dashboard/kpis"),
     getDesatendidos: (horas = 24) => this.request(`/api/dashboard/desatendidos?horas=${horas}`),
     getConsumos: () => this.request("/api/dashboard/consumos"),
+    getActividadReciente: (limit = 10) => this.request(`/api/dashboard/actividad-reciente?limit=${limit}`),
   };
 
   // --- Dominio: Lecturas & Telemetría ---
   lecturas = {
-    getRecientes: (limit = 8) => this.request(`/api/lecturas/recientes?limit=${limit}`),
+    getRecientes: (limit = 8) => this.request(`/api/dashboard/actividad-reciente?limit=${limit}`),
     registrar: (payload) =>
       this.request("/api/lecturas", {
         method: "POST",

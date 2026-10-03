@@ -411,5 +411,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     return asignaciones.map((a) => a.instalacion).filter((i) => i.activa);
   });
 
+  app.get("/api/lecturas/recientes", async (req: FastifyRequest<{ Querystring: { limit?: string } }>) => {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;
+    return await dashboardService.obtenerActividadReciente(limit);
+  });
+
   return app;
 }
