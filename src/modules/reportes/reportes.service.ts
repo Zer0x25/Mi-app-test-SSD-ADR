@@ -1,0 +1,226 @@
+import {
+  FiltroReporteConsumo,
+  FiltroReporteConsumoSchema,
+  ItemConsumoConsolidado,
+  RegistrarFacturaInput,
+  RegistrarFacturaInputSchema,
+  FacturaConciliadaResponse,
+  RangoFechasInvalidoError,
+} from "./reportes.schema.js";
+
+export interface ReporteLecturaRaw {
+  valor: number;
+  fechaLectura: Date;
+}
+
+export interface ReporteRawItem {
+  medidorId: string;
+  medidorCodigo: string;
+  instalacionId: string;
+  instalacionNombre: string;
+  recurso: string;
+  unidad: string;
+  tipoMedicion: string;
+  lecturas: ReporteLecturaRaw[];
+}
+
+export interface FacturaEntity {
+  id: string;
+  instalacionId: string;
+  recurso: string;
+  periodoInicio: Date;
+  periodoFin: Date;
+  consumoFacturado: number;
+  unidad: string;
+  montoTotal?: number | null;
+  numeroFactura?: string | null;
+  estadoConciliacion: "PENDIENTE" | "CONCILIADO" | "DISCREPANCIA";
+  consumoMedido?: number | null;
+  diferenciaConsumo?: number | null;
+  porcentajeDesvio?: number | null;
+  notas?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IReportesRepository {
+  getReporteRawData(filtro: FiltroReporteConsumo): Promise<ReporteRawItem[]>;
+  createFactura(data: Omit<FacturaEntity, "id" | "createdAt" | "updatedAt">): Promise<FacturaEntity>;
+  listFacturas(instalacionId?: string): Promise<FacturaEntity[]>;
+}
+
+export class ReportesService {
+  constructor(private readonly repository: IReportesRepository) {}
+
+  async obtenerConsumoConsolidado(rawFiltro: FiltroReporteConsumo): Promise<ItemConsumoConsolidado[]> {
+    if (rawFiltro.fechaInicio > rawFiltro.fechaFin) {
+      throw new RangoFechasInvalidoError(rawFiltro.fechaInicio, rawFiltro.fechaFin);
+    }
+    const filtro = FiltroReporteConsumoSchema.parse(rawFiltro);
+    const rawItems = await this.repository.getReporteRawData(filtro);
+
+    const resultado: ItemConsumoConsolidado[] = [];
+
+    for (const item of rawItems) {
+      if (item.lecturas.length === 0) continue;
+
+      // Ordenar por fecha cronológica ascendente
+      const ordenadas = [...item.lecturas].sort(
+        (a, b) => a.fechaLectura.getTime() - b.fechaLectura.getTime()
+      );
+
+      const lecturaInicial = ordenadas[0].valor;
+      const lecturaFinal = ordenadas[ordenadas.length - 1].valor;
+      let consumoNeto = 0;
+
+      if (item.tipoMedicion === "ACUMULATIVO") {
+        consumoNeto = Math.max(0, Number((lecturaFinal - lecturaInicial).toFixed(2)));
+      } else {
+        // En medidores no acumulativos, sumar o calcular neto según lecturas
+        consumoNeto = Number(
+          ordenadas.reduce((acc, curr) => acc + curr.valor, 0).toFixed(2)
+        );
+      }
+
+      resultado.push({
+        medidorId: item.medidorId,
+        medidorCodigo: item.medidorCodigo,
+        instalacionId: item.instalacionId,
+        instalacionNombre: item.instalacionNombre,
+        recurso: item.recurso,
+        unidad: item.unidad,
+        lecturaInicial,
+        lecturaFinal,
+        consumoNeto,
+        totalLecturas: ordenadas.length,
+        fechaInicio: filtro.fechaInicio,
+        fechaFin: filtro.fechaFin,
+      });
+    }
+
+    return resultado;
+  }
+
+  async exportarConsumoCSV(rawFiltro: FiltroReporteConsumo): Promise<string> {
+    const consolidado = await this.obtenerConsumoConsolidado(rawFiltro);
+
+    const cabeceras = [
+      "Sede",
+      "Medidor",
+      "TipoRecurso",
+      "Unidad",
+      "LecturaInicial",
+      "LecturaFinal",
+      "ConsumoNeto",
+      "FechaInicio",
+      "FechaFin",
+    ];
+
+    const filas = consolidado.map((c) => [
+      `"${c.instalacionNombre.replace(/"/g, '""')}"`,
+      c.medidorCodigo,
+      c.recurso,
+      c.unidad,
+      c.lecturaInicial,
+      c.lecturaFinal,
+      c.consumoNeto,
+      c.fechaInicio.toISOString().split("T")[0],
+      c.fechaFin.toISOString().split("T")[0],
+    ]);
+
+    return [cabeceras.join(","), ...filas.map((f) => f.join(","))].join("\n");
+  }
+
+  async registrarYConciliarFactura(rawInput: RegistrarFacturaInput): Promise<FacturaConciliadaResponse> {
+    const input = RegistrarFacturaInputSchema.parse(rawInput);
+
+    // Obtener consumo medido para la sede y recurso en el rango de fechas
+    const consolidado = await this.obtenerConsumoConsolidado({
+      instalacionId: input.instalacionId,
+      recurso: input.recurso,
+      fechaInicio: input.periodoInicio,
+      fechaFin: input.periodoFin,
+    });
+
+    let consumoMedido: number | null = null;
+    let diferenciaConsumo: number | null = null;
+    let porcentajeDesvio: number | null = null;
+    let estadoConciliacion: "PENDIENTE" | "CONCILIADO" | "DISCREPANCIA" = "PENDIENTE";
+
+    if (consolidado.length > 0) {
+      // Suma de consumos netos de todos los medidores de ese recurso en la sede
+      const totalConsumoMedido = consolidado.reduce((acc, curr) => acc + curr.consumoNeto, 0);
+      consumoMedido = Number(totalConsumoMedido.toFixed(2));
+      diferenciaConsumo = Number((input.consumoFacturado - consumoMedido).toFixed(2));
+
+      if (consumoMedido > 0) {
+        porcentajeDesvio = Number(
+          (((input.consumoFacturado - consumoMedido) / consumoMedido) * 100).toFixed(2)
+        );
+        // Tolerancia del 5%
+        if (Math.abs(porcentajeDesvio) <= 5.0) {
+          estadoConciliacion = "CONCILIADO";
+        } else {
+          estadoConciliacion = "DISCREPANCIA";
+        }
+      } else {
+        estadoConciliacion = "DISCREPANCIA";
+      }
+    }
+
+    const factura = await this.repository.createFactura({
+      instalacionId: input.instalacionId,
+      recurso: input.recurso,
+      periodoInicio: input.periodoInicio,
+      periodoFin: input.periodoFin,
+      consumoFacturado: input.consumoFacturado,
+      unidad: input.unidad,
+      montoTotal: input.montoTotal ?? null,
+      numeroFactura: input.numeroFactura ?? null,
+      estadoConciliacion,
+      consumoMedido,
+      diferenciaConsumo,
+      porcentajeDesvio,
+      notas: input.notas ?? null,
+    });
+
+    return {
+      id: factura.id,
+      instalacionId: factura.instalacionId,
+      recurso: factura.recurso,
+      numeroFactura: factura.numeroFactura ?? null,
+      periodoInicio: factura.periodoInicio,
+      periodoFin: factura.periodoFin,
+      consumoFacturado: factura.consumoFacturado,
+      consumoMedido: factura.consumoMedido ?? null,
+      diferenciaConsumo: factura.diferenciaConsumo ?? null,
+      porcentajeDesvio: factura.porcentajeDesvio ?? null,
+      estadoConciliacion: factura.estadoConciliacion,
+      unidad: factura.unidad,
+      montoTotal: factura.montoTotal ?? null,
+      notas: factura.notas ?? null,
+      createdAt: factura.createdAt,
+    };
+  }
+
+  async listarFacturas(instalacionId?: string): Promise<FacturaConciliadaResponse[]> {
+    const list = await this.repository.listFacturas(instalacionId);
+    return list.map((factura) => ({
+      id: factura.id,
+      instalacionId: factura.instalacionId,
+      recurso: factura.recurso,
+      numeroFactura: factura.numeroFactura ?? null,
+      periodoInicio: factura.periodoInicio,
+      periodoFin: factura.periodoFin,
+      consumoFacturado: factura.consumoFacturado,
+      consumoMedido: factura.consumoMedido ?? null,
+      diferenciaConsumo: factura.diferenciaConsumo ?? null,
+      porcentajeDesvio: factura.porcentajeDesvio ?? null,
+      estadoConciliacion: factura.estadoConciliacion,
+      unidad: factura.unidad,
+      montoTotal: factura.montoTotal ?? null,
+      notas: factura.notas ?? null,
+      createdAt: factura.createdAt,
+    }));
+  }
+}

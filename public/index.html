@@ -42,8 +42,8 @@
         </div>
       </div>
 
-      <!-- Conmutador de Roles (Admin / Operador) -->
-      <nav class="role-switcher" id="roleSwitcher" aria-label="Selector de Perfil">
+      <!-- Conmutador de Roles & Módulos -->
+      <nav class="role-switcher" id="roleSwitcher" aria-label="Selector de Módulo">
         <button class="role-btn active" id="tabAdminBtn" onclick="switchRole('admin')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
@@ -51,7 +51,30 @@
             <rect x="14" y="14" width="7" height="7"/>
             <rect x="3" y="14" width="7" height="7"/>
           </svg>
-          Dashboard Admin
+          Dashboard
+        </button>
+        <button class="role-btn" id="tabReportesBtn" onclick="switchRole('reportes')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Reportes &amp; Facturas
+        </button>
+        <button class="role-btn" id="tabAlertasBtn" onclick="switchRole('alertas')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Alertas
+          <span id="navAlertasBadge" class="badge badge-amber" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; margin-left: 0.25rem;">0</span>
+        </button>
+        <button class="role-btn" id="tabMantenimientoBtn" onclick="switchRole('mantenimiento')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Mantenimiento
         </button>
         <button class="role-btn" id="tabUsuariosBtn" onclick="switchRole('usuarios')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -324,6 +347,295 @@
             <tbody id="tbodyUsuarios">
               <tr>
                 <td colspan="6" class="empty-state">Cargando directorio de usuarios...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 4: REPORTES & CONCILIACIÓN DE FACTURAS (FEAT-007) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewReportes" aria-labelledby="headingReportes">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingReportes">Consumos Consolidados &amp; Conciliación de Facturas</h1>
+          <p class="view-desc">Auditoría de consumos netos por sede, exportación normalizada a CSV y conciliación metrológica con facturas de servicios.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="exportarReporteCSV()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Exportar CSV
+          </button>
+          <button class="btn btn-primary" onclick="openModal('modalRegistrarFactura')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <line x1="12" y1="11" x2="12" y2="17"/>
+              <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+            + Registrar Factura
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros de Reportes -->
+      <div class="card mt-6" style="padding: 1.25rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteSede" class="form-label">Sede / Instalación:</label>
+            <select id="filtroReporteSede" class="form-select">
+              <option value="">Todas las sedes</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteRecurso" class="form-label">Tipo de Recurso:</label>
+            <select id="filtroReporteRecurso" class="form-select">
+              <option value="">Todos los recursos</option>
+              <option value="AGUA">Agua Potable</option>
+              <option value="LUZ">Electricidad</option>
+              <option value="GAS">Gas</option>
+              <option value="PETROLEO">Combustible / Diésel</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteInicio" class="form-label">Fecha Inicio:</label>
+            <input type="date" id="filtroReporteInicio" class="form-input">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteFin" class="form-label">Fecha Fin:</label>
+            <input type="date" id="filtroReporteFin" class="form-input">
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-primary" onclick="cargarReporteConsumos()" style="flex: 1;">
+              🔍 Filtrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla 1: Consumo Neto Consolidado por Medidor -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">📊 Consumo Neto Consolidado por Medidor</h2>
+          <span class="badge badge-blue" id="badgeTotalReporteMedidores">0 medidores</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaReporteConsumos">
+            <thead>
+              <tr>
+                <th>Sede</th>
+                <th>Medidor</th>
+                <th>Recurso</th>
+                <th>Unidad</th>
+                <th style="text-align: right;">Lectura Inicial</th>
+                <th style="text-align: right;">Lectura Final</th>
+                <th style="text-align: right;">Consumo Neto</th>
+                <th style="text-align: center;">Muestras</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReporteConsumos">
+              <tr>
+                <td colspan="8" class="empty-state">Selecciona los filtros y presiona Filtrar.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla 2: Auditoría y Conciliación contra Facturas -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🧾 Auditoría &amp; Conciliación de Facturas de Proveedores</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarFacturasReportes()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaReporteFacturas">
+            <thead>
+              <tr>
+                <th>N° Factura</th>
+                <th>Sede</th>
+                <th>Recurso</th>
+                <th>Período Facturación</th>
+                <th style="text-align: right;">Facturado</th>
+                <th style="text-align: right;">Medido Sistema</th>
+                <th style="text-align: right;">Diferencia</th>
+                <th style="text-align: right;">% Desvío</th>
+                <th>Estado Conciliación</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReporteFacturas">
+              <tr>
+                <td colspan="9" class="empty-state">Cargando facturas registradas...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 5: SISTEMA DE ALERTAS & ANOMALÍAS (FEAT-008) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewAlertas" aria-labelledby="headingAlertas">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingAlertas">Centro de Alertas &amp; Anomalías de Telemetría</h1>
+          <p class="view-desc">Detección automática de consumos atípicos, fugas probables y medidores desconectados o sin reporte (+48h).</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="openModal('modalConfigurarReglas')">
+            ⚙️ Ver / Crear Reglas
+          </button>
+          <button class="btn btn-primary" onclick="evaluarAlertasEnVivo()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Evaluar Reglas Ahora
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs de Alertas -->
+      <div class="kpi-grid mt-6">
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Incidentes Abiertos</span>
+              <span class="kpi-value" id="kpiAlertasAbiertos" style="color: var(--accent-primary);">--</span>
+            </div>
+            <div class="kpi-icon icon-blue">⚠️</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Alertas Críticas</span>
+              <span class="kpi-value" id="kpiAlertasCriticos" style="color: var(--status-danger);">--</span>
+            </div>
+            <div class="kpi-icon icon-rose">🚨</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Advertencias</span>
+              <span class="kpi-value" id="kpiAlertasAdvertencias" style="color: var(--status-warning);">--</span>
+            </div>
+            <div class="kpi-icon icon-amber">⚡</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Incidentes Resueltos</span>
+              <span class="kpi-value" id="kpiAlertasResueltos" style="color: var(--status-success);">--</span>
+            </div>
+            <div class="kpi-icon icon-emerald">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Incidentes de Alerta -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🔔 Registro de Incidentes Operativos</h2>
+          <div style="display: flex; gap: 0.5rem;">
+            <select id="filtroAlertasEstado" class="form-select" style="width: auto; padding: 0.35rem 0.75rem;" onchange="cargarAlertasIncidentes()">
+              <option value="">Todos los estados</option>
+              <option value="ABIERTO" selected>Solo Abiertos</option>
+              <option value="EN_REVISION">En Revisión</option>
+              <option value="RESUELTO">Resueltos</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="cargarAlertasIncidentes()">Refrescar</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaAlertasIncidentes">
+            <thead>
+              <tr>
+                <th>Fecha Detección</th>
+                <th>Sede</th>
+                <th>Medidor</th>
+                <th>Tipo Anomalía</th>
+                <th>Severidad</th>
+                <th>Diagnóstico / Mensaje</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAlertasIncidentes">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando incidentes...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 6: MANTENIMIENTO & CALIBRACIÓN (FEAT-009) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewMantenimiento" aria-labelledby="headingMantenimiento">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingMantenimiento">Mantenimiento, Calibración &amp; Control de Precintos</h1>
+          <p class="view-desc">Bitácora física de intervenciones técnicas, trazabilidad de precintos de seguridad y registro de bajas o reemplazos.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" onclick="openModalRegistrarMantenimiento()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            + Registrar Mantenimiento
+          </button>
+        </div>
+      </div>
+
+      <!-- Ficha de Consulta de Medidor & Historial Propio -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🔍 Ficha Metrológica por Medidor</h2>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label for="selectFichaMedidor" class="form-label" style="margin-bottom:0; font-size:0.85rem;">Medidor:</label>
+            <select id="selectFichaMedidor" class="form-select" style="width: auto; min-width: 220px;" onchange="consultarFichaMedidor()">
+              <option value="">Selecciona un medidor...</option>
+            </select>
+          </div>
+        </div>
+        <div id="contenedorFichaMedidor" style="padding: 1rem;">
+          <div class="empty-state">Selecciona un medidor para inspeccionar su ficha técnica y bitácora.</div>
+        </div>
+      </div>
+
+      <!-- Bitácora Histórica General -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">📜 Bitácora General de Intervenciones Físicas</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarMantenimientosBitacora()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaMantenimientosBitacora">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Medidor</th>
+                <th>Sede</th>
+                <th>Tipo Intervención</th>
+                <th>Técnico Responsable</th>
+                <th>Precinto Ant.</th>
+                <th>Precinto Nuevo</th>
+                <th>Próx. Calibración</th>
+                <th>Detalles / Observaciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyMantenimientosBitacora">
+              <tr>
+                <td colspan="9" class="empty-state">Cargando bitácora de intervenciones...</td>
               </tr>
             </tbody>
           </table>
@@ -658,6 +970,274 @@
           <button type="submit" class="btn btn-primary">Restablecer Clave</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGISTRAR FACTURA DE PROVEEDOR (FEAT-007) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalRegistrarFactura" role="dialog" aria-modal="true" aria-labelledby="modalFacturaTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalFacturaTitulo">🧾 Ingreso de Factura para Conciliación</h3>
+        <button class="btn-close" onclick="closeModal('modalRegistrarFactura')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formRegistrarFactura" onsubmit="submitRegistrarFactura(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="facturaInstalacionId" class="form-label">Sede / Instalación *</label>
+              <select id="facturaInstalacionId" class="form-select" required></select>
+            </div>
+            <div class="form-group">
+              <label for="facturaRecurso" class="form-label">Recurso *</label>
+              <select id="facturaRecurso" class="form-select" required>
+                <option value="AGUA">Agua Potable</option>
+                <option value="LUZ">Electricidad</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Petróleo / Diésel</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="facturaNumero" class="form-label">N° de Factura / Documento</label>
+            <input type="text" id="facturaNumero" class="form-input" placeholder="Ej: FAC-2026-90412">
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="facturaPeriodoInicio" class="form-label">Inicio Período Facturado *</label>
+              <input type="date" id="facturaPeriodoInicio" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="facturaPeriodoFin" class="form-label">Fin Período Facturado *</label>
+              <input type="date" id="facturaPeriodoFin" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="facturaConsumo" class="form-label">Consumo Facturado *</label>
+              <input type="number" step="0.01" id="facturaConsumo" class="form-input" placeholder="Ej: 1450.5" required>
+            </div>
+            <div class="form-group">
+              <label for="facturaUnidad" class="form-label">Unidad de Medida *</label>
+              <select id="facturaUnidad" class="form-select" required>
+                <option value="M3">M3</option>
+                <option value="KWH">KWH</option>
+                <option value="LITROS">LITROS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="facturaMonto" class="form-label">Monto Total Facturado ($CLP)</label>
+            <input type="number" id="facturaMonto" class="form-input" placeholder="Ej: 450000">
+          </div>
+
+          <div class="form-group">
+            <label for="facturaNotas" class="form-label">Notas / Observaciones</label>
+            <textarea id="facturaNotas" class="form-input" rows="2" placeholder="Observaciones de la conciliación..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalRegistrarFactura')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar y Conciliar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ATENDER / RESOLVER INCIDENTE (FEAT-008) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalResolverIncidente" role="dialog" aria-modal="true" aria-labelledby="modalResolverTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalResolverTitulo">🛡️ Atender Incidente de Alerta</h3>
+        <button class="btn-close" onclick="closeModal('modalResolverIncidente')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formResolverIncidente" onsubmit="submitResolverIncidente(event)">
+        <input type="hidden" id="resolverIncidenteId">
+        <div class="modal-body">
+          <div style="background: var(--bg-surface-hover); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1rem;">
+            <div id="resolverIncidenteMensaje" style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem;">Mensaje del incidente</div>
+            <div id="resolverIncidenteMeta" style="font-size: 0.8rem; color: var(--text-muted);">Meta info</div>
+          </div>
+
+          <div class="form-group">
+            <label for="resolverEstado" class="form-label">Nuevo Estado *</label>
+            <select id="resolverEstado" class="form-select" required>
+              <option value="EN_REVISION">En Revisión (En investigación)</option>
+              <option value="RESUELTO" selected>Resuelto (Problema subsanado)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="resolverNotas" class="form-label">Bitácora / Notas de Resolución *</label>
+            <textarea id="resolverNotas" class="form-input" rows="3" minlength="3" placeholder="Describe las acciones tomadas para atender o resolver la anomalía..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalResolverIncidente')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Resolución</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGISTRAR MANTENIMIENTO / CALIBRACIÓN (FEAT-009) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalRegistrarMantenimiento" role="dialog" aria-modal="true" aria-labelledby="modalMantenimientoTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalMantenimientoTitulo">🛠️ Registro de Mantenimiento &amp; Precintos</h3>
+        <button class="btn-close" onclick="closeModal('modalRegistrarMantenimiento')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formRegistrarMantenimiento" onsubmit="submitRegistrarMantenimiento(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mantMedidorId" class="form-label">Medidor Objetivo *</label>
+              <select id="mantMedidorId" class="form-select" required onchange="onMantMedidorChange()"></select>
+            </div>
+            <div class="form-group">
+              <label for="mantTipo" class="form-label">Tipo de Intervención *</label>
+              <select id="mantTipo" class="form-select" required onchange="onMantTipoChange()">
+                <option value="CALIBRACION">Calibración Periódica</option>
+                <option value="CAMBIO_PRECINTO">Cambio de Precinto de Seguridad</option>
+                <option value="REEMPLAZO_EQUIPO">Reemplazo / Sustitución de Equipo</option>
+                <option value="INSPECCION">Inspección Física Rutinaria</option>
+                <option value="BAJA_TECNICA">Baja Técnica Definitiva</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mantFecha" class="form-label">Fecha de Intervención *</label>
+              <input type="datetime-local" id="mantFecha" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="mantTecnico" class="form-label">Técnico / Especialista Responsable *</label>
+              <input type="text" id="mantTecnico" class="form-input" placeholder="Nombre completo o laboratorio" required>
+            </div>
+          </div>
+
+          <div id="mantSeccionPrecinto" class="form-grid-2">
+            <div class="form-group">
+              <label for="mantPrecintoAnt" class="form-label">Precinto Anterior</label>
+              <input type="text" id="mantPrecintoAnt" class="form-input" placeholder="Autocompletado si existe">
+            </div>
+            <div class="form-group">
+              <label for="mantPrecintoNuevo" class="form-label">Nuevo Precinto de Seguridad</label>
+              <input type="text" id="mantPrecintoNuevo" class="form-input" placeholder="Ej: PREC-2026-990">
+            </div>
+          </div>
+
+          <div id="mantSeccionCalibracion" class="form-grid-2">
+            <div class="form-group">
+              <label for="mantCertificado" class="form-label">Certificado / Informe Metrológico</label>
+              <input type="text" id="mantCertificado" class="form-input" placeholder="Ej: CERT-DICTUC-2026-09">
+            </div>
+            <div class="form-group">
+              <label for="mantProxCalib" class="form-label">Próxima Calibración Recomendada</label>
+              <input type="date" id="mantProxCalib" class="form-input">
+            </div>
+          </div>
+
+          <div id="mantSeccionBaja" class="form-grid-2" style="display: none;">
+            <div class="form-group">
+              <label for="mantLecturaRetiro" class="form-label">Lectura Final de Retiro</label>
+              <input type="number" step="0.01" id="mantLecturaRetiro" class="form-input" placeholder=">= última lectura">
+            </div>
+            <div class="form-group" id="mantGroupNuevoCodigo">
+              <label for="mantNuevoMedidorCodigo" class="form-label">Código del Medidor Sustituto</label>
+              <input type="text" id="mantNuevoMedidorCodigo" class="form-input" placeholder="Ej: MED-AG-01-V2">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="mantObservaciones" class="form-label">Observaciones y Hallazgos Técnicos</label>
+            <textarea id="mantObservaciones" class="form-input" rows="2" placeholder="Detalle técnico de la intervención..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalRegistrarMantenimiento')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar en Bitácora</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGLAS DE ALERTA (FEAT-008) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalConfigurarReglas" role="dialog" aria-modal="true" aria-labelledby="modalReglasTitulo">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalReglasTitulo">⚙️ Configuración de Reglas de Detección</h3>
+        <button class="btn-close" onclick="closeModal('modalConfigurarReglas')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary);">Reglas Activas en el Sistema</h4>
+        <div class="table-responsive" style="margin-bottom: 1.5rem;">
+          <table class="data-table" id="tablaReglasAlertas">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Recurso</th>
+                <th>Umbral</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReglasAlertas">
+              <tr><td colspan="5" class="empty-state">Cargando reglas...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary); border-top: 1px solid var(--border-subtle); padding-top: 1rem;">Crear Nueva Regla</h4>
+        <form id="formCrearRegla" onsubmit="submitCrearRegla(event)">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="reglaNombre" class="form-label">Nombre de la Regla *</label>
+              <input type="text" id="reglaNombre" class="form-input" placeholder="Ej: Salto Crítico Electricidad" required>
+            </div>
+            <div class="form-group">
+              <label for="reglaTipo" class="form-label">Tipo de Detección *</label>
+              <select id="reglaTipo" class="form-select" required>
+                <option value="SALTO_CONSUMO">Salto Atípico de Consumo (%)</option>
+                <option value="FUGA_PROBABLE">Fuga Continua Probable</option>
+                <option value="SIN_REPORTE">Sin Reporte / Desconectado (Horas)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="reglaRecurso" class="form-label">Recurso Específico</label>
+              <select id="reglaRecurso" class="form-select">
+                <option value="">Aplica a todos los recursos</option>
+                <option value="AGUA">Agua Potable</option>
+                <option value="LUZ">Electricidad</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Combustible</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="reglaUmbral" class="form-label">Valor del Umbral *</label>
+              <input type="number" step="0.1" id="reglaUmbral" class="form-input" placeholder="Ej: 50 (% o horas)" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top: 0.25rem;">+ Agregar Regla</button>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalConfigurarReglas')">Cerrar</button>
+      </div>
     </div>
   </div>
 

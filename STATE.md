@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 1 (Desarrollo Activo de Features)
+## 🧭 Fase Actual: Hito 5 (Consolidación Operativa y Metrológica)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Módulos de dominio (`feat-001`, `feat-002`, `feat-003`, `feat-004`) completados exitosamente.
-- **Acción requerida para comenzar:** Sistema base completo. En espera de nuevas funcionalidades o servidor principal/interfaz de usuario.
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 59/59 tests, código de salida 0).
+- **Estado:** Módulos de dominio (`feat-001` a `feat-009`) completados exitosamente.
+- **Acción requerida para comenzar:** Sistema base completo. En espera de nuevas directrices o despliegue.
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 125/125 tests en 19 suites, código de salida 0).
 
 ---
 
@@ -43,15 +43,20 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Directorio administrativo de usuarios (`GET /api/usuarios`) con asignaciones de instalaciones.
   - Modificación de usuario (`PATCH /api/usuarios/:id`) con sincronización transaccional de instalaciones asignadas.
   - Restablecimiento administrativo de credenciales (`POST /api/usuarios/:id/reset-password`).
-  - Interfaz gráfica integrada con Aurora Design System: vista de gestión de usuarios, modal de edición de sedes con checklist, modal de reset y modal de auto-servicio de clave.
+  - Interfaz gráfica integrada con Aurora Design System.
   - Suite de pruebas expandida: 88/88 tests pasando (100%), Quality Gate 0.
-  - Sincronización remota: Commit 3d89173 desplegado en origin/main.
+- [x] **Hito 5: Reportes, Alertas Automáticas y Mantenimiento Metrológico (Completado: 2026-10-03)**
+  - `specs/feat-007-reportes-y-exportacion.md`: Consumos netos consolidados, descarga CSV con cabeceras `Content-Disposition`, auditoría y conciliación contra facturas de servicios básicos con detección de desvío (&le; 5% `CONCILIADO`, &gt; 5% `DISCREPANCIA`).
+  - `specs/feat-008-alertas-y-anomalias.md`: Motor de detección temprana en vivo (`SIN_REPORTE > 48h`, `SALTO_CONSUMO > 50%`, `FUGA_PROBABLE`), ciclo de vida de incidentes (`ABIERTO`, `EN_REVISION`, `RESUELTO`) y métricas de severidad.
+  - `specs/feat-009-mantenimiento-y-calibracion.md`: Bitácora técnica metrológica, trazabilidad de precintos de seguridad numerados, control de calibraciones periódicas y bajas o reemplazos técnicos con validación de lecturas de retiro.
+  - Interfaz gráfica con Aurora Design System: Nuevas pestañas de Reportes & Facturas, Alertas & Incidentes, y Mantenimiento & Calibración.
+  - Suite de pruebas expandida a 19 archivos y 125 pruebas pasando exitosamente (100%), Quality Gate 0.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 4 concluido (`specs/feat-006-gestion-usuarios-y-password.md`).*
-- **Módulo objetivo:** *Consolidación y auditoría de Sistema Medidores.*
+- **Archivo:** *Hito 5 concluido (`specs/feat-007-reportes-y-exportacion.md`, `specs/feat-008-alertas-y-anomalias.md`, `specs/feat-009-mantenimiento-y-calibracion.md`).*
+- **Módulo objetivo:** *Consolidación de Sistema Medidores.*
 
 ---
 
@@ -67,4 +72,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Creación del Servidor HTTP y Dashboard Web Base | Fastify con SQLite y seed de datos demo, 60/60 tests pasando |
 | 2026-10-03 | Antigravity | Formalización de ADR 0002 y Frontend Design System | Tokens Claro/Oscuro, ApiClient desacoplado y componentes reutilizables |
 | 2026-10-03 | Antigravity | Implementación de `feat-005-autenticacion-rbac` | Roles Admin, Supervisor y Operador con guardias y JWT, 74/74 tests pasando |
-| 2026-10-03 | Antigravity | Implementación de `feat-006-gestion-usuarios-y-password` | CRUD usuarios admin, cambio y reset de claves, 87/87 tests pasando |
+| 2026-10-03 | Antigravity | Implementación de `feat-006-gestion-usuarios-y-password` | CRUD usuarios admin, cambio y reset de claves, 88/88 tests pasando |
+| 2026-10-03 | Antigravity | Implementación de `feat-007-reportes-y-exportacion` | Ciclo TDD completado, exportación CSV y conciliación de facturas |
+| 2026-10-03 | Antigravity | Implementación de `feat-008-alertas-y-anomalias` | Ciclo TDD completado, motor de detección y resolución de incidentes |
+| 2026-10-03 | Antigravity | Implementación de `feat-009-mantenimiento-y-calibracion` | Ciclo TDD completado, bitácora técnica, precintos y calibraciones |
+| 2026-10-03 | Antigravity | Integración Frontend Aurora Design System | Vistas y modales interactivos integrados, 125/125 tests, Quality Gate 0 |

@@ -135,39 +135,40 @@ function aplicarPermisosUI() {
   const btnNuevoTipo = document.getElementById("btnOpenModalTipo");
   const btnNuevoMedidor = document.getElementById("btnOpenModalMedidor");
   const tabAdminBtn = document.getElementById("tabAdminBtn");
+  const tabReportesBtn = document.getElementById("tabReportesBtn");
+  const tabAlertasBtn = document.getElementById("tabAlertasBtn");
+  const tabMantenimientoBtn = document.getElementById("tabMantenimientoBtn");
   const tabUsuariosBtn = document.getElementById("tabUsuariosBtn");
+  const tabOperadorBtn = document.getElementById("tabOperadorBtn");
 
   if (btnNuevaInstalacion) {
-    // REGLA: Supervisor y Operador NO pueden crear instalaciones
     btnNuevaInstalacion.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   }
 
   if (btnNuevoTipo) {
-    // REGLA: Solo ADMIN configura tipos de medidor
     btnNuevoTipo.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   }
 
   if (btnNuevoMedidor) {
-    // REGLA: ADMIN y SUPERVISOR pueden crear medidores. OPERADOR no.
     btnNuevoMedidor.style.display = (currentUser.rol === "ADMIN" || currentUser.rol === "SUPERVISOR") ? "inline-flex" : "none";
   }
 
-  if (tabAdminBtn) {
-    // REGLA: OPERADOR no tiene acceso a Dashboard de auditoría
-    tabAdminBtn.style.display = currentUser.rol === "OPERADOR" ? "none" : "inline-flex";
-  }
+  const esOperador = currentUser.rol === "OPERADOR";
+  if (tabAdminBtn) tabAdminBtn.style.display = esOperador ? "none" : "inline-flex";
+  if (tabReportesBtn) tabReportesBtn.style.display = esOperador ? "none" : "inline-flex";
+  if (tabAlertasBtn) tabAlertasBtn.style.display = esOperador ? "none" : "inline-flex";
+  if (tabMantenimientoBtn) tabMantenimientoBtn.style.display = esOperador ? "none" : "inline-flex";
+  if (tabUsuariosBtn) tabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  if (tabOperadorBtn) tabOperadorBtn.style.display = "inline-flex";
 
-  if (tabUsuariosBtn) {
-    // REGLA: Solo ADMIN tiene acceso a Gestión de Usuarios
-    tabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
-  }
+  actualizarResumenAlertas();
 }
 
 // ------------------------------------------------------------------------------
 // 2. NAVEGACIÓN Y CONMUTACIÓN DE PESTAÑAS (VISTAS)
 // ------------------------------------------------------------------------------
 function switchRole(role) {
-  if (role === "admin" && currentUser?.rol === "OPERADOR") {
+  if (role !== "operador" && currentUser?.rol === "OPERADOR") {
     window.Toast.warning("El perfil OPERADOR solo tiene acceso al Modo Terreno.", "Permisos");
     return;
   }
@@ -178,27 +179,53 @@ function switchRole(role) {
   }
 
   currentRoleTab = role;
-  const tabAdmin = document.getElementById("tabAdminBtn");
-  const tabUsuarios = document.getElementById("tabUsuariosBtn");
-  const tabOperador = document.getElementById("tabOperadorBtn");
-  const viewAdmin = document.getElementById("viewAdmin");
-  const viewUsuarios = document.getElementById("viewUsuarios");
-  const viewOperador = document.getElementById("viewOperador");
+  const tabs = [
+    document.getElementById("tabAdminBtn"),
+    document.getElementById("tabReportesBtn"),
+    document.getElementById("tabAlertasBtn"),
+    document.getElementById("tabMantenimientoBtn"),
+    document.getElementById("tabUsuariosBtn"),
+    document.getElementById("tabOperadorBtn"),
+  ];
+  const views = [
+    document.getElementById("viewAdmin"),
+    document.getElementById("viewReportes"),
+    document.getElementById("viewAlertas"),
+    document.getElementById("viewMantenimiento"),
+    document.getElementById("viewUsuarios"),
+    document.getElementById("viewOperador"),
+  ];
 
-  [tabAdmin, tabUsuarios, tabOperador].forEach((t) => t?.classList.remove("active"));
-  [viewAdmin, viewUsuarios, viewOperador].forEach((v) => v?.classList.remove("active"));
+  tabs.forEach((t) => t?.classList.remove("active"));
+  views.forEach((v) => v?.classList.remove("active"));
 
   if (role === "admin") {
-    tabAdmin?.classList.add("active");
-    viewAdmin?.classList.add("active");
+    document.getElementById("tabAdminBtn")?.classList.add("active");
+    document.getElementById("viewAdmin")?.classList.add("active");
     cargarDashboard();
+  } else if (role === "reportes") {
+    document.getElementById("tabReportesBtn")?.classList.add("active");
+    document.getElementById("viewReportes")?.classList.add("active");
+    inicializarFiltrosReporte();
+    cargarReporteConsumos();
+    cargarFacturasReportes();
+  } else if (role === "alertas") {
+    document.getElementById("tabAlertasBtn")?.classList.add("active");
+    document.getElementById("viewAlertas")?.classList.add("active");
+    cargarAlertasIncidentes();
+    actualizarResumenAlertas();
+  } else if (role === "mantenimiento") {
+    document.getElementById("tabMantenimientoBtn")?.classList.add("active");
+    document.getElementById("viewMantenimiento")?.classList.add("active");
+    poblarSelectsMantenimiento();
+    cargarMantenimientosBitacora();
   } else if (role === "usuarios") {
-    tabUsuarios?.classList.add("active");
-    viewUsuarios?.classList.add("active");
+    document.getElementById("tabUsuariosBtn")?.classList.add("active");
+    document.getElementById("viewUsuarios")?.classList.add("active");
     cargarUsuariosAdmin();
   } else {
-    tabOperador?.classList.add("active");
-    viewOperador?.classList.add("active");
+    document.getElementById("tabOperadorBtn")?.classList.add("active");
+    document.getElementById("viewOperador")?.classList.add("active");
     cargarSelectorOperador();
   }
 }
@@ -735,6 +762,597 @@ async function submitResetPassword(event) {
   }
 }
 
+// ==============================================================================
+// 5. FUNCIONALIDADES: REPORTES & CONCILIACIÓN DE FACTURAS (FEAT-007)
+// ==============================================================================
+
+function inicializarFiltrosReporte() {
+  const selectSede = document.getElementById("filtroReporteSede");
+  const selectFacturaSede = document.getElementById("facturaInstalacionId");
+  if (selectSede && instalacionesCache.length > 0) {
+    selectSede.innerHTML = `<option value="">Todas las sedes</option>` +
+      instalacionesCache.map((i) => `<option value="${i.id}">${escapeHtml(i.nombre)}</option>`).join("");
+  }
+  if (selectFacturaSede && instalacionesCache.length > 0) {
+    selectFacturaSede.innerHTML = instalacionesCache.map((i) => `<option value="${i.id}">${escapeHtml(i.nombre)}</option>`).join("");
+  }
+
+  const hoy = new Date();
+  const hace30d = new Date(hoy.getTime() - 30 * 24 * 3600 * 1000);
+  const inputIni = document.getElementById("filtroReporteInicio");
+  const inputFin = document.getElementById("filtroReporteFin");
+  if (inputIni && !inputIni.value) inputIni.value = hace30d.toISOString().split("T")[0];
+  if (inputFin && !inputFin.value) inputFin.value = hoy.toISOString().split("T")[0];
+}
+
+async function cargarReporteConsumos() {
+  const instalacionId = document.getElementById("filtroReporteSede")?.value || undefined;
+  const recurso = document.getElementById("filtroReporteRecurso")?.value || undefined;
+  const fechaInicio = document.getElementById("filtroReporteInicio")?.value;
+  const fechaFin = document.getElementById("filtroReporteFin")?.value;
+
+  if (!fechaInicio || !fechaFin) {
+    window.Toast.warning("Debes seleccionar una fecha de inicio y fin.", "Filtros");
+    return;
+  }
+
+  const tbody = document.getElementById("tbodyReporteConsumos");
+  const badgeTotal = document.getElementById("badgeTotalReporteMedidores");
+  tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Consultando consumos consolidados...</td></tr>`;
+
+  try {
+    const consumos = await window.api.reportes.getConsumos({
+      instalacionId,
+      recurso,
+      fechaInicio: `${fechaInicio}T00:00:00.000Z`,
+      fechaFin: `${fechaFin}T23:59:59.000Z`,
+    });
+
+    if (badgeTotal) badgeTotal.innerText = `${consumos.length} medidores`;
+
+    if (consumos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No se registraron consumos ni variaciones para el período seleccionado.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = consumos.map((c) => {
+      const meta = getResourceMeta(c.recurso);
+      return `
+        <tr>
+          <td><strong>${escapeHtml(c.instalacionNombre)}</strong></td>
+          <td class="font-mono">${escapeHtml(c.medidorCodigo)}</td>
+          <td><span class="badge ${meta.badgeClass}">${meta.icon} ${escapeHtml(c.recurso)}</span></td>
+          <td><span class="badge badge-muted">${escapeHtml(c.unidad)}</span></td>
+          <td style="text-align: right;" class="font-mono">${formatNumber(c.lecturaInicial)}</td>
+          <td style="text-align: right;" class="font-mono">${formatNumber(c.lecturaFinal)}</td>
+          <td style="text-align: right;" class="font-mono"><strong style="color: var(--accent-primary); font-size: 1.05rem;">${formatNumber(c.consumoNeto)}</strong></td>
+          <td style="text-align: center;"><span class="badge badge-blue">${c.totalLecturas} lecturas</span></td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color: var(--status-danger);">Error al cargar reporte: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function exportarReporteCSV() {
+  const instalacionId = document.getElementById("filtroReporteSede")?.value || "";
+  const recurso = document.getElementById("filtroReporteRecurso")?.value || "";
+  const fechaInicio = document.getElementById("filtroReporteInicio")?.value;
+  const fechaFin = document.getElementById("filtroReporteFin")?.value;
+
+  if (!fechaInicio || !fechaFin) {
+    window.Toast.warning("Debes seleccionar una fecha de inicio y fin para exportar.", "Filtros");
+    return;
+  }
+
+  const url = window.api.reportes.getCsvUrl({
+    instalacionId: instalacionId || undefined,
+    recurso: recurso || undefined,
+    fechaInicio: `${fechaInicio}T00:00:00.000Z`,
+    fechaFin: `${fechaFin}T23:59:59.000Z`,
+  });
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `reporte-consumo-${fechaInicio}-al-${fechaFin}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.Toast.success("Generando descarga del archivo CSV...", "Exportación");
+}
+
+async function cargarFacturasReportes() {
+  const tbody = document.getElementById("tbodyReporteFacturas");
+  tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Consultando auditoría de facturas...</td></tr>`;
+
+  try {
+    const facturas = await window.api.reportes.getFacturas();
+    if (facturas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Aún no se han registrado facturas de servicios para conciliar.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = facturas.map((f) => {
+      const inst = instalacionesCache.find((i) => i.id === f.instalacionId);
+      const meta = getResourceMeta(f.recurso);
+
+      let estadoBadge = `<span class="badge badge-amber">PENDIENTE</span>`;
+      if (f.estadoConciliacion === "CONCILIADO") {
+        estadoBadge = `<span class="badge badge-emerald">✓ CONCILIADO (&le; 5%)</span>`;
+      } else if (f.estadoConciliacion === "DISCREPANCIA") {
+        estadoBadge = `<span class="badge badge-rose">⚠ DISCREPANCIA (&gt; 5%)</span>`;
+      }
+
+      const iniStr = new Date(f.periodoInicio).toLocaleDateString("es-CL");
+      const finStr = new Date(f.periodoFin).toLocaleDateString("es-CL");
+
+      return `
+        <tr>
+          <td><strong class="font-mono">${escapeHtml(f.numeroFactura || "S/N")}</strong></td>
+          <td>${escapeHtml(inst?.nombre || f.instalacionId.slice(0, 8))}</td>
+          <td><span class="badge ${meta.badgeClass}">${meta.icon} ${escapeHtml(f.recurso)}</span></td>
+          <td style="font-size: 0.85rem;">${iniStr} &rarr; ${finStr}</td>
+          <td style="text-align: right;" class="font-mono"><strong>${formatNumber(f.consumoFacturado)}</strong> ${escapeHtml(f.unidad)}</td>
+          <td style="text-align: right;" class="font-mono">${f.consumoMedido !== null ? formatNumber(f.consumoMedido) : "--"} ${escapeHtml(f.unidad)}</td>
+          <td style="text-align: right;" class="font-mono">${f.diferenciaConsumo !== null ? (f.diferenciaConsumo > 0 ? `+${formatNumber(f.diferenciaConsumo)}` : formatNumber(f.diferenciaConsumo)) : "--"}</td>
+          <td style="text-align: right;" class="font-mono">${f.porcentajeDesvio !== null ? `${f.porcentajeDesvio > 0 ? `+${f.porcentajeDesvio}` : f.porcentajeDesvio}%` : "--"}</td>
+          <td>${estadoBadge}</td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state" style="color: var(--status-danger);">Error al cargar facturas: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function submitRegistrarFactura(event) {
+  event.preventDefault();
+  const instalacionId = document.getElementById("facturaInstalacionId").value;
+  const recurso = document.getElementById("facturaRecurso").value;
+  const numeroFactura = document.getElementById("facturaNumero").value;
+  const periodoInicio = document.getElementById("facturaPeriodoInicio").value;
+  const periodoFin = document.getElementById("facturaPeriodoFin").value;
+  const consumoFacturado = parseFloat(document.getElementById("facturaConsumo").value);
+  const unidad = document.getElementById("facturaUnidad").value;
+  const montoTotalVal = document.getElementById("facturaMonto").value;
+  const notas = document.getElementById("facturaNotas").value;
+
+  try {
+    const res = await window.api.reportes.registrarFactura({
+      instalacionId,
+      recurso,
+      numeroFactura: numeroFactura || undefined,
+      periodoInicio: `${periodoInicio}T00:00:00.000Z`,
+      periodoFin: `${periodoFin}T23:59:59.000Z`,
+      consumoFacturado,
+      unidad,
+      montoTotal: montoTotalVal ? parseFloat(montoTotalVal) : undefined,
+      notas: notas || undefined,
+    });
+
+    window.Toast.success(
+      `Factura registrada. Estado de conciliación: ${res.estadoConciliacion}`,
+      "Conciliación"
+    );
+    window.Modal.close("modalRegistrarFactura");
+    document.getElementById("formRegistrarFactura").reset();
+    await cargarFacturasReportes();
+  } catch (err) {
+    window.Toast.error(err.message || "Error al registrar factura", "Fallo");
+  }
+}
+
+// ==============================================================================
+// 6. FUNCIONALIDADES: ALERTAS & ANOMALÍAS (FEAT-008)
+// ==============================================================================
+
+async function actualizarResumenAlertas() {
+  try {
+    const resumen = await window.api.alertas.getResumen();
+    const elAbiertos = document.getElementById("kpiAlertasAbiertos");
+    const elCriticos = document.getElementById("kpiAlertasCriticos");
+    const elAdv = document.getElementById("kpiAlertasAdvertencias");
+    const elRes = document.getElementById("kpiAlertasResueltos");
+    const badgeNav = document.getElementById("navAlertasBadge");
+
+    if (elAbiertos) elAbiertos.innerText = resumen.totalAbiertos;
+    if (elCriticos) elCriticos.innerText = resumen.totalCriticos;
+    if (elAdv) elAdv.innerText = resumen.totalAdvertencias;
+    if (elRes) elRes.innerText = resumen.totalResueltos;
+
+    if (badgeNav) {
+      badgeNav.innerText = resumen.totalAbiertos;
+      badgeNav.style.display = resumen.totalAbiertos > 0 ? "inline-block" : "none";
+      badgeNav.className = resumen.totalCriticos > 0 ? "badge badge-rose" : "badge badge-amber";
+    }
+  } catch (e) {
+    console.warn("No se pudo obtener resumen de alertas:", e);
+  }
+}
+
+async function cargarAlertasIncidentes() {
+  const tbody = document.getElementById("tbodyAlertasIncidentes");
+  const estado = document.getElementById("filtroAlertasEstado")?.value || undefined;
+
+  tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Consultando incidentes...</td></tr>`;
+
+  try {
+    const incidentes = await window.api.alertas.getIncidentes({ estado });
+    if (incidentes.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">✓ No se registran anomalías ni incidentes con los filtros actuales.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = incidentes.map((i) => {
+      const severidadBadge = i.severidad === "CRITICAL"
+        ? `<span class="badge badge-rose">🚨 CRITICAL</span>`
+        : i.severidad === "WARNING"
+          ? `<span class="badge badge-amber">⚠️ WARNING</span>`
+          : `<span class="badge badge-blue">ℹ INFO</span>`;
+
+      const estadoBadge = i.estado === "ABIERTO"
+        ? `<span class="badge badge-rose">ABIERTO</span>`
+        : i.estado === "EN_REVISION"
+          ? `<span class="badge badge-amber">EN REVISIÓN</span>`
+          : `<span class="badge badge-emerald">RESUELTO</span>`;
+
+      const fechaStr = new Date(i.fechaDeteccion).toLocaleString("es-CL", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const btnAccion = i.estado !== "RESUELTO"
+        ? `<button class="btn btn-outline btn-sm" onclick="abrirModalResolverIncidente('${i.id}', '${escapeHtml(i.mensaje)}', '${escapeHtml(i.medidorCodigo || '')}')">Atender</button>`
+        : `<span style="font-size:0.75rem; color: var(--text-muted);">Cerrado</span>`;
+
+      return `
+        <tr>
+          <td style="font-size: 0.85rem;">${fechaStr}</td>
+          <td><strong>${escapeHtml(i.instalacionNombre || "--")}</strong></td>
+          <td class="font-mono">${escapeHtml(i.medidorCodigo || "--")}</td>
+          <td><span class="badge badge-muted">${escapeHtml(i.tipo)}</span></td>
+          <td>${severidadBadge}</td>
+          <td style="max-width: 320px; font-size: 0.85rem;">${escapeHtml(i.mensaje)}</td>
+          <td>${estadoBadge}</td>
+          <td style="text-align: right;">${btnAccion}</td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color: var(--status-danger);">Error al cargar incidentes: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function evaluarAlertasEnVivo() {
+  window.Toast.info("Ejecutando motor de evaluación de reglas...", "Diagnóstico");
+  try {
+    const res = await window.api.alertas.evaluar();
+    if (res.totalNuevos > 0) {
+      window.Toast.warning(
+        `Se detectaron ${res.totalNuevos} nuevo(s) incidente(s) operativos.`,
+        "Alertas Activas"
+      );
+    } else {
+      window.Toast.success("Evaluación completa. No se hallaron nuevas anomalías.", "Diagnóstico");
+    }
+    await cargarAlertasIncidentes();
+    await actualizarResumenAlertas();
+  } catch (err) {
+    window.Toast.error(err.message || "Error al evaluar alertas", "Fallo");
+  }
+}
+
+function abrirModalResolverIncidente(id, mensaje, medidor) {
+  document.getElementById("resolverIncidenteId").value = id;
+  document.getElementById("resolverIncidenteMensaje").innerText = mensaje;
+  document.getElementById("resolverIncidenteMeta").innerText = `Medidor: ${medidor}`;
+  document.getElementById("formResolverIncidente").reset();
+  window.Modal.open("modalResolverIncidente");
+}
+
+async function submitResolverIncidente(event) {
+  event.preventDefault();
+  const id = document.getElementById("resolverIncidenteId").value;
+  const estado = document.getElementById("resolverEstado").value;
+  const notasResolucion = document.getElementById("resolverNotas").value;
+
+  try {
+    await window.api.alertas.resolverIncidente(id, { estado, notasResolucion });
+    window.Toast.success("Incidente actualizado exitosamente.", "Resolución");
+    window.Modal.close("modalResolverIncidente");
+    await cargarAlertasIncidentes();
+    await actualizarResumenAlertas();
+  } catch (err) {
+    window.Toast.error(err.message || "Error al resolver incidente", "Fallo");
+  }
+}
+
+async function cargarReglasAlertas() {
+  const tbody = document.getElementById("tbodyReglasAlertas");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Consultando reglas configuradas...</td></tr>`;
+
+  try {
+    const reglas = await window.api.alertas.getReglas();
+    if (reglas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No hay reglas de alerta configuradas.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = reglas.map((r) => `
+      <tr>
+        <td><strong>${escapeHtml(r.nombre)}</strong></td>
+        <td><span class="badge badge-muted">${escapeHtml(r.tipo)}</span></td>
+        <td>${escapeHtml(r.recurso || "Todos")}</td>
+        <td class="font-mono">${r.umbralValor}</td>
+        <td>${r.activa ? `<span class="badge badge-emerald">Activa</span>` : `<span class="badge badge-muted">Inactiva</span>`}</td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--status-danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function submitCrearRegla(event) {
+  event.preventDefault();
+  const nombre = document.getElementById("reglaNombre").value;
+  const tipo = document.getElementById("reglaTipo").value;
+  const recurso = document.getElementById("reglaRecurso").value || undefined;
+  const umbralValor = parseFloat(document.getElementById("reglaUmbral").value);
+
+  try {
+    await window.api.alertas.createRegla({
+      nombre,
+      tipo,
+      recurso,
+      umbralValor,
+      activa: true,
+    });
+    window.Toast.success("Regla de alerta creada exitosamente.", "Configuración");
+    document.getElementById("formCrearRegla").reset();
+    await cargarReglasAlertas();
+  } catch (err) {
+    window.Toast.error(err.message || "Error al crear regla", "Fallo");
+  }
+}
+
+// ==============================================================================
+// 7. FUNCIONALIDADES: MANTENIMIENTO, CALIBRACIÓN & PRECINTOS (FEAT-009)
+// ==============================================================================
+
+let todosLosMedidoresCache = [];
+
+async function poblarSelectsMantenimiento() {
+  const selectModal = document.getElementById("mantMedidorId");
+  const selectFicha = document.getElementById("selectFichaMedidor");
+
+  try {
+    // Cargar todos los medidores de todas las instalaciones
+    todosLosMedidoresCache = [];
+    for (const inst of instalacionesCache) {
+      const medidores = await window.api.medidores.getByInstalacion(inst.id);
+      todosLosMedidoresCache.push(
+        ...medidores.map((m) => ({ ...m, instalacionNombre: inst.nombre }))
+      );
+    }
+
+    const options = todosLosMedidoresCache.map(
+      (m) => `<option value="${m.id}">${escapeHtml(m.codigo)} — ${escapeHtml(m.instalacionNombre)} (${m.activo ? 'Activo' : 'Baja'})</option>`
+    ).join("");
+
+    if (selectModal) selectModal.innerHTML = `<option value="">Selecciona un medidor...</option>` + options;
+    if (selectFicha) selectFicha.innerHTML = `<option value="">Selecciona un medidor...</option>` + options;
+  } catch (e) {
+    console.warn("Error poblando medidores de mantenimiento:", e);
+  }
+}
+
+function openModalRegistrarMantenimiento() {
+  poblarSelectsMantenimiento();
+  const inputFecha = document.getElementById("mantFecha");
+  if (inputFecha) {
+    const ahora = new Date();
+    ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
+    inputFecha.value = ahora.toISOString().slice(0, 16);
+  }
+  onMantTipoChange();
+  window.Modal.open("modalRegistrarMantenimiento");
+}
+
+function onMantMedidorChange() {
+  const medidorId = document.getElementById("mantMedidorId")?.value;
+  const medidor = todosLosMedidoresCache.find((m) => m.id === medidorId);
+  const inputPrecintoAnt = document.getElementById("mantPrecintoAnt");
+  if (medidor && inputPrecintoAnt) {
+    inputPrecintoAnt.value = medidor.precintoActual || "";
+  }
+}
+
+function onMantTipoChange() {
+  const tipo = document.getElementById("mantTipo")?.value;
+  const seccionPrecinto = document.getElementById("mantSeccionPrecinto");
+  const seccionCalib = document.getElementById("mantSeccionCalibracion");
+  const seccionBaja = document.getElementById("mantSeccionBaja");
+  const groupNuevoCodigo = document.getElementById("mantGroupNuevoCodigo");
+
+  if (seccionPrecinto) seccionPrecinto.style.display = (tipo === "CAMBIO_PRECINTO" || tipo === "CALIBRACION" || tipo === "INSPECCION") ? "grid" : "none";
+  if (seccionCalib) seccionCalib.style.display = (tipo === "CALIBRACION") ? "grid" : "none";
+  if (seccionBaja) seccionBaja.style.display = (tipo === "BAJA_TECNICA" || tipo === "REEMPLAZO_EQUIPO") ? "grid" : "none";
+  if (groupNuevoCodigo) groupNuevoCodigo.style.display = (tipo === "REEMPLAZO_EQUIPO") ? "block" : "none";
+}
+
+async function submitRegistrarMantenimiento(event) {
+  event.preventDefault();
+  const medidorId = document.getElementById("mantMedidorId").value;
+  const tipo = document.getElementById("mantTipo").value;
+  const fechaMantenimiento = document.getElementById("mantFecha").value;
+  const tecnicoResponsable = document.getElementById("mantTecnico").value;
+  const numeroPrecintoAnterior = document.getElementById("mantPrecintoAnt")?.value || undefined;
+  const numeroPrecintoNuevo = document.getElementById("mantPrecintoNuevo")?.value || undefined;
+  const proximaCalibracion = document.getElementById("mantProxCalib")?.value || undefined;
+  const certificadoCalibracion = document.getElementById("mantCertificado")?.value || undefined;
+  const lecturaRetiroVal = document.getElementById("mantLecturaRetiro")?.value;
+  const nuevoMedidorCodigo = document.getElementById("mantNuevoMedidorCodigo")?.value || undefined;
+  const observaciones = document.getElementById("mantObservaciones")?.value || undefined;
+
+  try {
+    await window.api.mantenimiento.registrar({
+      medidorId,
+      tipo,
+      fechaMantenimiento: `${fechaMantenimiento}:00.000Z`,
+      tecnicoResponsable,
+      numeroPrecintoAnterior,
+      numeroPrecintoNuevo,
+      proximaCalibracion: proximaCalibracion ? `${proximaCalibracion}T00:00:00.000Z` : undefined,
+      certificadoCalibracion,
+      lecturaRetiro: lecturaRetiroVal ? parseFloat(lecturaRetiroVal) : undefined,
+      nuevoMedidorCodigo,
+      observaciones,
+    });
+
+    window.Toast.success("Intervención registrada en bitácora exitosamente.", "Mantenimiento");
+    window.Modal.close("modalRegistrarMantenimiento");
+    document.getElementById("formRegistrarMantenimiento").reset();
+    await cargarMantenimientosBitacora();
+    await poblarSelectsMantenimiento();
+  } catch (err) {
+    window.Toast.error(err.message || "Error al registrar mantenimiento", "Fallo");
+  }
+}
+
+async function cargarMantenimientosBitacora() {
+  const tbody = document.getElementById("tbodyMantenimientosBitacora");
+  tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Consultando bitácora de intervenciones...</td></tr>`;
+
+  try {
+    const list = await window.api.mantenimiento.getAll();
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No hay registros de mantenimiento ni calibración todavía.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map((m) => {
+      const fechaStr = new Date(m.fechaMantenimiento).toLocaleDateString("es-CL");
+      const proxCalibStr = m.proximaCalibracion ? new Date(m.proximaCalibracion).toLocaleDateString("es-CL") : "--";
+
+      let badgeTipo = `<span class="badge badge-muted">${escapeHtml(m.tipo)}</span>`;
+      if (m.tipo === "CALIBRACION") badgeTipo = `<span class="badge badge-blue">🔬 CALIBRACIÓN</span>`;
+      if (m.tipo === "CAMBIO_PRECINTO") badgeTipo = `<span class="badge badge-amber">🔒 PRECINTO</span>`;
+      if (m.tipo === "REEMPLAZO_EQUIPO") badgeTipo = `<span class="badge badge-rose">🔄 REEMPLAZO</span>`;
+      if (m.tipo === "BAJA_TECNICA") badgeTipo = `<span class="badge badge-rose">⛔ BAJA</span>`;
+
+      return `
+        <tr>
+          <td>${fechaStr}</td>
+          <td class="font-mono"><strong>${escapeHtml(m.medidorCodigo || "--")}</strong></td>
+          <td>${escapeHtml(m.instalacionNombre || "--")}</td>
+          <td>${badgeTipo}</td>
+          <td>${escapeHtml(m.tecnicoResponsable)}</td>
+          <td class="font-mono">${escapeHtml(m.numeroPrecintoAnterior || "--")}</td>
+          <td class="font-mono"><strong style="color: var(--accent-primary);">${escapeHtml(m.numeroPrecintoNuevo || "--")}</strong></td>
+          <td>${proxCalibStr}</td>
+          <td style="font-size: 0.85rem;">
+            ${m.certificadoCalibracion ? `Cert: <strong>${escapeHtml(m.certificadoCalibracion)}</strong><br>` : ""}
+            ${m.nuevoMedidorCodigo ? `Reemplazo por: <strong>${escapeHtml(m.nuevoMedidorCodigo)}</strong><br>` : ""}
+            ${escapeHtml(m.observaciones || "")}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state" style="color: var(--status-danger);">Error al cargar bitácora: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function consultarFichaMedidor() {
+  const medidorId = document.getElementById("selectFichaMedidor")?.value;
+  const contenedor = document.getElementById("contenedorFichaMedidor");
+  if (!medidorId) {
+    contenedor.innerHTML = `<div class="empty-state">Selecciona un medidor para inspeccionar su ficha técnica y bitácora.</div>`;
+    return;
+  }
+
+  contenedor.innerHTML = `<div class="empty-state">Cargando ficha del medidor...</div>`;
+
+  try {
+    const ficha = await window.api.mantenimiento.getFichaMedidor(medidorId);
+
+    const ultimaCalibStr = ficha.fechaUltimaCalibracion
+      ? new Date(ficha.fechaUltimaCalibracion).toLocaleDateString("es-CL")
+      : "No registra";
+    const proxCalibStr = ficha.fechaProximaCalibracion
+      ? new Date(ficha.fechaProximaCalibracion).toLocaleDateString("es-CL")
+      : "No programada";
+
+    contenedor.innerHTML = `
+      <div style="background: var(--bg-surface-hover); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <h3 style="font-size: 1.25rem; font-family: var(--font-mono); color: var(--text-primary); margin-bottom: 0.25rem;">
+              ${escapeHtml(ficha.codigo)}
+            </h3>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">${escapeHtml(ficha.instalacionNombre)}</span>
+          </div>
+          <div>
+            ${ficha.activo ? `<span class="badge badge-emerald">Activo en Terreno</span>` : `<span class="badge badge-rose">Dado de Baja / Inactivo</span>`}
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Precinto de Seguridad Actual:</span>
+            <strong class="font-mono" style="color: var(--accent-primary); font-size: 1rem;">${escapeHtml(ficha.precintoActual || "Sin precinto registrado")}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Última Calibración:</span>
+            <strong>${ultimaCalibStr}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Próxima Calibración:</span>
+            <strong>${proxCalibStr}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Última Lectura Registrada:</span>
+            <strong class="font-mono">${ficha.ultimaLecturaValor !== null ? formatNumber(ficha.ultimaLecturaValor) : "Sin lecturas"}</strong>
+          </div>
+        </div>
+      </div>
+
+      <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-primary);">Historial de Intervenciones de este Medidor</h4>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Técnico</th>
+              <th>Precinto Ant.</th>
+              <th>Precinto Nuevo</th>
+              <th>Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ficha.historial.length === 0 ? `<tr><td colspan="6" class="empty-state">No registra intervenciones en bitácora.</td></tr>` : ficha.historial.map((h) => `
+              <tr>
+                <td>${new Date(h.fechaMantenimiento).toLocaleDateString("es-CL")}</td>
+                <td><span class="badge badge-muted">${escapeHtml(h.tipo)}</span></td>
+                <td>${escapeHtml(h.tecnicoResponsable)}</td>
+                <td class="font-mono">${escapeHtml(h.numeroPrecintoAnterior || "--")}</td>
+                <td class="font-mono">${escapeHtml(h.numeroPrecintoNuevo || "--")}</td>
+                <td style="font-size: 0.85rem;">${escapeHtml(h.observaciones || "--")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    contenedor.innerHTML = `<div class="empty-state" style="color: var(--status-danger);">Error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
 // Enlace global para el DOM HTML
 window.switchRole = switchRole;
 window.loginComo = loginComo;
@@ -754,4 +1372,25 @@ window.abrirModalEditarUsuario = abrirModalEditarUsuario;
 window.submitEditarUsuario = submitEditarUsuario;
 window.abrirModalResetPassword = abrirModalResetPassword;
 window.submitResetPassword = submitResetPassword;
+
+// Exports para feat-007, feat-008, feat-009
+window.cargarReporteConsumos = cargarReporteConsumos;
+window.exportarReporteCSV = exportarReporteCSV;
+window.cargarFacturasReportes = cargarFacturasReportes;
+window.submitRegistrarFactura = submitRegistrarFactura;
+
+window.cargarAlertasIncidentes = cargarAlertasIncidentes;
+window.evaluarAlertasEnVivo = evaluarAlertasEnVivo;
+window.abrirModalResolverIncidente = abrirModalResolverIncidente;
+window.submitResolverIncidente = submitResolverIncidente;
+window.cargarReglasAlertas = cargarReglasAlertas;
+window.submitCrearRegla = submitCrearRegla;
+
+window.openModalRegistrarMantenimiento = openModalRegistrarMantenimiento;
+window.onMantMedidorChange = onMantMedidorChange;
+window.onMantTipoChange = onMantTipoChange;
+window.submitRegistrarMantenimiento = submitRegistrarMantenimiento;
+window.cargarMantenimientosBitacora = cargarMantenimientosBitacora;
+window.consultarFichaMedidor = consultarFichaMedidor;
+
 

@@ -173,6 +173,87 @@ class ApiClient {
         body: JSON.stringify({}),
       }),
   };
+
+  // --- Dominio: Reportes & Conciliación (feat-007) ---
+  reportes = {
+    getConsumos: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.instalacionId) q.append("instalacionId", params.instalacionId);
+      if (params.medidorId) q.append("medidorId", params.medidorId);
+      if (params.recurso) q.append("recurso", params.recurso);
+      if (params.fechaInicio) q.append("fechaInicio", params.fechaInicio);
+      if (params.fechaFin) q.append("fechaFin", params.fechaFin);
+      return this.request(`/api/reportes/consumos?${q.toString()}`);
+    },
+    getCsvUrl: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.instalacionId) q.append("instalacionId", params.instalacionId);
+      if (params.medidorId) q.append("medidorId", params.medidorId);
+      if (params.recurso) q.append("recurso", params.recurso);
+      if (params.fechaInicio) q.append("fechaInicio", params.fechaInicio);
+      if (params.fechaFin) q.append("fechaFin", params.fechaFin);
+      return `/api/reportes/consumos/exportar-csv?${q.toString()}`;
+    },
+    registrarFactura: (payload) =>
+      this.request("/api/reportes/facturas", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    getFacturas: (instalacionId = null) => {
+      const q = instalacionId ? `?instalacionId=${encodeURIComponent(instalacionId)}` : "";
+      return this.request(`/api/reportes/facturas${q}`);
+    },
+  };
+
+  // --- Dominio: Alertas Automáticas & Incidentes (feat-008) ---
+  alertas = {
+    getIncidentes: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.instalacionId) q.append("instalacionId", params.instalacionId);
+      if (params.estado) q.append("estado", params.estado);
+      if (params.severidad) q.append("severidad", params.severidad);
+      if (params.tipo) q.append("tipo", params.tipo);
+      return this.request(`/api/alertas/incidentes?${q.toString()}`);
+    },
+    resolverIncidente: (id, payload) =>
+      this.request(`/api/alertas/incidentes/${encodeURIComponent(id)}/resolver`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    evaluar: () =>
+      this.request("/api/alertas/evaluar", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    getResumen: (instalacionId = null) => {
+      const q = instalacionId ? `?instalacionId=${encodeURIComponent(instalacionId)}` : "";
+      return this.request(`/api/alertas/resumen${q}`);
+    },
+    getReglas: () => this.request("/api/alertas/reglas"),
+    createRegla: (payload) =>
+      this.request("/api/alertas/reglas", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+  };
+
+  // --- Dominio: Mantenimiento & Calibración (feat-009) ---
+  mantenimiento = {
+    registrar: (payload) =>
+      this.request("/api/mantenimiento", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    getAll: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.instalacionId) q.append("instalacionId", params.instalacionId);
+      if (params.medidorId) q.append("medidorId", params.medidorId);
+      if (params.tipo) q.append("tipo", params.tipo);
+      return this.request(`/api/mantenimiento?${q.toString()}`);
+    },
+    getFichaMedidor: (id) =>
+      this.request(`/api/mantenimiento/medidor/${encodeURIComponent(id)}`),
+  };
 }
 
 // Instancia global unificada

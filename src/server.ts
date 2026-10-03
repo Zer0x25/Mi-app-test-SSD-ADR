@@ -12,6 +12,8 @@ import { PrismaMedidoresRepository } from "./modules/medidores/medidores.reposit
 import { PrismaLecturasRepository } from "./modules/lecturas/lecturas.repository.js";
 import { PrismaDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
 import { PrismaUsuariosRepository } from "./modules/usuarios/usuarios.repository.js";
+import { PrismaReportesRepository } from "./modules/reportes/reportes.repository.js";
+import { PrismaAlertasRepository } from "./modules/alertas/alertas.repository.js";
 
 // Servicios y Controladores
 import { InstalacionesService } from "./modules/instalaciones/instalaciones.service.js";
@@ -31,6 +33,13 @@ import { DashboardService } from "./modules/dashboard/dashboard.service.js";
 import { createDashboardController } from "./modules/dashboard/dashboard.controller.js";
 import { UsuariosService } from "./modules/usuarios/usuarios.service.js";
 import { createUsuariosController } from "./modules/usuarios/usuarios.controller.js";
+import { ReportesService } from "./modules/reportes/reportes.service.js";
+import { createReportesController } from "./modules/reportes/reportes.controller.js";
+import { AlertasService } from "./modules/alertas/alertas.service.js";
+import { createAlertasController } from "./modules/alertas/alertas.controller.js";
+import { PrismaMantenimientoRepository } from "./modules/mantenimiento/mantenimiento.repository.js";
+import { MantenimientoService } from "./modules/mantenimiento/mantenimiento.service.js";
+import { createMantenimientoController } from "./modules/mantenimiento/mantenimiento.controller.js";
 import { hashPassword } from "./modules/usuarios/auth.utils.js";
 
 // Errores
@@ -314,6 +323,47 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         });
       }
 
+      // 7. Reglas de alertas iniciales
+      const countReglas = await prisma.reglaAlerta.count();
+      if (countReglas === 0) {
+        await prisma.reglaAlerta.createMany({
+          data: [
+            { nombre: "Alerta por Medidor sin Reporte > 48 horas", tipo: "SIN_REPORTE", umbralValor: 48, activa: true },
+            { nombre: "Detección de Salto Atípico de Consumo (+50%)", tipo: "SALTO_CONSUMO", umbralValor: 50, activa: true },
+            { nombre: "Detección de Fuga Continua en Agua", tipo: "FUGA_PROBABLE", recurso: "AGUA", umbralValor: 3, activa: true },
+          ],
+        });
+      }
+
+      // 8. Registro de mantenimiento inicial de prueba
+      const countMantenimientos = await prisma.registroMantenimiento.count();
+      if (countMantenimientos === 0) {
+        const medidorAgNorteId = medidoresMap.get("MED-AG-NORTE-01");
+        if (medidorAgNorteId) {
+          await prisma.registroMantenimiento.create({
+            data: {
+              medidorId: medidorAgNorteId,
+              tipo: "CALIBRACION",
+              fechaMantenimiento: new Date(ahora - 90 * 24 * 3600 * 1000),
+              proximaCalibracion: new Date(ahora + 275 * 24 * 3600 * 1000),
+              tecnicoResponsable: "Ing. Rodrigo Silva (Dictuc)",
+              certificadoCalibracion: "CERT-DICTUC-2026-081",
+              numeroPrecintoAnterior: "PREC-ANT-90",
+              numeroPrecintoNuevo: "PREC-AG-2026-01",
+              observaciones: "Calibración reglamentaria y colocación de precinto de seguridad sellado.",
+            },
+          });
+          await prisma.medidor.update({
+            where: { id: medidorAgNorteId },
+            data: {
+              precintoActual: "PREC-AG-2026-01",
+              fechaUltimaCalibracion: new Date(ahora - 90 * 24 * 3600 * 1000),
+              fechaProximaCalibracion: new Date(ahora + 275 * 24 * 3600 * 1000),
+            },
+          });
+        }
+      }
+
       return reply.status(200).send({
         status: "ok",
         message: "Demostración y usuarios RBAC inicializados exitosamente",
@@ -387,12 +437,24 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   const dashboardRepo = new PrismaDashboardRepository(prisma);
   const dashboardService = new DashboardService(dashboardRepo);
 
+  const reportesRepo = new PrismaReportesRepository(prisma);
+  const reportesService = new ReportesService(reportesRepo);
+
+  const alertasRepo = new PrismaAlertasRepository(prisma);
+  const alertasService = new AlertasService(alertasRepo);
+
+  const mantenimientoRepo = new PrismaMantenimientoRepository(prisma);
+  const mantenimientoService = new MantenimientoService(mantenimientoRepo);
+
   // 5. Registro de Controladores
   await app.register(createUsuariosController(usuariosService), { prefix: "/api" });
   await app.register(createInstalacionesController(instalacionesService), { prefix: "/api" });
   await app.register(createMedidoresController(medidoresService), { prefix: "/api" });
   await app.register(createLecturasController(lecturasService), { prefix: "/api" });
   await app.register(createDashboardController(dashboardService), { prefix: "/api" });
+  await app.register(createReportesController(reportesService), { prefix: "/api" });
+  await app.register(createAlertasController(alertasService), { prefix: "/api" });
+  await app.register(createMantenimientoController(mantenimientoService), { prefix: "/api" });
 
   // 6. Endpoints complementarios para Frontend & RBAC
   app.get("/api/instalaciones", async () => {
