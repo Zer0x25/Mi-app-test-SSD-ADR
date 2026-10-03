@@ -71,3 +71,25 @@ Todo proyecto que adopte empaquetamiento Docker debe implementar y respetar la t
 - **Producción (Prod):** Despliegue productivo inmutable con volumen persistente dedicado y credenciales protegidas.
 - **Arranque Determinista en Contenedor (Entrypoint):**
   - Cuando se utilicen motores de datos embebidos o migraciones automáticas, el script `docker-entrypoint.sh` debe garantizar la preparación y sincronización no destructiva del esquema antes de delegar la ejecución al proceso principal de Node.js.
+
+### 9. Probes de Salud Operativa y Resiliencia en Contenedores (Liveness vs. Readiness)
+Toda aplicación contenerizada o expuesta a orquestadores (Docker, Kubernetes) debe desacoplar estrictamente la vivacidad del proceso frente a la disponibilidad de sus dependencias:
+- **Liveness Probe (`/healthz`):** Verificación instantánea del bucle de eventos y vivacidad del runtime de Node.js sin consultar bases de datos ni servicios externos. Responde HTTP 200 `{ status: "ok", uptime: number }`.
+- **Readiness Probe (`/readyz`):** Verificación activa del motor de base de datos (ping/query raw) y dependencias críticas. Debe retornar HTTP 200 `{ status: "ready", database: "connected" }` si el almacenamiento responde, o HTTP 503 Service Unavailable `{ status: "not_ready", database: "disconnected" }` si la conexión se degrada.
+- **Configuración en Contenedores:** La directiva `HEALTHCHECK` en `Dockerfile` y `docker-compose` DEBE evaluar obligatoriamente `/readyz` (no `/healthz` ni endpoints estáticos) para asegurar que el tráfico solo se dirija a réplicas operativas.
+
+### 10. Invariante de Pistas de Auditoría Inmutables (Append-Only Audit Trail)
+Todo sistema que registre eventos críticos o de trazabilidad normativa (cambios de rol, restablecimientos administrativos de contraseñas, bajas técnicas de equipos, aperturas o reemplazos de precintos de seguridad) debe respetar las siguientes invariantes duras:
+- **Inmutabilidad Absoluta (Append-Only):** Queda estrictamente prohibido implementar o exponer métodos de modificación (`update`, `patch`) o eliminación física (`delete`, `destroy`) en repositorios, servicios o controladores de auditoría.
+- **Instrumentación Obligatoria:** Todo servicio que ejecute una alteración de seguridad o metrología debe persistir de forma transaccional o coordinada el respectivo registro de auditoría (`AuditoriaEvento`) indicando actor (`usuarioId`), acción tipada, entidad afectada, metadatos en JSON e IP origen.
+- **Restricción de Acceso:** La consulta de la bitácora de auditoría queda reservada con exclusividad al rol `ADMIN` bajo guardias preHandler de RBAC.
+
+### 11. Protección Perimetral y Rate Limiting Diferenciado
+- **Autenticación Protegida:** Los endpoints sensibles a ataques automatizados de fuerza bruta o robo de credenciales (`POST /api/auth/login`) deben implementar Rate Limiting por IP (umbral de 5 peticiones por minuto, respondiendo HTTP 429 Too Many Requests con cabecera `Retry-After`).
+- **Respeto a Sincronización en Lote:** Los límites globales de tasa no deben asfixiar las peticiones de operadores en terreno tras períodos prolongados sin red; los endpoints de datos y sincronización en lote (`/api/lecturas/batch-sync`) deben contar con umbrales holgados o exenciones controladas.
+
+### 12. Arquitectura PWA y Sincronización Resiliente (Offline-First)
+En aplicaciones con soporte fuera de línea para trabajo en terreno:
+- **Separación de Responsabilidades:** El Service Worker (`sw.js`) es responsable exclusivo del shell de navegación y recursos estáticos (`Cache-First` / `Network-First`). Queda terminantemente prohibido cachear peticiones HTTP mutantes (`POST`, `PATCH`, `DELETE`) en el Service Worker.
+- **Gestión de Cola en Capa de Aplicación:** Las transacciones tomadas fuera de línea deben capturarse mediante un gestor de sincronización (`SyncManager`) en almacenamiento local del cliente (`localStorage` o `IndexedDB`).
+- **Tolerancia a Fallos en Sincronización en Lote:** Los endpoints de sincronización en lote (`POST /api/.../batch-sync`) deben procesar los elementos ordenados cronológicamente y retornar un reporte discriminado por ítem (`SYNCED` vs `REJECTED`) para persistir los registros válidos sin que un error puntual de validación bloquee el lote entero.
