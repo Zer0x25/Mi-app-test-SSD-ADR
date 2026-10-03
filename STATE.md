@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 8 Concluido (Seguridad, Healthchecks & Auditoría)
+## 🧭 Fase Actual: Hito 9 Concluido (Integraciones & Despacho de Webhooks)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Rate limiting en Auth, probes operacionales /healthz y /readyz, y pista de auditoría inmutable completados y verificados.
-- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 9: Despacho de Notificaciones & Webhooks).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 143/143 tests en 21 suites, código de salida 0).
+- **Estado:** Arquitectura Webhook-First saliente estandarizada, firma HMAC-SHA256, fail-safe dispatching y panel de administración completados.
+- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 10: Suite de Pruebas E2E Automatizadas con Playwright).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 170/170 tests en 23 suites, código de salida 0).
 
 ---
 
@@ -76,15 +76,21 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Pestaña "Auditoría & Seguridad" en la interfaz Aurora UI con filtros por tipo de acción.
   - Probes en `Dockerfile`, `docker-compose.yml` y `docker-compose.staging.yml` actualizados a `/readyz`.
   - Suite de pruebas expandida: 143/143 tests pasando (100%), Quality Gate 0.
+- [x] **Hito 9: Despacho de Notificaciones & Webhooks (Completado: 2026-10-03)**
+  - `docs/adr/0005-integraciones-y-despacho-webhooks.md` formalizado.
+  - `specs/feat-012-webhooks-notificaciones.md` implementado bajo Agentic TDD.
+  - Modelos `WebhookEndpoint` y `WebhookEntrega` en Prisma con soporte multi-evento y firmas seguras HMAC-SHA256 (`X-Webhook-Signature`).
+  - Despachador asíncrono, tolerante a fallos (`fail-safe`), con timeout estricto de 5000ms y concurrencia paralela (`Promise.allSettled`).
+  - Instrumentación automática ante incidentes en vivo (`alerta.incidente_detectado`, `alerta.incidente_resuelto`).
+  - Disparador preventivo de calibraciones periódicas (`POST /api/webhooks/check-calibraciones`).
+  - Diagnóstico sintético inmediato (`POST /api/webhooks/:id/test` con ping).
+  - Pestaña de administración y modal de historial de entregas en Aurora UI.
+  - Suite de pruebas expandida: 170/170 tests pasando (100%), Quality Gate 0.
 
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 9: Despacho de Notificaciones & Webhooks**
-  - Integración saliente para alertas críticas (`FUGA_PROBABLE`, `SALTO_CONSUMO > 50%`).
-  - Webhooks configurables (Slack / Discord / Teams / HTTP genérico).
-  - Notificaciones de aviso previo para medidores próximos a vencer calibración periódica.
 - [ ] **Hito 10: Suite de Pruebas E2E Automatizadas (Playwright)**
   - Pruebas sintéticas completas de navegador: login de operador, registro de lecturas, visualización de dashboard, resolución de incidentes.
   - Ejecución en modo headless dentro del flujo de GitHub Actions.
@@ -95,8 +101,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 8 concluido (`specs/feat-011-seguridad-healthchecks-auditoria.md`).*
-- **Módulo objetivo:** *Seguridad, Healthchecks & Auditoría Inmutable.*
+- **Archivo:** *Hito 9 concluido (`specs/feat-012-webhooks-notificaciones.md`).*
+- **Módulo objetivo:** *Integraciones, Notificaciones y Despacho de Webhooks.*
 
 ---
 
@@ -121,3 +127,5 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `infra-002-entorno-staging` | Staging compose, Zod NODE_ENV staging, 126/126 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-010-pwa-offline-sync` | PWA, Service Worker, Batch Sync y SyncManager, 129/129 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-011-seguridad-healthchecks-auditoria` | Rate limiting, probes /healthz y /readyz, y Auditoria inmutable, 143/143 tests, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `feat-012-webhooks-notificaciones` | Webhooks salientes, firma HMAC, fail-safe, UI y 170/170 tests pasando |
+

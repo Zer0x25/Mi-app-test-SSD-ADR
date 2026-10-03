@@ -192,3 +192,33 @@ model AuditoriaEvento {
   @@index([createdAt(sort: Desc)])
   @@map("auditoria_eventos")
 }
+
+model WebhookEndpoint {
+  id          String           @id @default(uuid())
+  url         String
+  descripcion String
+  secret      String?
+  eventos     String           @default("*")
+  activo      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  entregas    WebhookEntrega[]
+
+  @@map("webhook_endpoints")
+}
+
+model WebhookEntrega {
+  id         String          @id @default(uuid())
+  webhookId  String
+  evento     String
+  url        String
+  statusCode Int?
+  exitoso    Boolean
+  error      String?
+  duracionMs Int?
+  createdAt  DateTime        @default(now())
+  webhook    WebhookEndpoint @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@map("webhook_entregas")
+}

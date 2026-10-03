@@ -16,6 +16,7 @@ import { PrismaUsuariosRepository } from "./modules/usuarios/usuarios.repository
 import { PrismaReportesRepository } from "./modules/reportes/reportes.repository.js";
 import { PrismaAlertasRepository } from "./modules/alertas/alertas.repository.js";
 import { PrismaAuditoriaRepository } from "./modules/auditoria/auditoria.repository.js";
+import { PrismaWebhooksRepository } from "./modules/webhooks/webhooks.repository.js";
 
 // Servicios y Controladores
 import { InstalacionesService } from "./modules/instalaciones/instalaciones.service.js";
@@ -44,6 +45,11 @@ import { MantenimientoService } from "./modules/mantenimiento/mantenimiento.serv
 import { createMantenimientoController } from "./modules/mantenimiento/mantenimiento.controller.js";
 import { AuditoriaService } from "./modules/auditoria/auditoria.service.js";
 import { createAuditoriaController } from "./modules/auditoria/auditoria.controller.js";
+import { WebhookDispatcherService } from "./modules/webhooks/webhooks.service.js";
+import {
+  createWebhooksController,
+  ICalibracionesChecker,
+} from "./modules/webhooks/webhooks.controller.js";
 import { hashPassword } from "./modules/usuarios/auth.utils.js";
 
 // Errores
@@ -200,6 +206,29 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         return reply.status(403).send({
           error: "ACCESO_DENEGADO",
           message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para consultar auditoría.`,
+        });
+      }
+    }
+
+    // Regla RBAC 5: Webhooks administrable solo por ADMIN (SUPERVISOR puede disparar check-calibraciones)
+    if (request.url.startsWith("/api/webhooks")) {
+      if (!user) {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Cabecera Authorization con formato Bearer <token> requerida.",
+        });
+      }
+      if (request.url.includes("/check-calibraciones")) {
+        if (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para evaluar calibraciones.`,
+          });
+        }
+      } else if (user.rol !== "ADMIN") {
+        return reply.status(403).send({
+          error: "ACCESO_DENEGADO",
+          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar webhooks.`,
         });
       }
     }
@@ -537,11 +566,84 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   const reportesRepo = new PrismaReportesRepository(prisma);
   const reportesService = new ReportesService(reportesRepo);
 
+  const webhooksRepo = new PrismaWebhooksRepository(prisma);
+  const webhooksService = new WebhookDispatcherService(webhooksRepo);
+
   const alertasRepo = new PrismaAlertasRepository(prisma);
-  const alertasService = new AlertasService(alertasRepo);
+  const alertasService = new AlertasService(alertasRepo, webhooksService);
 
   const mantenimientoRepo = new PrismaMantenimientoRepository(prisma);
   const mantenimientoService = new MantenimientoService(mantenimientoRepo, auditoriaService);
+
+  const calibracionesChecker: ICalibracionesChecker = {
+    async verificarCalibracionesProximas(diasAnticipacion = 30) {
+      const ahora = new Date();
+      const limite = new Date(ahora.getTime() + diasAnticipacion * 24 * 3600 * 1000);
+
+      const medidores = await prisma.medidor.findMany({
+        where: {
+          activo: true,
+          fechaProximaCalibracion: {
+            not: null,
+            lte: limite,
+          },
+        },
+        include: {
+          instalacion: true,
+        },
+      });
+
+      const detalles: Array<{
+        medidorCodigo: string;
+        fechaProximaCalibracion: Date;
+        estado: "PROXIMA" | "VENCIDA";
+      }> = [];
+
+      let eventosDespachados = 0;
+
+      for (const m of medidores) {
+        if (!m.fechaProximaCalibracion) continue;
+        const esVencida = m.fechaProximaCalibracion.getTime() < ahora.getTime();
+        const estado: "PROXIMA" | "VENCIDA" = esVencida ? "VENCIDA" : "PROXIMA";
+        const diffDias = Math.round(
+          (m.fechaProximaCalibracion.getTime() - ahora.getTime()) / (1000 * 3600 * 24)
+        );
+
+        detalles.push({
+          medidorCodigo: m.codigo,
+          fechaProximaCalibracion: m.fechaProximaCalibracion,
+          estado,
+        });
+
+        await webhooksService.despacharEvento({
+          event: esVencida ? "medidor.calibracion_vencida" : "medidor.calibracion_proxima",
+          severity: esVencida ? "CRITICAL" : "WARNING",
+          title: esVencida
+            ? `Calibración periódica VENCIDA para medidor ${m.codigo}`
+            : `Calibración periódica PRÓXIMA A VENCER para medidor ${m.codigo}`,
+          message: esVencida
+            ? `El medidor ${m.codigo} (${m.instalacion.nombre}) tiene su calibración periódica vencida desde hace ${Math.abs(diffDias)} días.`
+            : `El medidor ${m.codigo} (${m.instalacion.nombre}) requiere calibración periódica en ${diffDias} días.`,
+          data: {
+            medidorId: m.id,
+            medidorCodigo: m.codigo,
+            instalacionNombre: m.instalacion.nombre,
+            fechaProximaCalibracion: m.fechaProximaCalibracion,
+            diasRestantes: diffDias,
+            estado,
+          },
+        }).catch(() => {});
+
+        eventosDespachados++;
+      }
+
+      return {
+        medidoresEvaluados: medidores.length,
+        eventosDespachados,
+        detalles,
+      };
+    },
+  };
 
   // 5. Registro de Controladores
   await app.register(createUsuariosController(usuariosService), { prefix: "/api" });
@@ -553,6 +655,9 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await app.register(createAlertasController(alertasService), { prefix: "/api" });
   await app.register(createMantenimientoController(mantenimientoService), { prefix: "/api" });
   await app.register(createAuditoriaController(auditoriaService), { prefix: "/api" });
+  await app.register(createWebhooksController(webhooksService, calibracionesChecker), {
+    prefix: "/api/webhooks",
+  });
 
   // 6. Endpoints complementarios para Frontend & RBAC
   app.get("/api/instalaciones", async () => {

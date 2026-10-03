@@ -96,6 +96,14 @@
           </svg>
           Auditoría
         </button>
+        <button class="role-btn" id="tabWebhooksBtn" onclick="switchRole('webhooks')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Webhooks
+        </button>
         <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -716,6 +724,59 @@
       </div>
     </section>
 
+    <!-- ============================================================== -->
+    <!-- VISTA 8: INTEGRACIONES & WEBHOOKS (FEAT-012 / HITO 9) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewWebhooks" aria-labelledby="headingWebhooks">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingWebhooks">Integraciones &amp; Despacho de Webhooks</h1>
+          <p class="view-desc">Despacho estandarizado de alertas y eventos críticos a enrutadores y mensajería externa (Mismapp / Slack / Discord / etc.).</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="evaluarCalibracionesWebhooks()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            Evaluar Calibraciones
+          </button>
+          <button class="btn btn-primary" onclick="openModal('modalNuevoWebhook')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nuevo Webhook
+          </button>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <h2 class="card-title">📡 Endpoints Registrados</h2>
+          <button class="btn btn-sm btn-secondary" onclick="cargarWebhooks()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaWebhooks">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>URL de Destino</th>
+                <th>Eventos Suscritos</th>
+                <th>Firma HMAC</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyWebhooks">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando endpoints de webhook...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ============================================================== -->
@@ -1313,6 +1374,78 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: NUEVO WEBHOOK -->
+  <div class="modal-backdrop" id="modalNuevoWebhook" role="dialog" aria-modal="true" aria-labelledby="modalNuevoWebhookTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalNuevoWebhookTitulo">Registrar Endpoint de Webhook</h3>
+        <button class="btn-close" onclick="closeModal('modalNuevoWebhook')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formNuevoWebhook" onsubmit="submitNuevoWebhook(event)">
+        <div class="form-group">
+          <label class="form-label" for="webhookUrl">URL de Destino (HTTPS/HTTP) *</label>
+          <input type="url" class="form-input" id="webhookUrl" placeholder="https://router.mismapp.internal/api/webhooks/incoming" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="webhookDescripcion">Descripción / Nombre del Receptor *</label>
+          <input type="text" class="form-input" id="webhookDescripcion" placeholder="Enrutador Central Mismapp" required minlength="3">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="webhookSecret">Clave Secreta para Firma HMAC-SHA256 (Opcional)</label>
+          <input type="text" class="form-input" id="webhookSecret" placeholder="Dejar vacío o mín. 8 caracteres para firma segura" minlength="8">
+          <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 4px;">Se enviará en cabecera <code>X-Webhook-Signature: sha256=&lt;hmac&gt;</code></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Eventos a Suscribir:</label>
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; padding: 0.5rem; background: var(--bg-surface); border-radius: 6px;">
+            <label><input type="checkbox" id="evTodos" value="*" checked onchange="toggleEventosCheckboxes(this)"> <strong>Todos los eventos (*)</strong></label>
+            <label><input type="checkbox" class="ev-item" value="alerta.incidente_detectado" disabled> 🚨 alerta.incidente_detectado (Fugas, saltos, sin reporte)</label>
+            <label><input type="checkbox" class="ev-item" value="alerta.incidente_resuelto" disabled> ✅ alerta.incidente_resuelto</label>
+            <label><input type="checkbox" class="ev-item" value="medidor.calibracion_proxima" disabled> ⏳ medidor.calibracion_proxima (Aviso preventivo)</label>
+            <label><input type="checkbox" class="ev-item" value="medidor.calibracion_vencida" disabled> ⚠️ medidor.calibracion_vencida</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalNuevoWebhook')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnGuardarWebhook">Guardar Webhook</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: HISTORIAL DE ENTREGAS WEBHOOK -->
+  <div class="modal-backdrop" id="modalEntregasWebhook" role="dialog" aria-modal="true" aria-labelledby="modalEntregasTitulo">
+    <div class="modal-box" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEntregasTitulo">Historial de Entregas del Webhook</h3>
+        <button class="btn-close" onclick="closeModal('modalEntregasWebhook')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Evento</th>
+              <th>Estado</th>
+              <th>Código</th>
+              <th>Latencia</th>
+              <th>Error / Respuesta</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyEntregasWebhook">
+            <tr>
+              <td colspan="6" class="empty-state">Cargando historial de entregas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalEntregasWebhook')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Contenedor Unificado de Toasts -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>

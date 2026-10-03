@@ -2,6 +2,8 @@ import { describe, it, expect, afterAll } from "vitest";
 import { buildServer } from "../src/server.js";
 import { FastifyInstance } from "fastify";
 import { PrismaClient } from "@prisma/client";
+import { signJwt } from "../src/modules/usuarios/auth.utils.js";
+import { config } from "../src/core/config.js";
 
 describe("Fastify Server E2E Health Check & Security", () => {
   let app: FastifyInstance;
@@ -71,6 +73,8 @@ describe("Fastify Server E2E Health Check & Security", () => {
       incidenteAlerta: { count: async () => 0 },
       registroMantenimiento: { count: async () => 0 },
       auditoriaEvento: { count: async () => 0 },
+      webhookEndpoint: { count: async () => 0 },
+      webhookEntrega: { count: async () => 0 },
     } as unknown as PrismaClient;
 
     const brokenApp = await buildServer({ prisma: mockPrisma, serveStatic: false });
@@ -126,4 +130,80 @@ describe("Fastify Server E2E Health Check & Security", () => {
     });
     expect(healthRes.statusCode).toBe(200);
   });
+
+  describe("Control de Acceso RBAC en /api/webhooks", () => {
+    const adminToken = signJwt(
+      {
+        userId: "11111111-1111-1111-1111-111111111111",
+        email: "admin@test.cl",
+        nombre: "Admin Test",
+        rol: "ADMIN",
+      },
+      config.JWT_SECRET
+    );
+    const supervisorToken = signJwt(
+      {
+        userId: "22222222-2222-2222-2222-222222222222",
+        email: "sup@test.cl",
+        nombre: "Supervisor Test",
+        rol: "SUPERVISOR",
+      },
+      config.JWT_SECRET
+    );
+    const operadorToken = signJwt(
+      {
+        userId: "33333333-3333-3333-3333-333333333333",
+        email: "op@test.cl",
+        nombre: "Operador Test",
+        rol: "OPERADOR",
+      },
+      config.JWT_SECRET
+    );
+
+    it("GET /api/webhooks sin token debe retornar 401 Unauthorized", async () => {
+      const res = await app.inject({ method: "GET", url: "/api/webhooks" });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it("GET /api/webhooks con rol OPERADOR debe retornar 403 Forbidden", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/webhooks",
+        headers: { authorization: `Bearer ${operadorToken}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("GET /api/webhooks con rol SUPERVISOR debe retornar 403 Forbidden", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/webhooks",
+        headers: { authorization: `Bearer ${supervisorToken}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("GET /api/webhooks con rol ADMIN debe retornar 200 OK", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/webhooks",
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(Array.isArray(res.json())).toBe(true);
+    });
+
+    it("POST /api/webhooks/check-calibraciones debe ser accesible para SUPERVISOR", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/webhooks/check-calibraciones",
+        headers: { authorization: `Bearer ${supervisorToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.medidoresEvaluados).toBeDefined();
+      expect(data.eventosDespachados).toBeDefined();
+    });
+  });
 });
+

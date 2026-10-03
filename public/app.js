@@ -153,6 +153,7 @@ function aplicarPermisosUI() {
   const tabMantenimientoBtn = document.getElementById("tabMantenimientoBtn");
   const tabUsuariosBtn = document.getElementById("tabUsuariosBtn");
   const tabAuditoriaBtn = document.getElementById("tabAuditoriaBtn");
+  const tabWebhooksBtn = document.getElementById("tabWebhooksBtn");
   const tabOperadorBtn = document.getElementById("tabOperadorBtn");
 
   if (btnNuevaInstalacion) {
@@ -174,6 +175,7 @@ function aplicarPermisosUI() {
   if (tabMantenimientoBtn) tabMantenimientoBtn.style.display = esOperador ? "none" : "inline-flex";
   if (tabUsuariosBtn) tabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   if (tabAuditoriaBtn) tabAuditoriaBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  if (tabWebhooksBtn) tabWebhooksBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   if (tabOperadorBtn) tabOperadorBtn.style.display = "inline-flex";
 
   actualizarResumenAlertas();
@@ -198,6 +200,11 @@ function switchRole(role) {
     return;
   }
 
+  if (role === "webhooks" && currentUser?.rol !== "ADMIN") {
+    window.Toast.warning("La gestión de webhooks está reservada para ADMIN.", "Permisos");
+    return;
+  }
+
   currentRoleTab = role;
   const tabs = [
     document.getElementById("tabAdminBtn"),
@@ -206,6 +213,7 @@ function switchRole(role) {
     document.getElementById("tabMantenimientoBtn"),
     document.getElementById("tabUsuariosBtn"),
     document.getElementById("tabAuditoriaBtn"),
+    document.getElementById("tabWebhooksBtn"),
     document.getElementById("tabOperadorBtn"),
   ];
   const views = [
@@ -215,6 +223,7 @@ function switchRole(role) {
     document.getElementById("viewMantenimiento"),
     document.getElementById("viewUsuarios"),
     document.getElementById("viewAuditoria"),
+    document.getElementById("viewWebhooks"),
     document.getElementById("viewOperador"),
   ];
 
@@ -249,6 +258,10 @@ function switchRole(role) {
     document.getElementById("tabAuditoriaBtn")?.classList.add("active");
     document.getElementById("viewAuditoria")?.classList.add("active");
     cargarEventosAuditoria();
+  } else if (role === "webhooks") {
+    document.getElementById("tabWebhooksBtn")?.classList.add("active");
+    document.getElementById("viewWebhooks")?.classList.add("active");
+    cargarWebhooks();
   } else {
     document.getElementById("tabOperadorBtn")?.classList.add("active");
     document.getElementById("viewOperador")?.classList.add("active");
@@ -1503,5 +1516,223 @@ async function cargarEventosAuditoria() {
 }
 
 window.cargarEventosAuditoria = cargarEventosAuditoria;
+
+// ------------------------------------------------------------------------------
+// 9. INTEGRACIONES & WEBHOOKS (HITO 9 / FEAT-012)
+// ------------------------------------------------------------------------------
+function toggleEventosCheckboxes(masterCheckbox) {
+  const checkboxes = document.querySelectorAll(".ev-item");
+  checkboxes.forEach((cb) => {
+    cb.disabled = masterCheckbox.checked;
+    if (masterCheckbox.checked) cb.checked = false;
+  });
+}
+
+async function cargarWebhooks() {
+  const tbody = document.getElementById("tbodyWebhooks");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Consultando endpoints registrados...</td></tr>';
+
+  try {
+    const list = await window.api.webhooks.getAll();
+    if (!list || list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay endpoints de webhook configurados. Haga clic en "+ Nuevo Webhook" para agregar uno.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list
+      .map((w) => {
+        const evs = Array.isArray(w.eventos) ? w.eventos : [w.eventos];
+        const eventosBadges = evs
+          .map((ev) => `<span class="badge badge-muted" style="margin-right: 4px; font-size: 0.75rem;">${escapeHtml(ev)}</span>`)
+          .join("");
+
+        const secretBadge = w.hasSecret
+          ? '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🔒 HMAC Activo</span>'
+          : '<span class="badge badge-muted" style="opacity: 0.7;">Sin Secreto</span>';
+
+        const estadoBadge = w.activo
+          ? '<span class="badge badge-success">Activo</span>'
+          : '<span class="badge badge-amber">Pausado</span>';
+
+        return `
+          <tr>
+            <td>
+              <strong style="color: var(--text-primary); font-size: 0.9rem;">${escapeHtml(w.descripcion)}</strong>
+            </td>
+            <td style="font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all; max-width: 260px;">
+              ${escapeHtml(w.url)}
+            </td>
+            <td>${eventosBadges}</td>
+            <td>${secretBadge}</td>
+            <td>${estadoBadge}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              <button class="btn btn-sm btn-outline" onclick="probarWebhook('${w.id}')" title="Enviar Ping de prueba">
+                ⚡ Test
+              </button>
+              <button class="btn btn-sm btn-secondary" onclick="verEntregasWebhook('${w.id}')" title="Ver historial de entregas">
+                📋 Logs
+              </button>
+              <button class="btn btn-sm btn-outline" onclick="toggleActivoWebhook('${w.id}', ${w.activo})" title="${w.activo ? 'Pausar' : 'Activar'}">
+                ${w.activo ? '⏸️' : '▶️'}
+              </button>
+              <button class="btn btn-sm btn-outline" style="color: var(--status-danger);" onclick="eliminarWebhook('${w.id}')" title="Eliminar endpoint">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    console.error("Error al cargar webhooks:", error);
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--status-danger);">Error: ${escapeHtml(error.message)}</td></tr>`;
+    window.Toast.error(error.message, "Webhooks");
+  }
+}
+
+async function submitNuevoWebhook(event) {
+  event.preventDefault();
+  const url = document.getElementById("webhookUrl")?.value?.trim();
+  const descripcion = document.getElementById("webhookDescripcion")?.value?.trim();
+  const secret = document.getElementById("webhookSecret")?.value?.trim() || null;
+  const evTodos = document.getElementById("evTodos")?.checked;
+
+  let eventos = ["*"];
+  if (!evTodos) {
+    const checked = Array.from(document.querySelectorAll(".ev-item:checked")).map((cb) => cb.value);
+    if (checked.length > 0) {
+      eventos = checked;
+    }
+  }
+
+  const btn = document.getElementById("btnGuardarWebhook");
+  if (btn) btn.disabled = true;
+
+  try {
+    await window.api.webhooks.create({
+      url,
+      descripcion,
+      secret,
+      eventos,
+      activo: true,
+    });
+
+    window.Toast.success(`Webhook «${descripcion}» registrado exitosamente.`, "Integraciones");
+    closeModal("modalNuevoWebhook");
+    document.getElementById("formNuevoWebhook")?.reset();
+    cargarWebhooks();
+  } catch (error) {
+    console.error("Error al crear webhook:", error);
+    window.Toast.error(error.message, "Error Webhook");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function probarWebhook(id) {
+  window.Toast.info("Enviando ping de prueba al endpoint...", "Webhooks");
+  try {
+    const res = await window.api.webhooks.test(id);
+    if (res.exitoso) {
+      window.Toast.success(
+        `Test exitoso: HTTP ${res.statusCode} en ${res.duracionMs}ms`,
+        "Webhook OK"
+      );
+    } else {
+      window.Toast.error(
+        `Fallo de entrega (${res.statusCode || 'Sin respuesta'}): ${res.error || 'Desconocido'}`,
+        "Fallo Webhook"
+      );
+    }
+  } catch (error) {
+    window.Toast.error(error.message, "Error al probar webhook");
+  }
+}
+
+async function verEntregasWebhook(id) {
+  openModal("modalEntregasWebhook");
+  const tbody = document.getElementById("tbodyEntregasWebhook");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Consultando entregas...</td></tr>';
+
+  try {
+    const entregas = await window.api.webhooks.getEntregas(id);
+    if (!entregas || entregas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No se registran entregas recientes para este endpoint.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = entregas
+      .map((e) => {
+        const fecha = new Date(e.createdAt).toLocaleString("es-CL");
+        const statusBadge = e.exitoso
+          ? '<span class="badge badge-success">OK</span>'
+          : '<span class="badge badge-danger">FALLO</span>';
+        const codeText = e.statusCode ? `HTTP ${e.statusCode}` : "-";
+        const duracionText = e.duracionMs != null ? `${e.duracionMs} ms` : "-";
+        const errorText = e.error ? `<span style="color: var(--status-danger); font-size: 0.75rem;">${escapeHtml(e.error)}</span>` : '<span style="color: var(--text-muted);">-</span>';
+
+        return `
+          <tr>
+            <td style="white-space: nowrap; font-size: 0.8rem; font-family: var(--font-mono);">${fecha}</td>
+            <td><span class="badge badge-muted" style="font-size: 0.75rem;">${escapeHtml(e.evento)}</span></td>
+            <td>${statusBadge}</td>
+            <td class="font-mono" style="font-size: 0.85rem;">${codeText}</td>
+            <td class="font-mono" style="font-size: 0.85rem;">${duracionText}</td>
+            <td style="max-width: 250px; word-break: break-word;">${errorText}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--status-danger);">Error: ${escapeHtml(error.message)}</td></tr>`;
+  }
+}
+
+async function toggleActivoWebhook(id, activoActual) {
+  try {
+    await window.api.webhooks.update(id, { activo: !activoActual });
+    window.Toast.info(`Webhook ${activoActual ? 'pausado' : 'activado'}.`, "Webhooks");
+    cargarWebhooks();
+  } catch (error) {
+    window.Toast.error(error.message, "Error al actualizar estado");
+  }
+}
+
+async function eliminarWebhook(id) {
+  if (!confirm("¿Está seguro de eliminar este endpoint de webhook?")) return;
+  try {
+    await window.api.webhooks.delete(id);
+    window.Toast.success("Endpoint de webhook eliminado.", "Webhooks");
+    cargarWebhooks();
+  } catch (error) {
+    window.Toast.error(error.message, "Error al eliminar");
+  }
+}
+
+async function evaluarCalibracionesWebhooks() {
+  window.Toast.info("Evaluando calibraciones periódicas de medidores...", "Integraciones");
+  try {
+    const res = await window.api.webhooks.checkCalibraciones();
+    window.Toast.success(
+      `Evaluación completada: ${res.medidoresEvaluados} medidores analizados, ${res.eventosDespachados} eventos de aviso despachados.`,
+      "Calibraciones & Webhooks"
+    );
+  } catch (error) {
+    window.Toast.error(error.message, "Error al evaluar calibraciones");
+  }
+}
+
+window.toggleEventosCheckboxes = toggleEventosCheckboxes;
+window.cargarWebhooks = cargarWebhooks;
+window.submitNuevoWebhook = submitNuevoWebhook;
+window.probarWebhook = probarWebhook;
+window.verEntregasWebhook = verEntregasWebhook;
+window.toggleActivoWebhook = toggleActivoWebhook;
+window.eliminarWebhook = eliminarWebhook;
+window.evaluarCalibracionesWebhooks = evaluarCalibracionesWebhooks;
 
 

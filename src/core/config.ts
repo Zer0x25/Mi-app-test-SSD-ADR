@@ -19,6 +19,8 @@ export const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
+  WEBHOOK_DEFAULT_URL: z.string().url().optional(),
+  WEBHOOK_DEFAULT_SECRET: z.string().optional(),
 });
 
 export type Config = z.infer<typeof envSchema>;

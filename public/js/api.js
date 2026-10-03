@@ -271,6 +271,38 @@ class ApiClient {
       return this.request(`/api/auditoria?${q.toString()}`);
     },
   };
+
+  // --- Dominio: Webhooks & Integraciones (feat-012) ---
+  webhooks = {
+    getAll: () => this.request("/api/webhooks"),
+    getById: (id) => this.request(`/api/webhooks/${encodeURIComponent(id)}`),
+    create: (payload) =>
+      this.request("/api/webhooks", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    update: (id, payload) =>
+      this.request(`/api/webhooks/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    delete: (id) =>
+      this.request(`/api/webhooks/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+    test: (id, payload = {}) =>
+      this.request(`/api/webhooks/${encodeURIComponent(id)}/test`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    getEntregas: (id, limit = 50) =>
+      this.request(`/api/webhooks/${encodeURIComponent(id)}/entregas?limit=${limit}`),
+    checkCalibraciones: () =>
+      this.request("/api/webhooks/check-calibraciones", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+  };
 }
 
 // Instancia global unificada

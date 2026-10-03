@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   AlertasService,
   IAlertasRepository,
@@ -370,4 +370,94 @@ describe("AlertasService Suite (Agentic TDD)", () => {
       expect(resumen.totalResueltos).toBe(1);
     });
   });
+
+  describe("Despacho de Webhooks en Alertas", () => {
+    it("debe despachar alerta.incidente_detectado al encontrar nuevos incidentes", async () => {
+      const mockDispatcher = {
+        despacharEvento: vi.fn().mockResolvedValue([]),
+      };
+
+      const serviceConWebhook = new AlertasService(repo, mockDispatcher);
+
+      repo.reglas = [
+        {
+          id: "regla-sin-reporte",
+          nombre: "Sin Reporte 24h",
+          tipo: "SIN_REPORTE",
+          recurso: null,
+          umbralValor: 24,
+          activa: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      const ahora = new Date("2026-10-03T12:00:00Z");
+      const hace30Horas = new Date("2026-10-02T06:00:00Z");
+
+      repo.medidores = [
+        {
+          id: medidor1Id,
+          codigo: "MED-WH-01",
+          instalacionId: instId,
+          instalacionNombre: "Sede Webhook",
+          recurso: "AGUA",
+          activo: true,
+          lecturas: [{ valor: 100, fechaLectura: hace30Horas }],
+        },
+      ];
+
+      const incidentes = await serviceConWebhook.evaluarReglas(ahora);
+
+      expect(incidentes.length).toBe(1);
+      expect(mockDispatcher.despacharEvento).toHaveBeenCalledTimes(1);
+      expect(mockDispatcher.despacharEvento).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "alerta.incidente_detectado",
+          severity: "WARNING",
+          data: expect.objectContaining({
+            medidorCodigo: "MED-WH-01",
+            tipo: "SIN_REPORTE",
+          }),
+        })
+      );
+    });
+
+    it("debe despachar alerta.incidente_resuelto al resolver un incidente", async () => {
+      const mockDispatcher = {
+        despacharEvento: vi.fn().mockResolvedValue([]),
+      };
+
+      const serviceConWebhook = new AlertasService(repo, mockDispatcher);
+
+      const inc = await repo.createIncidente({
+        medidorId: medidor1Id,
+        medidorCodigo: "MED-WH-02",
+        instalacionId: instId,
+        tipo: "FUGA_PROBABLE",
+        severidad: "WARNING",
+        mensaje: "Flujo continuo",
+        estado: "ABIERTO",
+        fechaDeteccion: new Date(),
+      });
+
+      await serviceConWebhook.resolverIncidente(inc.id, {
+        estado: "RESUELTO",
+        notasResolucion: "Fuga reparada por técnico",
+      });
+
+      expect(mockDispatcher.despacharEvento).toHaveBeenCalledTimes(1);
+      expect(mockDispatcher.despacharEvento).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "alerta.incidente_resuelto",
+          severity: "INFO",
+          data: expect.objectContaining({
+            incidenteId: inc.id,
+            estado: "RESUELTO",
+          }),
+        })
+      );
+    });
+  });
 });
+

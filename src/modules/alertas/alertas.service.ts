@@ -65,8 +65,21 @@ export interface IAlertasRepository {
   listReglas(): Promise<ReglaEntity[]>;
 }
 
+export interface IAlertaWebhookDispatcher {
+  despacharEvento(evento: {
+    event: "alerta.incidente_detectado" | "alerta.incidente_resuelto" | "medidor.calibracion_proxima" | "medidor.calibracion_vencida" | "test.ping";
+    severity: "INFO" | "WARNING" | "CRITICAL";
+    title: string;
+    message: string;
+    data: unknown;
+  }): Promise<unknown>;
+}
+
 export class AlertasService {
-  constructor(private readonly repository: IAlertasRepository) {}
+  constructor(
+    private readonly repository: IAlertasRepository,
+    private readonly webhookDispatcher?: IAlertaWebhookDispatcher
+  ) {}
 
   async evaluarReglas(ahora: Date = new Date()): Promise<IncidenteAlertaResponse[]> {
     const reglas = await this.repository.getReglasActivas();
@@ -194,6 +207,29 @@ export class AlertasService {
       }
     }
 
+    if (this.webhookDispatcher && nuevosIncidentes.length > 0) {
+      for (const inc of nuevosIncidentes) {
+        await this.webhookDispatcher.despacharEvento({
+          event: "alerta.incidente_detectado",
+          severity: inc.severidad,
+          title: `Incidente ${inc.tipo} detectado en medidor ${inc.medidorCodigo}`,
+          message: inc.mensaje,
+          data: {
+            incidenteId: inc.id,
+            medidorId: inc.medidorId,
+            medidorCodigo: inc.medidorCodigo,
+            instalacionNombre: inc.instalacionNombre,
+            tipo: inc.tipo,
+            severidad: inc.severidad,
+            valorDetectado: inc.valorDetectado,
+            fechaDeteccion: inc.fechaDeteccion,
+          },
+        }).catch(() => {
+          // Fail-safe: error en webhook no detiene la evaluación
+        });
+      }
+    }
+
     return nuevosIncidentes;
   }
 
@@ -215,7 +251,27 @@ export class AlertasService {
       fechaResolucion: input.estado === "RESUELTO" ? new Date() : null,
     });
 
-    return this.mapIncidenteResponse(updated);
+    const result = this.mapIncidenteResponse(updated);
+
+    if (this.webhookDispatcher) {
+      await this.webhookDispatcher.despacharEvento({
+        event: "alerta.incidente_resuelto",
+        severity: "INFO",
+        title: `Incidente ${result.tipo} resuelto en medidor ${result.medidorCodigo}`,
+        message: `El incidente ha sido marcado como ${result.estado}. Notas: ${result.notasResolucion ?? "Sin notas"}`,
+        data: {
+          incidenteId: result.id,
+          medidorId: result.medidorId,
+          medidorCodigo: result.medidorCodigo,
+          estado: result.estado,
+          fechaResolucion: result.fechaResolucion,
+        },
+      }).catch(() => {
+        // Fail-safe
+      });
+    }
+
+    return result;
   }
 
   async listarIncidentes(filtro?: FiltroIncidentes): Promise<IncidenteAlertaResponse[]> {
