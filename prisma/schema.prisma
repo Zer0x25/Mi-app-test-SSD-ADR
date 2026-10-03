@@ -7,6 +7,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Usuario {
+  id           String               @id @default(uuid())
+  email        String               @unique
+  passwordHash String
+  nombre       String
+  rol          String               @default("OPERADOR") // ADMIN, SUPERVISOR, OPERADOR
+  activo       Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  asignaciones AsignacionOperador[]
+
+  @@map("usuarios")
+}
+
 model Instalacion {
   id           String                   @id @default(uuid())
   nombre       String                   @unique
@@ -26,6 +40,7 @@ model AsignacionOperador {
   usuarioId     String
   createdAt     DateTime     @default(now())
   instalacion   Instalacion  @relation(fields: [instalacionId], references: [id])
+  usuario       Usuario?     @relation(fields: [usuarioId], references: [id])
 
   @@unique([instalacionId, usuarioId])
   @@map("asignaciones_operadores")

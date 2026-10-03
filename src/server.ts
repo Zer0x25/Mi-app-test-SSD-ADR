@@ -1,15 +1,17 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Fastify, { FastifyInstance } from "fastify";
+import Fastify, { FastifyInstance, FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import { PrismaClient } from "@prisma/client";
+import { config } from "./core/config.js";
 
 // Repositorios
 import { PrismaInstalacionesRepository } from "./modules/instalaciones/instalaciones.repository.js";
 import { PrismaMedidoresRepository } from "./modules/medidores/medidores.repository.js";
 import { PrismaLecturasRepository } from "./modules/lecturas/lecturas.repository.js";
 import { PrismaDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
+import { PrismaUsuariosRepository } from "./modules/usuarios/usuarios.repository.js";
 
 // Servicios y Controladores
 import { InstalacionesService } from "./modules/instalaciones/instalaciones.service.js";
@@ -27,6 +29,9 @@ import {
 import { createLecturasController } from "./modules/lecturas/lecturas.controller.js";
 import { DashboardService } from "./modules/dashboard/dashboard.service.js";
 import { createDashboardController } from "./modules/dashboard/dashboard.controller.js";
+import { UsuariosService } from "./modules/usuarios/usuarios.service.js";
+import { createUsuariosController } from "./modules/usuarios/usuarios.controller.js";
+import { hashPassword } from "./modules/usuarios/auth.utils.js";
 
 // Errores
 import {
@@ -62,7 +67,70 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     });
   }
 
-  // 2. Health check y Seed Demo
+  // 2. Instanciación de Repositorios y Servicios
+  const usuariosRepo = new PrismaUsuariosRepository(prisma);
+  const usuariosService = new UsuariosService(usuariosRepo, config.JWT_SECRET);
+
+  // Hook de autenticación y RBAC transversal
+  app.addHook("preHandler", async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.slice(7).trim();
+        const payload = usuariosService.verificarToken(token);
+        (request as unknown as { user?: typeof payload }).user = payload;
+      } catch {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Token de autenticación inválido o expirado.",
+        });
+      }
+    }
+
+    const user = (request as unknown as { user?: { rol: string; userId: string } }).user;
+
+    // Regla RBAC 1: Crear Instalación solo permitido para ADMIN
+    if (request.method === "POST" && request.url.startsWith("/api/instalaciones")) {
+      if (user) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para crear instalaciones.`,
+          });
+        }
+      }
+    }
+
+    // Regla RBAC 2: Crear Medidores
+    // - ADMIN: permitido en cualquier sede
+    // - SUPERVISOR: permitido solo si tiene la instalación asignada
+    // - OPERADOR: denegado
+    if (request.method === "POST" && request.url.startsWith("/api/medidores")) {
+      if (user) {
+        const body = request.body as { instalacionId?: string } | undefined;
+        if (user.rol === "OPERADOR") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: "Acceso denegado: el rol «OPERADOR» no cuenta con permisos para crear medidores.",
+          });
+        }
+        if (user.rol === "SUPERVISOR" && body?.instalacionId) {
+          const asignado = await usuariosRepo.isUsuarioAssignedToInstalacion(
+            user.userId,
+            body.instalacionId
+          );
+          if (!asignado) {
+            return reply.status(403).send({
+              error: "INSTALACION_NO_ASIGNADA",
+              message: `Operación denegada: el supervisor no tiene asignada la instalación «${body.instalacionId}».`,
+            });
+          }
+        }
+      }
+    }
+  });
+
+  // 3. Health check y Seed Demo
   app.get("/api/health", async () => {
     return {
       status: "ok",
@@ -73,7 +141,46 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   app.post("/api/demo/seed", async (_req, reply) => {
     try {
-      // 1. Instalaciones
+      // 1. Usuarios Demo con los 3 Roles: ADMIN, SUPERVISOR, OPERADOR
+      const defaultPasswordHash = await hashPassword("demo1234");
+
+      await prisma.usuario.upsert({
+        where: { email: "admin@medidores.cl" },
+        update: { passwordHash: defaultPasswordHash, rol: "ADMIN", activo: true },
+        create: {
+          email: "admin@medidores.cl",
+          passwordHash: defaultPasswordHash,
+          nombre: "Administrador Central",
+          rol: "ADMIN",
+          activo: true,
+        },
+      });
+
+      const supervisorUser = await prisma.usuario.upsert({
+        where: { email: "supervisor@medidores.cl" },
+        update: { passwordHash: defaultPasswordHash, rol: "SUPERVISOR", activo: true },
+        create: {
+          email: "supervisor@medidores.cl",
+          passwordHash: defaultPasswordHash,
+          nombre: "Carlos Supervisor (Planta Norte)",
+          rol: "SUPERVISOR",
+          activo: true,
+        },
+      });
+
+      const operadorUser = await prisma.usuario.upsert({
+        where: { email: "operador@medidores.cl" },
+        update: { passwordHash: defaultPasswordHash, rol: "OPERADOR", activo: true },
+        create: {
+          email: "operador@medidores.cl",
+          passwordHash: defaultPasswordHash,
+          nombre: "Juan Operador Terreno",
+          rol: "OPERADOR",
+          activo: true,
+        },
+      });
+
+      // 2. Instalaciones
       let instNorte = await prisma.instalacion.findUnique({ where: { nombre: "Planta Industrial Norte" } });
       if (!instNorte) {
         instNorte = await prisma.instalacion.create({
@@ -88,20 +195,27 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         });
       }
 
-      // 2. Operador Demo
-      const operadorDemoId = "a0000000-0000-0000-0000-000000000001";
+      // 3. Asignaciones de Roles a Instalaciones
+      // Supervisor asignado únicamente a Planta Norte
       await prisma.asignacionOperador.upsert({
-        where: { instalacionId_usuarioId: { instalacionId: instNorte.id, usuarioId: operadorDemoId } },
+        where: { instalacionId_usuarioId: { instalacionId: instNorte.id, usuarioId: supervisorUser.id } },
         update: {},
-        create: { instalacionId: instNorte.id, usuarioId: operadorDemoId },
-      });
-      await prisma.asignacionOperador.upsert({
-        where: { instalacionId_usuarioId: { instalacionId: instCorp.id, usuarioId: operadorDemoId } },
-        update: {},
-        create: { instalacionId: instCorp.id, usuarioId: operadorDemoId },
+        create: { instalacionId: instNorte.id, usuarioId: supervisorUser.id },
       });
 
-      // 3. Tipos de Medidor
+      // Operador asignado a Planta Norte y Edificio Corporativo
+      await prisma.asignacionOperador.upsert({
+        where: { instalacionId_usuarioId: { instalacionId: instNorte.id, usuarioId: operadorUser.id } },
+        update: {},
+        create: { instalacionId: instNorte.id, usuarioId: operadorUser.id },
+      });
+      await prisma.asignacionOperador.upsert({
+        where: { instalacionId_usuarioId: { instalacionId: instCorp.id, usuarioId: operadorUser.id } },
+        update: {},
+        create: { instalacionId: instCorp.id, usuarioId: operadorUser.id },
+      });
+
+      // 4. Tipos de Medidor
       const tiposData = [
         { nombre: "Agua Potable Red", recurso: "AGUA", unidad: "M3", tipoMedicion: "ACUMULATIVO" },
         { nombre: "Electricidad Trifásica", recurso: "LUZ", unidad: "KWH", tipoMedicion: "ACUMULATIVO" },
@@ -118,7 +232,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         tiposMap.set(t.nombre, tipo.id);
       }
 
-      // 4. Medidores
+      // 5. Medidores Físicos
       const medidoresData = [
         { codigo: "MED-AG-NORTE-01", instalacionId: instNorte.id, tipoMedidorId: tiposMap.get("Agua Potable Red")!, ubicacionInterna: "Sala de bombas - Patio Exterior" },
         { codigo: "MED-LUZ-NORTE-01", instalacionId: instNorte.id, tipoMedidorId: tiposMap.get("Electricidad Trifásica")!, ubicacionInterna: "Subestación Eléctrica 1" },
@@ -136,7 +250,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         medidoresMap.set(m.codigo, medidor.id);
       }
 
-      // 5. Lecturas de prueba
+      // 6. Lecturas de prueba
       const ahora = Date.now();
       const medidorAgNorte = medidoresMap.get("MED-AG-NORTE-01")!;
       const countLecturas = await prisma.lectura.count({ where: { medidorId: medidorAgNorte } });
@@ -144,33 +258,37 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       if (countLecturas === 0) {
         await prisma.lectura.createMany({
           data: [
-            { medidorId: medidorAgNorte, operadorId: operadorDemoId, valor: 1200.0, fechaLectura: new Date(ahora - 48 * 3600 * 1000), notas: "Lectura inicial" },
-            { medidorId: medidorAgNorte, operadorId: operadorDemoId, valor: 1245.5, fechaLectura: new Date(ahora - 24 * 3600 * 1000), notas: "Cierre día anterior" },
-            { medidorId: medidorAgNorte, operadorId: operadorDemoId, valor: 1289.0, fechaLectura: new Date(ahora - 2 * 3600 * 1000), notas: "Turno mañana" },
+            { medidorId: medidorAgNorte, operadorId: operadorUser.id, valor: 1200.0, fechaLectura: new Date(ahora - 48 * 3600 * 1000), notas: "Lectura inicial" },
+            { medidorId: medidorAgNorte, operadorId: operadorUser.id, valor: 1245.5, fechaLectura: new Date(ahora - 24 * 3600 * 1000), notas: "Cierre día anterior" },
+            { medidorId: medidorAgNorte, operadorId: operadorUser.id, valor: 1289.0, fechaLectura: new Date(ahora - 2 * 3600 * 1000), notas: "Turno mañana" },
           ],
         });
 
         const medidorLuzNorte = medidoresMap.get("MED-LUZ-NORTE-01")!;
         await prisma.lectura.createMany({
           data: [
-            { medidorId: medidorLuzNorte, operadorId: operadorDemoId, valor: 45000.0, fechaLectura: new Date(ahora - 24 * 3600 * 1000), notas: "Lectura inicio de semana" },
-            { medidorId: medidorLuzNorte, operadorId: operadorDemoId, valor: 45320.0, fechaLectura: new Date(ahora - 1 * 3600 * 1000), notas: "Turno actual" },
+            { medidorId: medidorLuzNorte, operadorId: operadorUser.id, valor: 45000.0, fechaLectura: new Date(ahora - 24 * 3600 * 1000), notas: "Lectura inicio de semana" },
+            { medidorId: medidorLuzNorte, operadorId: operadorUser.id, valor: 45320.0, fechaLectura: new Date(ahora - 1 * 3600 * 1000), notas: "Turno actual" },
           ],
         });
 
         const medidorDieNorte = medidoresMap.get("MED-DIE-NORTE-01")!;
         await prisma.lectura.createMany({
           data: [
-            { medidorId: medidorDieNorte, operadorId: operadorDemoId, valor: 4800.0, fechaLectura: new Date(ahora - 72 * 3600 * 1000), notas: "Llenado de estanque" },
-            { medidorId: medidorDieNorte, operadorId: operadorDemoId, valor: 4200.0, fechaLectura: new Date(ahora - 30 * 3600 * 1000), notas: "Consumo prueba de generador" },
+            { medidorId: medidorDieNorte, operadorId: operadorUser.id, valor: 4800.0, fechaLectura: new Date(ahora - 72 * 3600 * 1000), notas: "Llenado de estanque" },
+            { medidorId: medidorDieNorte, operadorId: operadorUser.id, valor: 4200.0, fechaLectura: new Date(ahora - 30 * 3600 * 1000), notas: "Consumo prueba de generador" },
           ],
         });
       }
 
       return reply.status(200).send({
         status: "ok",
-        message: "Datos de demostración cargados exitosamente",
-        operadorDemoId,
+        message: "Demostración y usuarios RBAC inicializados exitosamente",
+        credencialesDemo: [
+          { email: "admin@medidores.cl", pass: "demo1234", rol: "ADMIN" },
+          { email: "supervisor@medidores.cl", pass: "demo1234", rol: "SUPERVISOR", instalacion: "Planta Industrial Norte" },
+          { email: "operador@medidores.cl", pass: "demo1234", rol: "OPERADOR", instalaciones: ["Planta Norte", "Corporativo"] },
+        ],
       });
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -178,7 +296,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     }
   });
 
-  // 3. Adaptadores de verificación entre módulos
+  // 4. Adaptadores de verificación entre módulos
   const instalacionesVerifService: IInstalacionesVerificationService = {
     async verifyInstalacionActiva(id: string) {
       const inst = await prisma.instalacion.findUnique({ where: { id } });
@@ -220,7 +338,6 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     },
   };
 
-  // 4. Instanciación de Repositorios y Servicios
   const instalacionesRepo = new PrismaInstalacionesRepository(prisma);
   const instalacionesService = new InstalacionesService(instalacionesRepo);
 
@@ -237,11 +354,29 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   const dashboardRepo = new PrismaDashboardRepository(prisma);
   const dashboardService = new DashboardService(dashboardRepo);
 
-  // 5. Registro de Rutas API
+  // 5. Registro de Controladores
+  await app.register(createUsuariosController(usuariosService), { prefix: "/api" });
   await app.register(createInstalacionesController(instalacionesService), { prefix: "/api" });
   await app.register(createMedidoresController(medidoresService), { prefix: "/api" });
   await app.register(createLecturasController(lecturasService), { prefix: "/api" });
   await app.register(createDashboardController(dashboardService), { prefix: "/api" });
+
+  // 6. Endpoints complementarios para Frontend & RBAC
+  app.get("/api/instalaciones", async () => {
+    return await prisma.instalacion.findMany({ where: { activa: true } });
+  });
+
+  app.get("/api/medidores/tipos", async () => {
+    return await prisma.tipoMedidor.findMany({ where: { activo: true } });
+  });
+
+  app.get("/api/instalaciones/operador/:usuarioId", async (req: FastifyRequest<{ Params: { usuarioId: string } }>) => {
+    const asignaciones = await prisma.asignacionOperador.findMany({
+      where: { usuarioId: req.params.usuarioId },
+      include: { instalacion: true },
+    });
+    return asignaciones.map((a) => a.instalacion).filter((i) => i.activa);
+  });
 
   return app;
 }

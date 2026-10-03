@@ -33,12 +33,16 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Aprobación inmutable de `docs/adr/0002-frontend-design-system-y-componentes.md`.
   - Design System Aurora implementado con tokens CSS semánticos y soporte nativo Modo Claro / Oscuro.
   - Desacoplamiento de lógica de negocio: `ApiClient` centralizado, `ModalManager`, `ToastManager` y factoría de componentes reutilizables (`createMeterCard`, etc.).
+- [x] **Hito 3: Autenticación JWT y Control de Acceso RBAC (Completado: 2026-10-03)**
+  - `specs/feat-005-autenticacion-rbac.md` implementado.
+  - 3 Roles jerárquicos: `ADMIN` (acceso global), `SUPERVISOR` (limitado a sedes asignadas, crea medidores en sedes asignadas, no crea instalaciones), `OPERADOR` (captura en terreno).
+  - Criptografía nativa con `node:crypto` (scrypt + JWT HS256), guardias preHandler de Fastify y 74/74 tests superados.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *En preparación para Autenticación (Hito 3).*
-- **Módulo objetivo:** *Autenticación y Seguridad (JWT).*
+- **Archivo:** *Hito 3 concluido.*
+- **Módulo objetivo:** *Consolidación de Sistema Medidores.*
 
 ---
 
@@ -53,3 +57,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-004-dashboard-admin` | Ciclo TDD completado, 59/59 tests pasando, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Creación del Servidor HTTP y Dashboard Web Base | Fastify con SQLite y seed de datos demo, 60/60 tests pasando |
 | 2026-10-03 | Antigravity | Formalización de ADR 0002 y Frontend Design System | Tokens Claro/Oscuro, ApiClient desacoplado y componentes reutilizables |
+| 2026-10-03 | Antigravity | Implementación de `feat-005-autenticacion-rbac` | Roles Admin, Supervisor y Operador con guardias y JWT, 74/74 tests pasando |

@@ -63,6 +63,23 @@
         </button>
       </nav>
 
+      <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005) -->
+      <div class="role-simulator-bar" id="roleSimulatorBar" aria-label="Simular usuario por rol">
+        <span class="simulator-label">Simular:</span>
+        <button class="btn btn-sm btn-outline active" id="quickRoleAdmin" onclick="loginComo('ADMIN')" title="Conectar como Administrador Global">
+          👑 Admin
+        </button>
+        <button class="btn btn-sm btn-outline" id="quickRoleSupervisor" onclick="loginComo('SUPERVISOR')" title="Conectar como Supervisor Planta Norte">
+          🛡️ Supervisor
+        </button>
+        <button class="btn btn-sm btn-outline" id="quickRoleOperador" onclick="loginComo('OPERADOR')" title="Conectar como Operador Terreno">
+          👷 Operador
+        </button>
+      </div>
+
+      <!-- Píldora de Usuario Activo -->
+      <div id="navUserPill"></div>
+
       <!-- Acciones de Cabecera: Selector de Tema & Demo Seed -->
       <div class="header-actions">
         <!-- Botón de Conmutación Modo Claro / Oscuro -->

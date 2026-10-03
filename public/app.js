@@ -1,10 +1,11 @@
 // ==============================================================================
 // MEDIDORES APP CONTROLLER - ORQUESTACIÓN DE VISTA Y EVENTOS
 // ADR 0002: Arquitectura del Frontend, Design System y Desacoplamiento de Lógica
+// SPEC-005: Control de Acceso RBAC (Admin, Supervisor, Operador)
 // ==============================================================================
 
-const OPERADOR_DEMO_ID = "a0000000-0000-0000-0000-000000000001";
-let currentRole = "admin";
+let currentUser = null; // { id, email, nombre, rol }
+let currentRoleTab = "admin";
 let instalacionesCache = [];
 let tiposMedidorCache = [];
 let medidoresOperadorCache = [];
@@ -15,15 +16,154 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function inicializarApp() {
+  await sincronizarSesionUsuario();
   await cargarSelectsGlobales();
-  await cargarDashboard();
+  if (currentUser?.rol === "OPERADOR") {
+    switchRole("operador");
+  } else {
+    await cargarDashboard();
+  }
 }
 
 // ------------------------------------------------------------------------------
-// 1. NAVEGACIÓN Y CONMUTACIÓN DE ROLES
+// 1. GESTIÓN DE SESIÓN Y AUTENTICACIÓN (JWT & RBAC)
+// ------------------------------------------------------------------------------
+async function sincronizarSesionUsuario() {
+  const token = window.api.getToken();
+  if (token) {
+    try {
+      currentUser = await window.api.auth.me();
+      aplicarPermisosUI();
+      return;
+    } catch {
+      window.api.clearToken();
+    }
+  }
+
+  // Si no hay sesión activa, autenticar por defecto con demo Admin
+  try {
+    const auth = await window.api.auth.login({
+      email: "admin@medidores.cl",
+      password: "demo1234",
+    });
+    currentUser = auth.usuario;
+  } catch {
+    currentUser = {
+      id: "demo-admin-id",
+      email: "admin@medidores.cl",
+      nombre: "Administrador Central",
+      rol: "ADMIN",
+    };
+  }
+  aplicarPermisosUI();
+}
+
+/**
+ * Conmuta rápidamente la sesión entre los 3 roles de prueba (ADMIN, SUPERVISOR, OPERADOR)
+ */
+async function loginComo(rol) {
+  const creds = {
+    ADMIN: { email: "admin@medidores.cl", pass: "demo1234" },
+    SUPERVISOR: { email: "supervisor@medidores.cl", pass: "demo1234" },
+    OPERADOR: { email: "operador@medidores.cl", pass: "demo1234" },
+  }[rol];
+
+  if (!creds) return;
+
+  try {
+    const res = await window.api.auth.login({
+      email: creds.email,
+      password: creds.pass,
+    });
+    currentUser = res.usuario;
+    window.Toast.success(`Sesión iniciada como ${currentUser.nombre} (${currentUser.rol})`, "Autenticación");
+
+    aplicarPermisosUI();
+
+    // Actualizar vista según el nuevo rol
+    if (currentUser.rol === "OPERADOR") {
+      switchRole("operador");
+    } else {
+      switchRole("admin");
+      await cargarDashboard();
+    }
+    await cargarSelectsGlobales();
+  } catch (err) {
+    window.Toast.error(err.message, "Fallo de Inicio de Sesión");
+  }
+}
+
+/**
+ * Aplica las reglas visuales estrictas según el Rol:
+ * - ADMIN: acceso global, crear instalación, crear medidor, crear tipo.
+ * - SUPERVISOR: NO puede crear instalaciones ni tipos; SÍ puede crear medidores en sedes asignadas.
+ * - OPERADOR: solo ingreso en terreno; sin dashboard ni altas de medidor/instalación.
+ */
+function aplicarPermisosUI() {
+  if (!currentUser) return;
+
+  // 1. Navbar: Usuario activo y badge de rol
+  const userPill = document.getElementById("navUserPill");
+  if (userPill) {
+    const roleBadgeClasses = {
+      ADMIN: "badge-blue",
+      SUPERVISOR: "badge-amber",
+      OPERADOR: "badge-emerald",
+    };
+    userPill.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${currentUser.nombre}</span>
+        <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}">${currentUser.rol}</span>
+      </div>
+    `;
+  }
+
+  // 2. Selectores de rol rápido en navbar
+  const btnRoleAdmin = document.getElementById("quickRoleAdmin");
+  const btnRoleSupervisor = document.getElementById("quickRoleSupervisor");
+  const btnRoleOperador = document.getElementById("quickRoleOperador");
+
+  if (btnRoleAdmin) btnRoleAdmin.classList.toggle("active", currentUser.rol === "ADMIN");
+  if (btnRoleSupervisor) btnRoleSupervisor.classList.toggle("active", currentUser.rol === "SUPERVISOR");
+  if (btnRoleOperador) btnRoleOperador.classList.toggle("active", currentUser.rol === "OPERADOR");
+
+  // 3. Botones de acción del Dashboard
+  const btnNuevaInstalacion = document.getElementById("btnOpenModalInstalacion");
+  const btnNuevoTipo = document.getElementById("btnOpenModalTipo");
+  const btnNuevoMedidor = document.getElementById("btnOpenModalMedidor");
+  const tabAdminBtn = document.getElementById("tabAdminBtn");
+
+  if (btnNuevaInstalacion) {
+    // REGLA: Supervisor y Operador NO pueden crear instalaciones
+    btnNuevaInstalacion.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  }
+
+  if (btnNuevoTipo) {
+    // REGLA: Solo ADMIN configura tipos de medidor
+    btnNuevoTipo.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  }
+
+  if (btnNuevoMedidor) {
+    // REGLA: ADMIN y SUPERVISOR pueden crear medidores. OPERADOR no.
+    btnNuevoMedidor.style.display = (currentUser.rol === "ADMIN" || currentUser.rol === "SUPERVISOR") ? "inline-flex" : "none";
+  }
+
+  if (tabAdminBtn) {
+    // REGLA: OPERADOR no tiene acceso a Dashboard de auditoría
+    tabAdminBtn.style.display = currentUser.rol === "OPERADOR" ? "none" : "inline-flex";
+  }
+}
+
+// ------------------------------------------------------------------------------
+// 2. NAVEGACIÓN Y CONMUTACIÓN DE PESTAÑAS (VISTAS)
 // ------------------------------------------------------------------------------
 function switchRole(role) {
-  currentRole = role;
+  if (role === "admin" && currentUser?.rol === "OPERADOR") {
+    window.Toast.warning("El perfil OPERADOR solo tiene acceso al Modo Terreno.", "Permisos");
+    return;
+  }
+
+  currentRoleTab = role;
   const tabAdmin = document.getElementById("tabAdminBtn");
   const tabOperador = document.getElementById("tabOperadorBtn");
   const viewAdmin = document.getElementById("viewAdmin");
@@ -45,7 +185,7 @@ function switchRole(role) {
 }
 
 // ------------------------------------------------------------------------------
-// 2. DASHBOARD ADMINISTRATIVO (Auditoría & KPIs)
+// 3. DASHBOARD ADMINISTRATIVO / SUPERVISOR
 // ------------------------------------------------------------------------------
 async function cargarDashboard() {
   try {
@@ -102,11 +242,21 @@ async function cargarDashboard() {
 }
 
 // ------------------------------------------------------------------------------
-// 3. MODO OPERADOR (Captura en Terreno con Fichas de Medidor)
+// 4. MODO OPERADOR / TERRENO
 // ------------------------------------------------------------------------------
 async function cargarSelectorOperador() {
   try {
-    const instalaciones = await window.api.instalaciones.getByOperador(OPERADOR_DEMO_ID);
+    const userId = currentUser ? currentUser.id : "demo-user";
+    let instalaciones = [];
+
+    // Si es ADMIN, puede inspeccionar cualquier sede
+    if (currentUser?.rol === "ADMIN") {
+      instalaciones = await window.api.instalaciones.getAll();
+    } else {
+      // SUPERVISOR y OPERADOR solo ven sus instalaciones asignadas
+      instalaciones = await window.api.instalaciones.getByOperador(userId);
+    }
+
     const select = document.getElementById("selectOperadorInstalacion");
     select.innerHTML = '<option value="">-- Selecciona una Instalación Asignada --</option>';
 
@@ -125,7 +275,7 @@ async function cargarSelectorOperador() {
         '<div class="empty-state">No tienes instalaciones asignadas para este turno.</div>';
     }
   } catch (err) {
-    window.Toast.error(err.message, "Error al cargar instalaciones de operador");
+    window.Toast.error(err.message, "Error al cargar instalaciones asignadas");
   }
 }
 
@@ -159,15 +309,13 @@ async function cargarMedidoresInstalacion(instalacionId) {
 }
 
 // ------------------------------------------------------------------------------
-// 4. MODAL DE REGISTRO DE LECTURA (Captura en Terreno)
+// 5. REGISTRO DE LECTURAS (Captura en Terreno)
 // ------------------------------------------------------------------------------
 function openModalLectura(medidorId) {
   const medidor = medidoresOperadorCache.find((m) => m.id === medidorId);
   if (!medidor) return;
 
   const tipo = medidor.tipoMedidor || {};
-  const meta = window.Components.getResourceMeta(tipo.recurso);
-
   document.getElementById("modalLecturaMedidorId").value = medidor.id;
   document.getElementById("modalLecturaCodigo").innerText = medidor.codigo;
   document.getElementById("modalLecturaTipo").innerText = `${tipo.nombre} (${tipo.recurso})`;
@@ -183,11 +331,9 @@ function openModalLectura(medidorId) {
   inputValor.placeholder = valAnterior !== null ? `Mínimo ${valAnterior}` : "Ej. 1250.5";
   inputValor.step = "any";
 
-  // Fecha y hora local predeterminada
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById("modalLecturaInputFecha").value = now.toISOString().slice(0, 16);
-
   document.getElementById("modalLecturaObservaciones").value = "";
 
   window.Modal.open("modalLectura");
@@ -209,7 +355,7 @@ async function submitLectura(event) {
 
   const payload = {
     medidorId,
-    operadorId: OPERADOR_DEMO_ID,
+    operadorId: currentUser ? currentUser.id : "demo-operator",
     valor,
     timestamp: new Date(fechaRaw).toISOString(),
     observaciones: obs || undefined,
@@ -220,29 +366,32 @@ async function submitLectura(event) {
     window.Modal.close("modalLectura");
     window.Toast.success(`Lectura de ${valor} registrada exitosamente.`);
 
-    // Recargar vista activa
     const select = document.getElementById("selectOperadorInstalacion");
     if (select.value) {
       await cargarMedidoresInstalacion(select.value);
     }
-    if (currentRole === "admin") {
+    if (currentRoleTab === "admin") {
       await cargarDashboard();
     }
   } catch (err) {
-    // Los errores tipados de dominio del backend se capturan limpiamente aquí
     window.Toast.error(err.message, "Validación Rechazada");
   }
 }
 
 // ------------------------------------------------------------------------------
-// 5. MODALES ADMINISTRATIVOS (Altas de Catálogo)
+// 6. ALTAS DE CATÁLOGO (Con Guardias de Permiso)
 // ------------------------------------------------------------------------------
 async function cargarSelectsGlobales() {
   try {
-    instalacionesCache = await window.api.instalaciones.getAll();
+    // Si es SUPERVISOR, solo ve sus instalaciones asignadas en el dropdown de creación de medidor
+    if (currentUser?.rol === "SUPERVISOR") {
+      instalacionesCache = await window.api.instalaciones.getByOperador(currentUser.id);
+    } else {
+      instalacionesCache = await window.api.instalaciones.getAll();
+    }
+
     tiposMedidorCache = await window.api.medidores.getTipos();
 
-    // Select de instalación en Modal Nuevo Medidor
     const selInst = document.getElementById("selectMedidorInstalacion");
     if (selInst) {
       selInst.innerHTML = '<option value="">Selecciona instalación...</option>';
@@ -251,7 +400,6 @@ async function cargarSelectsGlobales() {
       });
     }
 
-    // Select de tipo en Modal Nuevo Medidor
     const selTipo = document.getElementById("selectMedidorTipo");
     if (selTipo) {
       selTipo.innerHTML = '<option value="">Selecciona tipo...</option>';
@@ -266,6 +414,11 @@ async function cargarSelectsGlobales() {
 
 async function submitNuevaInstalacion(event) {
   event.preventDefault();
+  if (currentUser?.rol !== "ADMIN") {
+    window.Toast.error("Operación prohibida: El rol SUPERVISOR no tiene permiso para crear instalaciones.", "Acceso Denegado");
+    return;
+  }
+
   const nombre = document.getElementById("inputInstalacionNombre").value.trim();
   const direccion = document.getElementById("inputInstalacionDireccion").value.trim();
   const descripcion = document.getElementById("inputInstalacionDesc").value.trim();
@@ -335,12 +488,13 @@ async function submitNuevoMedidor(event) {
     window.Toast.success(`Medidor «${codigo}» dado de alta exitosamente.`);
     await cargarDashboard();
   } catch (err) {
-    window.Toast.error(err.message, "Error al crear medidor");
+    // Si es un supervisor intentando crear en una instalación ajena, el backend retornará INSTALACION_NO_ASIGNADA
+    window.Toast.error(err.message, "Permisos de Supervisor");
   }
 }
 
 // ------------------------------------------------------------------------------
-// 6. UTILIDAD DEMO
+// 7. UTILIDAD DEMO & SEED
 // ------------------------------------------------------------------------------
 async function seedDemoData() {
   const btn = document.getElementById("btnSeedDemo");
@@ -350,10 +504,11 @@ async function seedDemoData() {
 
   try {
     const result = await window.api.demo.seed();
-    window.Toast.success(result.message || "Datos demo poblados exitosamente.");
+    window.Toast.success(result.message || "Demostración poblada con éxito.");
+    await sincronizarSesionUsuario();
     await cargarSelectsGlobales();
     await cargarDashboard();
-    if (currentRole === "operador") {
+    if (currentRoleTab === "operador") {
       await cargarSelectorOperador();
     }
   } catch (err) {
@@ -364,8 +519,9 @@ async function seedDemoData() {
   }
 }
 
-// Enlace de utilidades globales para el DOM HTML
+// Enlace global para el DOM HTML
 window.switchRole = switchRole;
+window.loginComo = loginComo;
 window.openModal = (id) => window.Modal.open(id);
 window.closeModal = (id) => window.Modal.close(id);
 window.openModalLectura = openModalLectura;

@@ -879,3 +879,33 @@
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
+
+/* ------------------------------------------------------------------------------
+   11. SIMULADOR Y SELECTOR DE ROLES RBAC
+   ------------------------------------------------------------------------------ */
+.role-simulator-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-surface-hover);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.simulator-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-right: 0.25rem;
+}
+
+.role-simulator-bar .btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 6px var(--accent-glow);
+}
+

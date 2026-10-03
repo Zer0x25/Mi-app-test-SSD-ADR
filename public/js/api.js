@@ -72,6 +72,29 @@ class ApiClient {
     }
   }
 
+  // --- Dominio: Autenticación & RBAC ---
+  auth = {
+    login: async (credentials) => {
+      const res = await this.request("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify(credentials),
+      });
+      if (res.token) {
+        this.setToken(res.token);
+      }
+      return res;
+    },
+    register: (payload) =>
+      this.request("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    me: () => this.request("/api/auth/me"),
+    logout: () => {
+      this.clearToken();
+    },
+  };
+
   // --- Dominio: Dashboard & Métricas ---
   dashboard = {
     getKpis: () => this.request("/api/dashboard/kpis"),
