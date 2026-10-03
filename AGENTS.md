@@ -61,3 +61,13 @@ O sus comandos equivalentes:
 - **Regeneración tras Modificación de Esquema:** Cada vez que el agente agregue o modifique modelos en `schema.prisma` u homólogo, debe ejecutar inmediatamente `npx prisma generate` en disco antes de tocar el código de los repositorios o controladores.
 - **Manejo de Caché del Language Server (tsserver):** Ante desfases visuales residuales en el editor después de modificar esquemas de datos, el agente debe instruir o verificar la recarga del servidor de tipos (`TypeScript: Restart TS Server` / recarga de ventana).
 
+### 8. Estrategia Multi-Entorno y Contenerización Segura (Dev, Staging, Prod)
+Todo proyecto que adopte empaquetamiento Docker debe implementar y respetar la tríada de entornos desacoplados:
+- **Desarrollo Local (Dev):** Ejecución sin contenedor mediante herramientas de recarga ágil (`tsx watch`, `vitest`). Máxima velocidad de feedback.
+- **Staging / Pre-producción (Docker):**
+  - Mapeo de puerto en host diferenciado (ej: `3001` para Staging frente a `3000` para Producción) para permitir la convivencia de ambos stacks en el mismo servidor sin colisiones de red.
+  - Volumen de datos y archivo de base de datos completamente aislados (`*_staging_data` / `*-staging.db`). Prohibido compartir volúmenes entre Staging y Producción.
+  - Validación tipada del entorno: La variable `NODE_ENV=staging` debe ser explícitamente permitida en el esquema Zod centralizado (`src/core/config.ts`).
+- **Producción (Prod):** Despliegue productivo inmutable con volumen persistente dedicado y credenciales protegidas.
+- **Arranque Determinista en Contenedor (Entrypoint):**
+  - Cuando se utilicen motores de datos embebidos o migraciones automáticas, el script `docker-entrypoint.sh` debe garantizar la preparación y sincronización no destructiva del esquema antes de delegar la ejecución al proceso principal de Node.js.
