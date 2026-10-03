@@ -34,6 +34,7 @@ Habiéndose completado el Hito 0 y compilada la arquitectura base en `docs/adr/0
 ### 5. Configuración y Secretos
 - Prohibido acceder directamente a `process.env.*` en servicios, repositorios o controladores.
 - Toda variable de entorno debe validarse mediante esquema Zod centralizado en `src/core/config.ts` y documentarse en [`.env.example`](file://.env.example).
+- **Aprovisionamiento Determinista en Entornos Limpios:** Prohibido asumir la preexistencia física de `.env` en runners de CI, contenedores o clones nuevos. Todo script de Quality Gate (`scripts/verify.sh`) o workflow de CI (`.github/workflows/*.yml`) debe asegurar valores por defecto seguros de prueba (copiando `.env.example` a `.env` o inyectando variables en el runner) antes de instanciar la configuración de la aplicación.
 
 ### 6. Convención Estricta de Commits (Conventional Commits)
 Todo commit generado por el agente debe apegarse al estándar Conventional Commits:
@@ -50,6 +51,10 @@ Ninguna tarea se considera terminada si no supera los scripts de validación con
 ./scripts/verify.sh
 ```
 O sus comandos equivalentes:
-- Verificación estricta de tipos: `npm run typecheck`
+- Verificación estricta de tipos (con regeneración de tipos ORM): `npm run typecheck` (`prisma generate && tsc --noEmit`)
 - Linter y formato: `npm run lint`
 - Suite de pruebas: `npm test`
+
+**Invariante de Generación de Artefactos Tipados:**
+- En proyectos con ORMs generativos (como Prisma), es mandatorio que `prisma generate` se ejecute antes de la verificación estricta de tipos (`tsc --noEmit`) y antes de la suite de pruebas, tanto en scripts locales como en pipelines remotos.
+
