@@ -4,7 +4,7 @@
   "description": "Sistema de registro, gestión y auditoría de medidores heterogéneos (agua, luz, petróleo, gas)",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "prisma generate && tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "test": "vitest run",
     "dev": "tsx watch src/index.ts",
