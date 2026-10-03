@@ -51,20 +51,19 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - `specs/feat-009-mantenimiento-y-calibracion.md`: Bitácora técnica metrológica, trazabilidad de precintos de seguridad numerados, control de calibraciones periódicas y bajas o reemplazos técnicos con validación de lecturas de retiro.
   - Interfaz gráfica con Aurora Design System: Nuevas pestañas de Reportes & Facturas, Alertas & Incidentes, y Mantenimiento & Calibración.
   - Suite de pruebas expandida a 19 archivos y 125 pruebas pasando exitosamente (100%), Quality Gate 0.
-- [x] **Hito 6: Empaquetamiento Docker & Pipeline CI/CD (Completado: 2026-10-03)**
-  - `docs/adr/0003-empaquetamiento-docker-y-pipeline-cicd.md` compilado e integrado.
-  - `specs/infra-001-docker-y-cicd.md` implementado y validado.
-  - Dockerfile multi-stage con Alpine (`builder` y `runner` minimalista de 265MB).
-  - Persistencia de SQLite en volumen `/app/data` y sincronización automática en `docker-entrypoint.sh`.
-  - Orquestación con `docker-compose.yml` (puerto 3000, volumen `medidores_data`, healthcheck integrado).
-  - Workflow de GitHub Actions con validación automática de `./scripts/verify.sh` y `docker build`.
-  - Quality Gate verificado con salida 0 (125/125 tests pasando, 100%).
+- [x] **Hito 6: Empaquetamiento Docker, Staging & Pipeline CI/CD (Completado: 2026-10-03)**
+  - `docs/adr/0003-empaquetamiento-docker-y-pipeline-cicd.md` (Compilado y extendido con estrategia multi-entorno Dev -> Staging -> Prod).
+  - `specs/infra-001-docker-y-cicd.md` (Completado: Dockerfile multi-stage, docker-compose productivo y CI GitHub Actions).
+  - `specs/infra-002-entorno-staging.md` (Completado: Entorno Staging, `docker-compose.staging.yml`, validación Zod `NODE_ENV=staging`, `.env.staging.example` y scripts).
+  - Persistencia y aislamiento: volúmenes `medidores_data` y `medidores_staging_data` independientes.
+  - Puertos: Producción en 3000, Staging en 3001 (permitiendo convivencia segura en el mismo servidor).
+  - Quality Gate verificado con salida 0 (126/126 tests pasando, 100%).
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 6 concluido (`specs/infra-001-docker-y-cicd.md`).*
-- **Módulo objetivo:** *Despliegue e Infraestructura Productiva.*
+- **Archivo:** *Hito 6 concluido (`specs/infra-001-docker-y-cicd.md`, `specs/infra-002-entorno-staging.md`).*
+- **Módulo objetivo:** *Despliegue e Infraestructura Multi-Entorno (Dev, Staging, Prod).*
 
 ---
 
@@ -86,3 +85,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-009-mantenimiento-y-calibracion` | Ciclo TDD completado, bitácora técnica, precintos y calibraciones |
 | 2026-10-03 | Antigravity | Integración Frontend Aurora Design System | Vistas y modales interactivos integrados, 125/125 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `infra-001-docker-y-cicd` | Multi-stage Dockerfile, docker-compose, CI workflow, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `infra-002-entorno-staging` | Staging compose, Zod NODE_ENV staging, 126/126 tests, Quality Gate 0 |

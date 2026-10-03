@@ -11,6 +11,10 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "start:dev": "tsx src/index.ts",
+    "staging:up": "docker compose -f docker-compose.staging.yml up -d --build",
+    "staging:down": "docker compose -f docker-compose.staging.yml down",
+    "prod:up": "docker compose up -d --build",
+    "prod:down": "docker compose down",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {

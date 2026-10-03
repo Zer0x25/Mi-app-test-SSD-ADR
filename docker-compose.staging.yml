@@ -1,0 +1,29 @@
+services:
+  app-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sistema-medidores:staging
+    container_name: sistema-medidores-staging
+    restart: unless-stopped
+    ports:
+      - "${STAGING_HOST_PORT:-3001}:3000"
+    environment:
+      - NODE_ENV=staging
+      - PORT=3000
+      - DATABASE_URL=file:/app/data/medidores-staging.db
+      - JWT_SECRET=${JWT_SECRET:-super_secreto_medidores_staging_qa_testing_987654}
+      - JWT_EXPIRES_IN=8h
+      - LOG_LEVEL=debug
+    volumes:
+      - medidores_staging_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  medidores_staging_data:
+    name: medidores_staging_data

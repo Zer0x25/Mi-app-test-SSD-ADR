@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { config } from "../../src/core/config.js";
+import { config, envSchema } from "../../src/core/config.js";
 
 describe("Core Config Suite", () => {
   it("debe cargar la configuración de entorno con valores válidos", () => {
@@ -13,5 +13,19 @@ describe("Core Config Suite", () => {
 
   it("debe garantizar que el objeto de configuración es inmutable (congelado)", () => {
     expect(Object.isFrozen(config)).toBe(true);
+  });
+
+  it("debe validar exitosamente cuando NODE_ENV es staging (infra-002)", () => {
+    const validStaging = envSchema.safeParse({
+      NODE_ENV: "staging",
+      PORT: "3000",
+      DATABASE_URL: "file:/app/data/medidores-staging.db",
+      JWT_SECRET: "secreto_staging_super_seguro_123456",
+    });
+
+    expect(validStaging.success).toBe(true);
+    if (validStaging.success) {
+      expect(validStaging.data.NODE_ENV).toBe("staging");
+    }
   });
 });

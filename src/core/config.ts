@@ -8,9 +8,9 @@ import { z } from "zod";
  * REGLA INMUTABLE: Queda estrictamente prohibido acceder a process.env en cualquier
  * otro archivo del proyecto (servicios, repositorios, controladores).
  */
-const envSchema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z
-    .enum(["development", "test", "production"])
+    .enum(["development", "test", "staging", "production"])
     .default("development"),
   PORT: z.coerce.number().positive().default(3000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL es requerida"),

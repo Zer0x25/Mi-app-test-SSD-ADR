@@ -51,6 +51,17 @@ Se define una construcción en dos etapas sobre `node:20-alpine`:
 - El workflow `.github/workflows/verify.yml` ejecuta `./scripts/verify.sh` como primera barrera (typecheck, linter y tests con 100% éxito).
 - Se agrega el paso de validación del artefacto Docker (`docker build -t medidores:ci-test .`) para asegurar que ningún cambio de dependencias o rutas rompa el empaquetado final.
 
+### 2.5. Estrategia Multi-Entorno (Dev, Staging y Producción)
+Se formaliza el ciclo de vida en 3 entornos desacoplados:
+1. **Desarrollo (Dev):** Ejecución local con `npm run dev` (`tsx watch`), suite de pruebas `vitest` (`npm test`) y SQLite local en `file:./prisma/dev.db`.
+2. **Staging (Pre-producción / QA / UAT):**
+   - Ejecución en contenedor Docker idéntico a producción mediante `docker-compose.staging.yml`.
+   - Volumen de datos aislado `medidores_staging_data` con base de datos `file:/app/data/medidores-staging.db`.
+   - Puerto mapeado `3001:3000` para permitir coexistencia con producción en el mismo host sin colisión de puertos.
+   - Variable `NODE_ENV=staging` validada en `src/core/config.ts`.
+   - Nivel de log `LOG_LEVEL=debug` para facilitar diagnósticos y pruebas de aceptación de usuario sin riesgo sobre datos reales.
+3. **Producción (Prod):** Despliegue con `docker-compose.yml`, volumen persistente productivo `medidores_data`, puerto `3000` y credenciales seguras.
+
 ---
 
 ## 3. Consecuencias
