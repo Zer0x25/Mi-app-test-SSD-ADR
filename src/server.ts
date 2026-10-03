@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Fastify, { FastifyInstance, FastifyRequest } from "fastify";
+import Fastify, { FastifyInstance, FastifyRequest, FastifyError } from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import rateLimit from "@fastify/rate-limit";
@@ -64,11 +64,13 @@ const __dirname = path.dirname(__filename);
 export interface BuildServerOptions {
   prisma?: PrismaClient;
   serveStatic?: boolean;
+  logger?: boolean | Record<string, unknown>;
+  webhooksService?: WebhookDispatcherService;
 }
 
 export async function buildServer(options: BuildServerOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: false,
+    logger: options.logger ?? (config.NODE_ENV === "test" ? false : { level: config.LOG_LEVEL }),
   });
 
   // Permitir cuerpos vacíos cuando Content-Type es application/json
@@ -567,7 +569,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   const reportesService = new ReportesService(reportesRepo);
 
   const webhooksRepo = new PrismaWebhooksRepository(prisma);
-  const webhooksService = new WebhookDispatcherService(webhooksRepo);
+  const webhooksService = options.webhooksService ?? new WebhookDispatcherService(webhooksRepo);
 
   const alertasRepo = new PrismaAlertasRepository(prisma);
   const alertasService = new AlertasService(alertasRepo, webhooksService);
@@ -644,6 +646,56 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       };
     },
   };
+
+  // 4.5. Manejador Centralizado de Errores y Trigger de Webhooks ante Errores Críticos (ADR 0006)
+  app.setErrorHandler(async (error: FastifyError | Error, request, reply) => {
+    const err = error as { statusCode?: number; name?: string; message?: string; stack?: string };
+    const statusCode = typeof err.statusCode === "number" && err.statusCode >= 400 ? err.statusCode : 500;
+
+    if (statusCode >= 500) {
+      request.log.error(
+        {
+          err: error,
+          reqId: request.id,
+          method: request.method,
+          url: request.url,
+          statusCode,
+        },
+        `Error crítico de servidor: ${err.message ?? "Error desconocido"}`
+      );
+
+      try {
+        await webhooksService.despacharEvento({
+          event: "sistema.error_critico",
+          severity: "CRITICAL",
+          title: `Error Crítico de Servidor en ${request.method} ${request.url}`,
+          message: err.message || "Error interno del servidor",
+          data: {
+            reqId: request.id,
+            method: request.method,
+            url: request.url,
+            statusCode,
+            errorName: err.name || "Error",
+            timestamp: new Date().toISOString(),
+          },
+        });
+      } catch {
+        // Fail-safe: errores en el despacho saliente no interfieren con la respuesta HTTP
+      }
+
+      return reply.status(500).send({
+        statusCode: 500,
+        error: "INTERNAL_SERVER_ERROR",
+        message: "Error interno del servidor",
+      });
+    }
+
+    return reply.status(statusCode).send({
+      statusCode,
+      error: err.name || "BAD_REQUEST",
+      message: err.message ?? "Error en la solicitud",
+    });
+  });
 
   // 5. Registro de Controladores
   await app.register(createUsuariosController(usuariosService), { prefix: "/api" });

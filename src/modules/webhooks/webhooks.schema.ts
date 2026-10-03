@@ -5,6 +5,7 @@ export const WebhookEventTypes = [
   "alerta.incidente_resuelto",
   "medidor.calibracion_proxima",
   "medidor.calibracion_vencida",
+  "sistema.error_critico",
   "test.ping",
 ] as const;
 
@@ -12,6 +13,15 @@ export type WebhookEventType = (typeof WebhookEventTypes)[number];
 
 export const WebhookSeverities = ["INFO", "WARNING", "CRITICAL"] as const;
 export type WebhookSeverity = (typeof WebhookSeverities)[number];
+
+export interface SistemaErrorCriticoPayload {
+  reqId?: string;
+  method: string;
+  url: string;
+  statusCode: number;
+  errorName: string;
+  timestamp: string;
+}
 
 export interface WebhookPayload<T = unknown> {
   id: string;

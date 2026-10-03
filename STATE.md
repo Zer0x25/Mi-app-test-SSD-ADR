@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 9 Concluido (Integraciones & Despacho de Webhooks)
+## 🧭 Fase Actual: Hito 9 Extendido Concluido (Observabilidad y Triggers de Webhooks ante Errores Críticos)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Arquitectura Webhook-First saliente estandarizada, firma HMAC-SHA256, fail-safe dispatching y panel de administración completados.
+- **Estado:** Observabilidad nativa con Pino, correlación `reqId`, manejador de errores y despacho fail-safe de webhooks `sistema.error_critico` completados bajo TDD.
 - **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 10: Suite de Pruebas E2E Automatizadas con Playwright).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 170/170 tests en 23 suites, código de salida 0).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 174/174 tests en 23 suites, código de salida 0).
 
 ---
 
@@ -86,6 +86,15 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Diagnóstico sintético inmediato (`POST /api/webhooks/:id/test` con ping).
   - Pestaña de administración y modal de historial de entregas en Aurora UI.
   - Suite de pruebas expandida: 170/170 tests pasando (100%), Quality Gate 0.
+- [x] **Hito 9 Extendido: Observabilidad y Triggers de Webhooks ante Errores Críticos (Completado: 2026-10-03)**
+  - `docs/adr/0006-observabilidad-logs-estructurados-y-triggers-webhooks.md` formalizado.
+  - `specs/feat-013-logs-estructurados-y-error-webhooks.md` implementado bajo Agentic TDD.
+  - Integración nativa de Pino en Fastify según `LOG_LEVEL` dinámico por entorno.
+  - Correlación de solicitudes con `reqId`.
+  - Manejador central de errores `app.setErrorHandler` con trigger de webhook `sistema.error_critico` ante fallos 5xx.
+  - Aislamiento de errores 4xx para evitar fatiga de alertas.
+  - Resiliencia y despacho fail-safe ante caídas del receptor de webhooks.
+  - Suite de pruebas expandida: 174/174 tests pasando (100%), Quality Gate 0.
 
 ---
 
@@ -101,8 +110,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 9 concluido (`specs/feat-012-webhooks-notificaciones.md`).*
-- **Módulo objetivo:** *Integraciones, Notificaciones y Despacho de Webhooks.*
+- **Archivo:** *Hito 9 Extendido concluido (`specs/feat-013-logs-estructurados-y-error-webhooks.md`).*
+- **Módulo objetivo:** Observabilidad, Logs Estructurados (Pino), Error Handling y Triggers de Webhooks.
 
 ---
 
@@ -128,4 +137,6 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-010-pwa-offline-sync` | PWA, Service Worker, Batch Sync y SyncManager, 129/129 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-011-seguridad-healthchecks-auditoria` | Rate limiting, probes /healthz y /readyz, y Auditoria inmutable, 143/143 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-012-webhooks-notificaciones` | Webhooks salientes, firma HMAC, fail-safe, UI y 170/170 tests pasando |
+| 2026-10-03 | Antigravity | Implementación de `feat-013-logs-estructurados-y-error-webhooks` | ADR 0006, Pino nativo, reqId, errorHandler y webhooks 500 fail-safe, 174/174 tests |
+
 

@@ -1,9 +1,10 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, vi } from "vitest";
 import { buildServer } from "../src/server.js";
 import { FastifyInstance } from "fastify";
 import { PrismaClient } from "@prisma/client";
 import { signJwt } from "../src/modules/usuarios/auth.utils.js";
 import { config } from "../src/core/config.js";
+import { WebhookDispatcherService } from "../src/modules/webhooks/webhooks.service.js";
 
 describe("Fastify Server E2E Health Check & Security", () => {
   let app: FastifyInstance;
@@ -205,5 +206,112 @@ describe("Fastify Server E2E Health Check & Security", () => {
       expect(data.eventosDespachados).toBeDefined();
     });
   });
+
+  describe("Observabilidad y Triggers de Webhooks ante Errores Críticos (ADR 0006 / feat-013)", () => {
+    it("buildServer debe configurar Fastify con logger silencioso en test por defecto, pero permitir inyección personalizada", async () => {
+      const customApp = await buildServer({ serveStatic: false, logger: false });
+      expect(customApp).toBeDefined();
+      await customApp.close();
+    });
+
+    it("Error no controlado (500) debe registrar log estructurado y disparar webhook sistema.error_critico", async () => {
+      const mockWebhooksService = {
+        despacharEvento: vi.fn().mockResolvedValue([]),
+      } as unknown as WebhookDispatcherService;
+
+      const crashApp = await buildServer({
+        serveStatic: false,
+        webhooksService: mockWebhooksService,
+      });
+
+      crashApp.get("/test-unhandled-crash", async () => {
+        throw new Error("Fallo catastrófico de simulación en hardware");
+      });
+
+      await crashApp.ready();
+
+      const res = await crashApp.inject({
+        method: "GET",
+        url: "/test-unhandled-crash",
+      });
+
+      expect(res.statusCode).toBe(500);
+      const body = res.json();
+      expect(body.statusCode).toBe(500);
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR");
+      expect(body.message).toBe("Error interno del servidor");
+
+      expect(mockWebhooksService.despacharEvento).toHaveBeenCalledTimes(1);
+      expect(mockWebhooksService.despacharEvento).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "sistema.error_critico",
+          severity: "CRITICAL",
+          title: "Error Crítico de Servidor en GET /test-unhandled-crash",
+          message: "Fallo catastrófico de simulación en hardware",
+          data: expect.objectContaining({
+            method: "GET",
+            url: "/test-unhandled-crash",
+            statusCode: 500,
+            errorName: "Error",
+          }),
+        })
+      );
+
+      await crashApp.close();
+    });
+
+    it("Errores de cliente (404 / 4xx) NO deben disparar webhook de error crítico", async () => {
+      const mockWebhooksService = {
+        despacharEvento: vi.fn().mockResolvedValue([]),
+      } as unknown as WebhookDispatcherService;
+
+      const clientApp = await buildServer({
+        serveStatic: false,
+        webhooksService: mockWebhooksService,
+      });
+      await clientApp.ready();
+
+      const res404 = await clientApp.inject({
+        method: "GET",
+        url: "/api/endpoint-inexistente-totalmente",
+      });
+
+      expect(res404.statusCode).toBe(404);
+      expect(mockWebhooksService.despacharEvento).not.toHaveBeenCalled();
+
+      await clientApp.close();
+    });
+
+    it("Resiliencia Fail-Safe: fallo en el despacho del webhook no bloquea ni altera la respuesta 500", async () => {
+      const brokenWebhooksService = {
+        despacharEvento: vi.fn().mockRejectedValue(new Error("Timeout de red en endpoint receptor")),
+      } as unknown as WebhookDispatcherService;
+
+      const failSafeApp = await buildServer({
+        serveStatic: false,
+        webhooksService: brokenWebhooksService,
+      });
+
+      failSafeApp.get("/test-failsafe-crash", async () => {
+        throw new Error("Crash de base de datos");
+      });
+
+      await failSafeApp.ready();
+
+      const res = await failSafeApp.inject({
+        method: "GET",
+        url: "/test-failsafe-crash",
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(brokenWebhooksService.despacharEvento).toHaveBeenCalledTimes(1);
+      const body = res.json();
+      expect(body.statusCode).toBe(500);
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR");
+
+      await failSafeApp.close();
+    });
+  });
 });
+
 
