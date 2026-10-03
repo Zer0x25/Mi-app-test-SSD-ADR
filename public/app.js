@@ -1,5 +1,6 @@
 // ==============================================================================
-// LÓGICA FRONTEND - SISTEMA MEDIDORES
+// MEDIDORES APP CONTROLLER - ORQUESTACIÓN DE VISTA Y EVENTOS
+// ADR 0002: Arquitectura del Frontend, Design System y Desacoplamiento de Lógica
 // ==============================================================================
 
 const OPERADOR_DEMO_ID = "a0000000-0000-0000-0000-000000000001";
@@ -8,6 +9,7 @@ let instalacionesCache = [];
 let tiposMedidorCache = [];
 let medidoresOperadorCache = [];
 
+// Inicialización del Ciclo de Vida
 document.addEventListener("DOMContentLoaded", () => {
   inicializarApp();
 });
@@ -18,7 +20,7 @@ async function inicializarApp() {
 }
 
 // ------------------------------------------------------------------------------
-// Navegación de Roles
+// 1. NAVEGACIÓN Y CONMUTACIÓN DE ROLES
 // ------------------------------------------------------------------------------
 function switchRole(role) {
   currentRole = role;
@@ -43,458 +45,333 @@ function switchRole(role) {
 }
 
 // ------------------------------------------------------------------------------
-// Carga de Datos del Dashboard Admin
+// 2. DASHBOARD ADMINISTRATIVO (Auditoría & KPIs)
 // ------------------------------------------------------------------------------
 async function cargarDashboard() {
   try {
     // 1. KPIs
-    const resKpis = await fetch("/api/dashboard/kpis");
-    if (resKpis.ok) {
-      const kpis = await resKpis.json();
-      document.getElementById("kpiTotalInstalaciones").innerText = kpis.totalInstalaciones;
-      document.getElementById("kpiTotalMedidores").innerText = kpis.totalMedidores;
-      document.getElementById("kpiTotalLecturas").innerText = kpis.totalLecturas;
+    const kpis = await window.api.dashboard.getKpis();
+    document.getElementById("kpiTotalInstalaciones").innerText = kpis.totalInstalaciones;
+    document.getElementById("kpiTotalMedidores").innerText = kpis.totalMedidores;
+    document.getElementById("kpiTotalLecturas").innerText = kpis.totalLecturas;
 
-      // Pills de recursos
-      const pillsContainer = document.getElementById("kpiRecursosPills");
-      pillsContainer.innerHTML = Object.entries(kpis.medidoresPorRecurso)
-        .map(([rec, cant]) => `<span class="kpi-tag">${rec}: ${cant}</span>`)
+    const pillsContainer = document.getElementById("kpiRecursosPills");
+    pillsContainer.innerHTML = Object.entries(kpis.medidoresPorRecurso)
+      .map(([rec, cant]) => `<span class="kpi-tag">${rec}: ${cant}</span>`)
+      .join("");
+
+    // 2. Medidores Desatendidos (+24h)
+    const desatendidos = await window.api.dashboard.getDesatendidos(24);
+    document.getElementById("kpiTotalDesatendidos").innerText = desatendidos.length;
+    document.getElementById("badgeCountDesatendidos").innerText = `${desatendidos.length} pendientes`;
+
+    const listDesatendidos = document.getElementById("listaDesatendidos");
+    if (desatendidos.length === 0) {
+      listDesatendidos.innerHTML = '<div class="empty-state">✅ Todos los medidores activos están al día (menos de 24h).</div>';
+    } else {
+      listDesatendidos.innerHTML = desatendidos
+        .map((d) => window.Components.createDesatendidoItem(d))
         .join("");
     }
 
-    // 2. Medidores Desatendidos
-    const resDesatendidos = await fetch("/api/dashboard/desatendidos?horas=24");
-    if (resDesatendidos.ok) {
-      const desatendidos = await resDesatendidos.json();
-      document.getElementById("kpiTotalDesatendidos").innerText = desatendidos.length;
-      document.getElementById("badgeCountDesatendidos").innerText = `${desatendidos.length} pendientes`;
-
-      const listContainer = document.getElementById("listaDesatendidos");
-      if (desatendidos.length === 0) {
-        listContainer.innerHTML = '<div class="empty-state">✅ Todos los medidores activos están al día (menos de 24h).</div>';
-      } else {
-        listContainer.innerHTML = desatendidos.map((d) => `
-          <div class="desatendido-item">
-            <div class="desatendido-info">
-              <h4>${d.codigo}</h4>
-              <p>${d.instalacionNombre} &bull; ${d.ubicacionInterna}</p>
-            </div>
-            <div class="desatendido-delay">
-              ${d.horasSinLectura !== null ? `+${d.horasSinLectura}h sin lectura` : 'Sin lecturas registradas'}
-            </div>
-          </div>
-        `).join("");
-      }
-    }
-
     // 3. Consumos Netos por Instalación
-    const resConsumos = await fetch("/api/dashboard/consumos");
-    if (resConsumos.ok) {
-      const consumos = await resConsumos.json();
-      const consumosContainer = document.getElementById("listaConsumos");
-      if (consumos.length === 0) {
-        consumosContainer.innerHTML = '<div class="empty-state">No hay consumos acumulados registrados aún.</div>';
-      } else {
-        consumosContainer.innerHTML = consumos.map((c) => `
-          <div class="consumo-card">
-            <span class="consumo-facility">${c.instalacionNombre}</span>
-            <span class="consumo-resource">${c.recurso}</span>
-            <span class="consumo-val">${c.consumoNeto.toLocaleString()} <small style="font-size:0.8rem">${c.unidad}</small></span>
-            <span class="text-dim" style="font-size:0.75rem">${c.cantidadMedidores} medidores activos</span>
-          </div>
-        `).join("");
-      }
+    const consumos = await window.api.dashboard.getConsumos();
+    const consumosContainer = document.getElementById("listaConsumos");
+    if (consumos.length === 0) {
+      consumosContainer.innerHTML = '<div class="empty-state">No hay consumos acumulados registrados aún.</div>';
+    } else {
+      consumosContainer.innerHTML = consumos
+        .map((c) => window.Components.createConsumoCard(c))
+        .join("");
     }
 
-    // 4. Actividad Reciente
-    const resActividad = await fetch("/api/dashboard/actividad-reciente?limit=8");
-    if (resActividad.ok) {
-      const actividad = await resActividad.json();
-      const tbody = document.getElementById("tbodyActividad");
-      if (actividad.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Aún no se registran mediciones.</td></tr>';
-      } else {
-        tbody.innerHTML = actividad.map((a) => `
-          <tr>
-            <td class="font-mono" style="font-weight:600">${a.medidorCodigo}</td>
-            <td>${a.instalacionNombre}</td>
-            <td><span class="badge badge-resource">${a.recurso}</span></td>
-            <td style="font-weight:700; color:var(--accent-blue)">${a.valor.toLocaleString()} ${a.unidad}</td>
-            <td style="color:var(--text-muted)">${new Date(a.fechaLectura).toLocaleString()}</td>
-            <td style="font-size:0.8rem; color:var(--text-dim)">${a.operadorId.slice(0, 8)}...</td>
-            <td style="font-style:italic; color:var(--text-muted)">${a.notas || '-'}</td>
-          </tr>
-        `).join("");
-      }
+    // 4. Actividad Reciente de Telemetría
+    const lecturas = await window.api.lecturas.getRecientes(8);
+    const lecturasContainer = document.getElementById("listaActividadReciente");
+    if (lecturas.length === 0) {
+      lecturasContainer.innerHTML = '<div class="empty-state">No hay mediciones recientes registradas.</div>';
+    } else {
+      lecturasContainer.innerHTML = lecturas
+        .map((lec) => window.Components.createActivityItem(lec))
+        .join("");
     }
   } catch (err) {
     console.error("Error al cargar dashboard:", err);
+    window.Toast.error(err.message, "Fallo al sincronizar Dashboard");
   }
 }
 
 // ------------------------------------------------------------------------------
-// Modo Terreno (Operador)
+// 3. MODO OPERADOR (Captura en Terreno con Fichas de Medidor)
 // ------------------------------------------------------------------------------
 async function cargarSelectorOperador() {
-  const select = document.getElementById("selectInstalacionOperador");
-  select.innerHTML = '<option value="">Cargando instalaciones asignadas...</option>';
-
   try {
-    const res = await fetch(`/api/operadores/${OPERADOR_DEMO_ID}/instalaciones`);
-    if (res.ok) {
-      const instalaciones = await res.json();
-      if (instalaciones.length === 0) {
-        select.innerHTML = '<option value="">No tienes instalaciones asignadas</option>';
-        document.getElementById("gridMedidoresOperador").innerHTML = `
-          <div class="empty-state">
-            <p>No tienes instalaciones asignadas actualmente.</p>
-            <button class="btn btn-secondary mt-4" onclick="seedDemoData()">Cargar Datos Demo con Asignación</button>
-          </div>
-        `;
-        return;
-      }
+    const instalaciones = await window.api.instalaciones.getByOperador(OPERADOR_DEMO_ID);
+    const select = document.getElementById("selectOperadorInstalacion");
+    select.innerHTML = '<option value="">-- Selecciona una Instalación Asignada --</option>';
 
-      select.innerHTML = instalaciones.map((i) => `
-        <option value="${i.id}">${i.nombre} (${i.ubicacion})</option>
-      `).join("");
+    instalaciones.forEach((inst) => {
+      const opt = document.createElement("option");
+      opt.value = inst.id;
+      opt.textContent = `${inst.nombre} (${inst.direccion})`;
+      select.appendChild(opt);
+    });
 
-      cargarMedidoresOperador();
+    if (instalaciones.length > 0) {
+      select.value = instalaciones[0].id;
+      cargarMedidoresInstalacion(instalaciones[0].id);
+    } else {
+      document.getElementById("gridMedidoresOperador").innerHTML =
+        '<div class="empty-state">No tienes instalaciones asignadas para este turno.</div>';
     }
   } catch (err) {
-    console.error("Error al cargar instalaciones de operador:", err);
+    window.Toast.error(err.message, "Error al cargar instalaciones de operador");
   }
 }
 
-async function cargarMedidoresOperador() {
-  const select = document.getElementById("selectInstalacionOperador");
-  const instalacionId = select.value;
-  const grid = document.getElementById("gridMedidoresOperador");
-
-  if (!instalacionId) {
-    grid.innerHTML = '<div class="empty-state">Selecciona una instalación para listar medidores.</div>';
-    return;
+async function onOperadorInstalacionChange() {
+  const select = document.getElementById("selectOperadorInstalacion");
+  if (select.value) {
+    await cargarMedidoresInstalacion(select.value);
+  } else {
+    document.getElementById("gridMedidoresOperador").innerHTML =
+      '<div class="empty-state">Selecciona una instalación para ver los medidores a capturar.</div>';
   }
+}
 
-  grid.innerHTML = '<div class="empty-state">Cargando medidores y últimas lecturas...</div>';
-
+async function cargarMedidoresInstalacion(instalacionId) {
   try {
-    const res = await fetch(`/api/instalaciones/${instalacionId}/medidores`);
-    if (res.ok) {
-      const medidores = await res.json();
-      medidoresOperadorCache = medidores;
+    const medidores = await window.api.medidores.getByInstalacion(instalacionId);
+    medidoresOperadorCache = medidores;
 
-      if (medidores.length === 0) {
-        grid.innerHTML = '<div class="empty-state">No hay medidores activos registrados en esta instalación.</div>';
-        return;
-      }
-
-      // Obtener la última lectura de cada medidor en paralelo
-      const medidoresConLectura = await Promise.all(
-        medidores.map(async (m) => {
-          const resUltima = await fetch(`/api/medidores/${m.id}/lecturas/ultima`);
-          const ultima = resUltima.ok ? await resUltima.json() : null;
-          return { ...m, ultimaLectura: ultima };
-        })
-      );
-
-      grid.innerHTML = medidoresConLectura.map((m) => {
-        const tipo = m.tipoMedidor || {};
-        const valorLectura = m.ultimaLectura ? m.ultimaLectura.valor : 0;
-        const fechaTexto = m.ultimaLectura 
-          ? new Date(m.ultimaLectura.fechaLectura).toLocaleString()
-          : 'Sin registro previo';
-
-        return `
-          <div class="meter-card" id="meterCard_${m.id}">
-            <div class="meter-card-top">
-              <div>
-                <span class="meter-code">${m.codigo}</span>
-                <p class="meter-location">${m.ubicacionInterna}</p>
-              </div>
-              <span class="badge badge-resource">${tipo.recurso || 'RECURSO'}</span>
-            </div>
-
-            <div class="meter-reading-box">
-              <div>
-                <span class="reading-meta">Último valor registrado:</span>
-                <div class="reading-val">${valorLectura.toLocaleString()} <small style="font-size:0.9rem">${tipo.unidad || ''}</small></div>
-              </div>
-              <div class="reading-meta">${fechaTexto}</div>
-            </div>
-
-            <button class="btn btn-primary" onclick="abrirModalLectura('${m.id}')" style="width:100%; justify-content:center">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              Ingresar Medición
-            </button>
-          </div>
-        `;
-      }).join("");
+    const grid = document.getElementById("gridMedidoresOperador");
+    if (medidores.length === 0) {
+      grid.innerHTML = '<div class="empty-state">No hay medidores físicos instalados en esta sede.</div>';
+      return;
     }
+
+    grid.innerHTML = medidores
+      .map((m) => window.Components.createMeterCard(m))
+      .join("");
   } catch (err) {
-    console.error("Error al cargar medidores del operador:", err);
+    window.Toast.error(err.message, "Error al cargar medidores");
   }
 }
 
 // ------------------------------------------------------------------------------
-// Modal e Ingreso de Lectura
+// 4. MODAL DE REGISTRO DE LECTURA (Captura en Terreno)
 // ------------------------------------------------------------------------------
-function abrirModalLectura(medidorId) {
+function openModalLectura(medidorId) {
   const medidor = medidoresOperadorCache.find((m) => m.id === medidorId);
   if (!medidor) return;
 
   const tipo = medidor.tipoMedidor || {};
-  const ultimoValor = medidor.ultimaLectura ? medidor.ultimaLectura.valor : 0;
+  const meta = window.Components.getResourceMeta(tipo.recurso);
 
-  document.getElementById("lecturaMedidorId").value = medidor.id;
-  document.getElementById("lecturaTipoMedicion").value = tipo.tipoMedicion || "ACUMULATIVO";
-  document.getElementById("lecturaUltimoValor").value = ultimoValor;
+  document.getElementById("modalLecturaMedidorId").value = medidor.id;
+  document.getElementById("modalLecturaCodigo").innerText = medidor.codigo;
+  document.getElementById("modalLecturaTipo").innerText = `${tipo.nombre} (${tipo.recurso})`;
+  document.getElementById("modalLecturaUbicacion").innerText = medidor.ubicacionInterna;
+  document.getElementById("modalLecturaUnidad").innerText = tipo.unidadMedida || "";
 
-  document.getElementById("modalLecturaTitulo").innerText = `Medición: ${medidor.codigo}`;
-  document.getElementById("modalLecturaBadgeTipo").innerText = `${tipo.recurso || ''} · ${tipo.tipoMedicion || ''}`;
-  document.getElementById("infoMedidorCodigo").innerText = medidor.codigo;
-  document.getElementById("infoMedidorUbicacion").innerText = medidor.ubicacionInterna;
-  document.getElementById("infoMedidorUltimaLectura").innerText = `${ultimoValor.toLocaleString()} ${tipo.unidad || ''}`;
-  document.getElementById("spanUnidadMedida").innerText = tipo.unidad || '';
+  const valAnterior = medidor.ultimaLectura ? medidor.ultimaLectura.valor : null;
+  document.getElementById("modalLecturaAnterior").innerText =
+    valAnterior !== null ? `${window.Components.formatNumber(valAnterior)} ${tipo.unidadMedida}` : "Sin lectura previa";
 
-  const inputValor = document.getElementById("inputLecturaValor");
+  const inputValor = document.getElementById("modalLecturaInputValor");
   inputValor.value = "";
-  document.getElementById("inputLecturaNotas").value = "";
-  document.getElementById("warningLecturaDecreciente").classList.remove("visible");
+  inputValor.placeholder = valAnterior !== null ? `Mínimo ${valAnterior}` : "Ej. 1250.5";
+  inputValor.step = "any";
 
-  openModal("modalLectura");
-  setTimeout(() => inputValor.focus(), 100);
+  // Fecha y hora local predeterminada
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById("modalLecturaInputFecha").value = now.toISOString().slice(0, 16);
+
+  document.getElementById("modalLecturaObservaciones").value = "";
+
+  window.Modal.open("modalLectura");
 }
 
-function validarLecturaEnVivo() {
-  const tipoMedicion = document.getElementById("lecturaTipoMedicion").value;
-  const ultimoValor = parseFloat(document.getElementById("lecturaUltimoValor").value) || 0;
-  const nuevoValor = parseFloat(document.getElementById("inputLecturaValor").value);
-  const warning = document.getElementById("warningLecturaDecreciente");
-  const btnGuardar = document.getElementById("btnGuardarLectura");
+async function submitLectura(event) {
+  event.preventDefault();
 
-  if (tipoMedicion === "ACUMULATIVO" && !isNaN(nuevoValor) && nuevoValor < ultimoValor) {
-    warning.classList.add("visible");
-    btnGuardar.disabled = true;
-  } else {
-    warning.classList.remove("visible");
-    btnGuardar.disabled = false;
+  const medidorId = document.getElementById("modalLecturaMedidorId").value;
+  const valorRaw = document.getElementById("modalLecturaInputValor").value;
+  const fechaRaw = document.getElementById("modalLecturaInputFecha").value;
+  const obs = document.getElementById("modalLecturaObservaciones").value.trim();
+
+  const valor = parseFloat(valorRaw);
+  if (isNaN(valor)) {
+    window.Toast.warning("Por favor ingresa un valor numérico válido.");
+    return;
   }
-}
 
-async function submitLectura(e) {
-  e.preventDefault();
-  const medidorId = document.getElementById("lecturaMedidorId").value;
-  const valor = parseFloat(document.getElementById("inputLecturaValor").value);
-  const notas = document.getElementById("inputLecturaNotas").value;
+  const payload = {
+    medidorId,
+    operadorId: OPERADOR_DEMO_ID,
+    valor,
+    timestamp: new Date(fechaRaw).toISOString(),
+    observaciones: obs || undefined,
+  };
 
   try {
-    const res = await fetch("/api/lecturas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        medidorId,
-        operadorId: OPERADOR_DEMO_ID,
-        valor,
-        notas,
-      }),
-    });
+    await window.api.lecturas.registrar(payload);
+    window.Modal.close("modalLectura");
+    window.Toast.success(`Lectura de ${valor} registrada exitosamente.`);
 
-    const data = await res.json();
-
-    if (res.ok) {
-      showToast("✅ Medición guardada exitosamente con auditoría", "success");
-      closeModal("modalLectura");
-      cargarMedidoresOperador();
-      cargarDashboard();
-    } else {
-      showToast(`❌ Error de Dominio: ${data.message || data.error}`, "error");
+    // Recargar vista activa
+    const select = document.getElementById("selectOperadorInstalacion");
+    if (select.value) {
+      await cargarMedidoresInstalacion(select.value);
+    }
+    if (currentRole === "admin") {
+      await cargarDashboard();
     }
   } catch (err) {
-    showToast("Error de conexión al enviar la lectura", "error");
+    // Los errores tipados de dominio del backend se capturan limpiamente aquí
+    window.Toast.error(err.message, "Validación Rechazada");
   }
 }
 
 // ------------------------------------------------------------------------------
-// Formularios de Creación Admin
+// 5. MODALES ADMINISTRATIVOS (Altas de Catálogo)
 // ------------------------------------------------------------------------------
 async function cargarSelectsGlobales() {
   try {
-    // 1. Cargar Instalaciones
-    const resInst = await fetch("/api/operadores/" + OPERADOR_DEMO_ID + "/instalaciones");
-    // Fallback: listar instalaciones del medidor
-    const resAllInst = await fetch("/api/dashboard/kpis");
-    if (resAllInst.ok) {
-      // También poblamos selects
-      const resMed = await fetch("/api/tipos-medidor");
-      if (resMed.ok) {
-        tiposMedidorCache = await resMed.json();
-        const selectTipo = document.getElementById("selectMedidorTipo");
-        selectTipo.innerHTML = '<option value="">Selecciona tipo...</option>' + 
-          tiposMedidorCache.map((t) => `<option value="${t.id}">${t.nombre} (${t.recurso} · ${t.unidad})</option>`).join("");
-      }
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
+    instalacionesCache = await window.api.instalaciones.getAll();
+    tiposMedidorCache = await window.api.medidores.getTipos();
 
-async function submitNuevaInstalacion(e) {
-  e.preventDefault();
-  const nombre = document.getElementById("inputInstalacionNombre").value;
-  const ubicacion = document.getElementById("inputInstalacionUbicacion").value;
-
-  try {
-    const res = await fetch("/api/instalaciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, ubicacion }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      // Auto-asignar al operador demo para que le aparezca
-      await fetch(`/api/instalaciones/${data.id}/operadores`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuarioId: OPERADOR_DEMO_ID }),
+    // Select de instalación en Modal Nuevo Medidor
+    const selInst = document.getElementById("selectMedidorInstalacion");
+    if (selInst) {
+      selInst.innerHTML = '<option value="">Selecciona instalación...</option>';
+      instalacionesCache.forEach((i) => {
+        selInst.innerHTML += `<option value="${i.id}">${i.nombre}</option>`;
       });
+    }
 
-      showToast(`✅ Instalación '${nombre}' creada y asignada al operador`, "success");
-      closeModal("modalInstalacion");
-      document.getElementById("formInstalacion").reset();
-      cargarDashboard();
-      cargarSelectorOperador();
-    } else {
-      showToast(`❌ ${data.message || data.error}`, "error");
+    // Select de tipo en Modal Nuevo Medidor
+    const selTipo = document.getElementById("selectMedidorTipo");
+    if (selTipo) {
+      selTipo.innerHTML = '<option value="">Selecciona tipo...</option>';
+      tiposMedidorCache.forEach((t) => {
+        selTipo.innerHTML += `<option value="${t.id}">${t.nombre} (${t.recurso} - ${t.unidadMedida})</option>`;
+      });
     }
   } catch (err) {
-    showToast("Error de conexión", "error");
+    console.error("Error al cargar selects iniciales:", err);
   }
 }
 
-async function submitNuevoTipo(e) {
-  e.preventDefault();
-  const nombre = document.getElementById("inputTipoNombre").value;
-  const recurso = document.getElementById("selectTipoRecurso").value;
-  const unidad = document.getElementById("selectTipoUnidad").value;
-  const tipoMedicion = document.getElementById("selectTipoModo").value;
+async function submitNuevaInstalacion(event) {
+  event.preventDefault();
+  const nombre = document.getElementById("inputInstalacionNombre").value.trim();
+  const direccion = document.getElementById("inputInstalacionDireccion").value.trim();
+  const descripcion = document.getElementById("inputInstalacionDesc").value.trim();
 
   try {
-    const res = await fetch("/api/tipos-medidor", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, recurso, unidad, tipoMedicion }),
+    await window.api.instalaciones.create({
+      nombre,
+      direccion,
+      descripcion: descripcion || undefined,
     });
-    const data = await res.json();
-    if (res.ok) {
-      showToast(`✅ Tipo de medidor '${nombre}' configurado`, "success");
-      closeModal("modalTipo");
-      document.getElementById("formTipo").reset();
-      cargarSelectsGlobales();
-    } else {
-      showToast(`❌ ${data.message || data.error}`, "error");
-    }
+
+    window.Modal.close("modalInstalacion");
+    event.target.reset();
+    window.Toast.success(`Instalación «${nombre}» creada correctamente.`);
+    await cargarSelectsGlobales();
+    await cargarDashboard();
   } catch (err) {
-    showToast("Error de conexión", "error");
+    window.Toast.error(err.message, "Error al crear instalación");
   }
 }
 
-async function submitNuevoMedidor(e) {
-  e.preventDefault();
+async function submitNuevoTipo(event) {
+  event.preventDefault();
+  const nombre = document.getElementById("inputTipoNombre").value.trim();
+  const recurso = document.getElementById("selectTipoRecurso").value;
+  const unidadMedida = document.getElementById("inputTipoUnidad").value.trim();
+  const tipoMedicion = document.getElementById("selectTipoMedicion").value;
+  const descripcion = document.getElementById("inputTipoDesc").value.trim();
+
+  try {
+    await window.api.medidores.createTipo({
+      nombre,
+      recurso,
+      unidadMedida,
+      tipoMedicion,
+      descripcion: descripcion || undefined,
+    });
+
+    window.Modal.close("modalTipo");
+    event.target.reset();
+    window.Toast.success(`Tipo de medidor «${nombre}» creado.`);
+    await cargarSelectsGlobales();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al crear tipo");
+  }
+}
+
+async function submitNuevoMedidor(event) {
+  event.preventDefault();
   const instalacionId = document.getElementById("selectMedidorInstalacion").value;
   const tipoMedidorId = document.getElementById("selectMedidorTipo").value;
-  const codigo = document.getElementById("inputMedidorCodigo").value;
-  const numeroSerie = document.getElementById("inputMedidorSerie").value;
-  const ubicacionInterna = document.getElementById("inputMedidorUbicacion").value;
+  const codigo = document.getElementById("inputMedidorCodigo").value.trim();
+  const numeroSerie = document.getElementById("inputMedidorSerie").value.trim();
+  const ubicacionInterna = document.getElementById("inputMedidorUbicacion").value.trim();
 
   try {
-    const res = await fetch("/api/medidores", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        instalacionId,
-        tipoMedidorId,
-        codigo,
-        numeroSerie: numeroSerie || undefined,
-        ubicacionInterna,
-      }),
+    await window.api.medidores.create({
+      instalacionId,
+      tipoMedidorId,
+      codigo,
+      numeroSerie: numeroSerie || undefined,
+      ubicacionInterna,
     });
-    const data = await res.json();
-    if (res.ok) {
-      showToast(`✅ Medidor '${codigo}' registrado exitosamente`, "success");
-      closeModal("modalMedidor");
-      document.getElementById("formMedidor").reset();
-      cargarDashboard();
-      cargarMedidoresOperador();
-    } else {
-      showToast(`❌ ${data.message || data.error}`, "error");
-    }
+
+    window.Modal.close("modalMedidor");
+    event.target.reset();
+    window.Toast.success(`Medidor «${codigo}» dado de alta exitosamente.`);
+    await cargarDashboard();
   } catch (err) {
-    showToast("Error de conexión", "error");
+    window.Toast.error(err.message, "Error al crear medidor");
   }
 }
 
 // ------------------------------------------------------------------------------
-// Carga de Datos Demo
+// 6. UTILIDAD DEMO
 // ------------------------------------------------------------------------------
 async function seedDemoData() {
   const btn = document.getElementById("btnSeedDemo");
+  const originalHtml = btn.innerHTML;
   btn.disabled = true;
-  btn.innerText = "Cargando...";
+  btn.innerHTML = "Poblando base de datos...";
 
   try {
-    const res = await fetch("/api/demo/seed", { method: "POST" });
-    const data = await res.json();
-    if (res.ok) {
-      showToast("🚀 Datos de demostración listos (2 Sedes, 4 Tipos, 5 Medidores y Lecturas)", "success");
-      await cargarDashboard();
+    const result = await window.api.demo.seed();
+    window.Toast.success(result.message || "Datos demo poblados exitosamente.");
+    await cargarSelectsGlobales();
+    await cargarDashboard();
+    if (currentRole === "operador") {
       await cargarSelectorOperador();
-      await cargarSelectsGlobales();
-    } else {
-      showToast(`❌ Error al sembrar datos: ${data.message}`, "error");
     }
   } catch (err) {
-    showToast("Error de conexión al sembrar datos", "error");
+    window.Toast.error(err.message, "Error al cargar demo");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-      </svg>
-      Cargar Datos Demo
-    `;
+    btn.innerHTML = originalHtml;
   }
 }
 
-// ------------------------------------------------------------------------------
-// Utilidades: Modales y Toasts
-// ------------------------------------------------------------------------------
-function openModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) {
-    // Si es modal medidor, actualizar select de instalaciones
-    if (id === "modalMedidor") {
-      const selectInst = document.getElementById("selectMedidorInstalacion");
-      const selectOp = document.getElementById("selectInstalacionOperador");
-      selectInst.innerHTML = selectOp.innerHTML;
-    }
-    modal.classList.add("open");
-  }
-}
-
-function closeModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.classList.remove("open");
-}
-
-function showToast(message, type = "success") {
-  const container = document.getElementById("toastContainer");
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
-  toast.innerText = message;
-  container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.animation = "slideInRight 0.3s reverse forwards";
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
-}
+// Enlace de utilidades globales para el DOM HTML
+window.switchRole = switchRole;
+window.openModal = (id) => window.Modal.open(id);
+window.closeModal = (id) => window.Modal.close(id);
+window.openModalLectura = openModalLectura;
+window.submitLectura = submitLectura;
+window.submitNuevaInstalacion = submitNuevaInstalacion;
+window.submitNuevoTipo = submitNuevoTipo;
+window.submitNuevoMedidor = submitNuevoMedidor;
+window.seedDemoData = seedDemoData;
+window.onOperadorInstalacionChange = onOperadorInstalacionChange;

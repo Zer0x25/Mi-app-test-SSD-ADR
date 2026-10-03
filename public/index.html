@@ -1,33 +1,51 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema Medidores — Dashboard & Ingesta en Terreno</title>
+  <meta name="color-scheme" content="dark light">
+  <title>Sistema Medidores — Aurora Design System</title>
+  
+  <!-- Script Anti-Destello (Zero-FOUC) ADR 0002 -->
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('medidores-theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = (saved === 'light' || saved === 'dark') ? saved : (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Fuentes Tipográficas del Design System -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-  <!-- Header Principal -->
+  <!-- Header & Barra de Navegación Principal -->
   <header class="navbar" id="mainNavbar">
     <div class="navbar-container">
       <div class="brand-group">
-        <div class="brand-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
           </svg>
         </div>
         <div class="brand-text">
           <span class="brand-title">Sistema Medidores</span>
-          <span class="brand-subtitle">Control Energético & Fluidos</span>
+          <span class="brand-subtitle">Control Energético &amp; Fluidos</span>
         </div>
       </div>
 
-      <nav class="role-switcher" id="roleSwitcher">
+      <!-- Conmutador de Roles (Admin / Operador) -->
+      <nav class="role-switcher" id="roleSwitcher" aria-label="Selector de Perfil">
         <button class="role-btn active" id="tabAdminBtn" onclick="switchRole('admin')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
             <rect x="14" y="14" width="7" height="7"/>
@@ -36,7 +54,7 @@
           Dashboard Admin
         </button>
         <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
             <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -45,7 +63,28 @@
         </button>
       </nav>
 
+      <!-- Acciones de Cabecera: Selector de Tema & Demo Seed -->
       <div class="header-actions">
+        <!-- Botón de Conmutación Modo Claro / Oscuro -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="window.Theme.toggle()" aria-label="Cambiar tema" title="Alternar modo Claro / Oscuro">
+          <!-- Sol (se muestra en modo oscuro) -->
+          <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- Luna (se muestra en modo claro) -->
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+
         <button class="btn btn-secondary btn-sm" id="btnSeedDemo" onclick="seedDemoData()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
@@ -53,28 +92,30 @@
           Cargar Datos Demo
         </button>
         <div class="system-status">
-          <span class="status-pulse"></span>
-          <span class="status-text">En Línea</span>
+          <span class="status-pulse" aria-hidden="true"></span>
+          <span>En Línea</span>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- Contenedor Principal -->
+  <!-- Contenedor Principal de Vistas -->
   <main class="main-content">
 
     <!-- ============================================================== -->
     <!-- VISTA 1: DASHBOARD ADMINISTRADOR -->
     <!-- ============================================================== -->
-    <section class="view-panel active" id="viewAdmin">
+    <section class="view-panel active" id="viewAdmin" aria-labelledby="headingAdmin">
       <div class="view-header">
         <div>
-          <h1 class="view-title">Tablero Ejecutivo de Medición</h1>
-          <p class="view-desc">Supervisión en tiempo real del parque de medidores, alertas de desatención y consumos consolidados.</p>
+          <h1 class="view-title" id="headingAdmin">Tablero Ejecutivo de Medición</h1>
+          <p class="view-desc">Supervisión en tiempo real del parque de telemetría, alertas operativas y consumos netos auditados.</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-primary" id="btnOpenModalMedidor" onclick="openModal('modalMedidor')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
             Nuevo Medidor
           </button>
           <button class="btn btn-outline" id="btnOpenModalInstalacion" onclick="openModal('modalInstalacion')">
@@ -89,96 +130,101 @@
       <!-- KPI Grid -->
       <div class="kpi-grid">
         <div class="kpi-card" id="kpiCardInstalaciones">
-          <div class="kpi-icon icon-blue">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/></svg>
-          </div>
-          <div class="kpi-info">
-            <span class="kpi-label">Instalaciones Activas</span>
-            <span class="kpi-value" id="kpiTotalInstalaciones">--</span>
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Instalaciones Activas</span>
+              <span class="kpi-value" id="kpiTotalInstalaciones">--</span>
+            </div>
+            <div class="kpi-icon icon-blue">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+              </svg>
+            </div>
           </div>
         </div>
 
         <div class="kpi-card" id="kpiCardMedidores">
-          <div class="kpi-icon icon-emerald">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m14 14-4-4M12 6v2M12 16v2M6 12h2M16 12h2"/></svg>
-          </div>
-          <div class="kpi-info">
-            <span class="kpi-label">Medidores Físicos</span>
-            <span class="kpi-value" id="kpiTotalMedidores">--</span>
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Medidores Físicos</span>
+              <span class="kpi-value" id="kpiTotalMedidores">--</span>
+            </div>
+            <div class="kpi-icon icon-emerald">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m14 14-4-4M12 6v2M12 16v2M6 12h2M16 12h2"/>
+              </svg>
+            </div>
           </div>
           <div class="kpi-tags" id="kpiRecursosPills"></div>
         </div>
 
         <div class="kpi-card" id="kpiCardLecturas">
-          <div class="kpi-icon icon-indigo">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          </div>
-          <div class="kpi-info">
-            <span class="kpi-label">Mediciones Registradas</span>
-            <span class="kpi-value" id="kpiTotalLecturas">--</span>
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Mediciones Totales</span>
+              <span class="kpi-value" id="kpiTotalLecturas">--</span>
+            </div>
+            <div class="kpi-icon icon-indigo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </div>
           </div>
         </div>
 
-        <div class="kpi-card kpi-card-alert" id="kpiCardDesatendidos">
-          <div class="kpi-icon icon-amber">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <div class="kpi-info">
-            <span class="kpi-label">Desatendidos (>24h)</span>
-            <span class="kpi-value alert-text" id="kpiTotalDesatendidos">--</span>
+        <div class="kpi-card" id="kpiCardDesatendidos">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Desatendidos (>24h)</span>
+              <span class="kpi-value" id="kpiTotalDesatendidos" style="color: var(--status-warning);">--</span>
+            </div>
+            <div class="kpi-icon icon-amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Dashboard Split: Consumos & Alertas -->
+      <!-- Columnas del Tablero: Alertas & Consumos -->
       <div class="dashboard-columns">
-        <!-- Alertas de Desatención -->
-        <div class="card panel-column">
+        <div class="card">
           <div class="card-header">
-            <div class="card-title-group">
-              <h2 class="card-title">⚠️ Medidores que Requieren Lectura</h2>
-              <span class="badge badge-warning" id="badgeCountDesatendidos">0 pendientes</span>
-            </div>
+            <h2 class="card-title">
+              <span>⚠️ Medidores que Requieren Lectura</span>
+            </h2>
+            <span class="badge badge-amber" id="badgeCountDesatendidos">0 pendientes</span>
           </div>
           <div class="desatendidos-list" id="listaDesatendidos">
             <div class="empty-state">No hay medidores con retraso en lecturas.</div>
           </div>
         </div>
 
-        <!-- Consumo Neto por Sede -->
-        <div class="card panel-column">
+        <div class="card">
           <div class="card-header">
             <h2 class="card-title">📈 Consumo Acumulado por Instalación</h2>
           </div>
-          <div class="consumo-grid" id="listaConsumos">
+          <div class="consumo-list" id="listaConsumos">
             <div class="empty-state">No hay consumos acumulados registrados aún.</div>
           </div>
         </div>
       </div>
 
-      <!-- Feed de Actividad Reciente -->
+      <!-- Feed de Actividad Reciente de Telemetría -->
       <div class="card mt-6">
         <div class="card-header">
           <h2 class="card-title">🕒 Últimas Mediciones Ingresadas al Sistema</h2>
           <button class="btn btn-ghost btn-sm" onclick="cargarDashboard()">Refrescar</button>
         </div>
-        <div class="table-responsive">
-          <table class="table" id="tablaActividad">
-            <thead>
-              <tr>
-                <th>Código Medidor</th>
-                <th>Instalación</th>
-                <th>Recurso</th>
-                <th>Valor Registrado</th>
-                <th>Fecha y Hora</th>
-                <th>Operador</th>
-                <th>Notas</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyActividad">
-              <tr><td colspan="7" class="text-center py-4 text-muted">Cargando mediciones recientes...</td></tr>
-            </tbody>
-          </table>
+        <div id="listaActividadReciente">
+          <div class="empty-state">Cargando mediciones recientes...</div>
         </div>
       </div>
     </section>
@@ -186,22 +232,26 @@
     <!-- ============================================================== -->
     <!-- VISTA 2: MODO TERRENO (OPERADOR) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewOperador">
+    <section class="view-panel" id="viewOperador" aria-labelledby="headingOperador">
       <div class="view-header">
         <div>
-          <h1 class="view-title">Ingreso de Lecturas en Terreno</h1>
-          <p class="view-desc">Selecciona tu instalación asignada para capturar las mediciones del día.</p>
+          <h1 class="view-title" id="headingOperador">Ingreso de Lecturas en Terreno</h1>
+          <p class="view-desc">Selecciona tu instalación asignada para capturar las mediciones del turno con validación instantánea.</p>
         </div>
-        <div class="operator-facility-selector">
-          <label for="selectInstalacionOperador" class="form-label">Instalación Asignada:</label>
-          <select id="selectInstalacionOperador" class="form-select" onchange="cargarMedidoresOperador()">
-            <option value="">Cargando instalaciones...</option>
+      </div>
+
+      <!-- Selector de Instalación Asignada -->
+      <div class="operator-facility-selector">
+        <div class="form-group">
+          <label for="selectOperadorInstalacion" class="form-label">Instalación Asignada:</label>
+          <select id="selectOperadorInstalacion" class="form-select" onchange="onOperadorInstalacionChange()">
+            <option value="">Cargando instalaciones asignadas...</option>
           </select>
         </div>
       </div>
 
-      <!-- Grid de Medidores para Carga Rápida -->
-      <div class="medidores-grid" id="gridMedidoresOperador">
+      <!-- Grid de Fichas de Medidor (Reutilizable) -->
+      <div class="meters-grid" id="gridMedidoresOperador">
         <div class="empty-state">Selecciona una instalación para ver los medidores a tu cargo.</div>
       </div>
     </section>
@@ -209,91 +259,77 @@
   </main>
 
   <!-- ============================================================== -->
-  <!-- MODAL: REGISTRAR LECTURA RÁPIDA (OPERADOR) -->
+  <!-- MODAL UNIFICADO: REGISTRO DE LECTURA (OPERADOR) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalLectura">
+  <div class="modal-backdrop" id="modalLectura" role="dialog" aria-modal="true" aria-labelledby="modalLecturaTitulo">
     <div class="modal-box">
       <div class="modal-header">
-        <div>
-          <h3 class="modal-title" id="modalLecturaTitulo">Registrar Medición</h3>
-          <span class="badge" id="modalLecturaBadgeTipo">AGUA · ACUMULATIVO</span>
-        </div>
-        <button class="btn-close" onclick="closeModal('modalLectura')">&times;</button>
+        <h3 class="modal-title" id="modalLecturaTitulo">Registrar Lectura de Medición</h3>
+        <button class="btn-close" onclick="closeModal('modalLectura')" aria-label="Cerrar">&times;</button>
       </div>
       <form id="formLectura" onsubmit="submitLectura(event)">
-        <input type="hidden" id="lecturaMedidorId">
-        <input type="hidden" id="lecturaTipoMedicion">
-        <input type="hidden" id="lecturaUltimoValor">
-
+        <input type="hidden" id="modalLecturaMedidorId">
         <div class="modal-body">
-          <div class="meter-quick-info">
-            <div class="info-block">
-              <span class="info-label">Código:</span>
-              <span class="info-val font-mono" id="infoMedidorCodigo">MED-000</span>
+          <div style="background: var(--bg-surface-hover); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <strong id="modalLecturaCodigo" class="font-mono" style="font-size: 1.1rem; color: var(--text-primary);">MED-000</strong>
+              <span id="modalLecturaTipo" class="badge badge-muted">Tipo</span>
             </div>
-            <div class="info-block">
-              <span class="info-label">Ubicación Interna:</span>
-              <span class="info-val" id="infoMedidorUbicacion">Sala Bombas</span>
-            </div>
-            <div class="info-block highlight-block">
-              <span class="info-label">Última Lectura:</span>
-              <span class="info-val" id="infoMedidorUltimaLectura">0.00 M3</span>
-            </div>
-          </div>
-
-          <div class="form-group mt-4">
-            <label for="inputLecturaValor" class="form-label">
-              Nuevo Valor de Medición (<span id="spanUnidadMedida">--</span>) *
-            </label>
-            <input 
-              type="number" 
-              step="any" 
-              id="inputLecturaValor" 
-              class="form-input form-input-lg" 
-              placeholder="Ej: 1250.5" 
-              required 
-              oninput="validarLecturaEnVivo()"
-            >
-            <div class="input-warning" id="warningLecturaDecreciente">
-              ⚠️ Invariante: La nueva lectura no puede ser menor a la anterior en medidores acumulativos.
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="modalLecturaUbicacion">Ubicación</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 0.4rem;">
+              <span>Lectura Previa:</span>
+              <strong id="modalLecturaAnterior" class="font-mono">--</strong>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="inputLecturaNotas" class="form-label">Notas u Observaciones (Opcional)</label>
-            <input type="text" id="inputLecturaNotas" class="form-input" placeholder="Ej. Medición rutinaria, inspección OK">
+            <label for="modalLecturaInputValor" class="form-label">
+              Nuevo Valor de Medición (<span id="modalLecturaUnidad">--</span>) *
+            </label>
+            <input type="number" id="modalLecturaInputValor" class="form-input" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);" required>
+            <span class="form-hint">En medidores acumulativos, la cifra debe ser estrictamente mayor o igual a la previa.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="modalLecturaInputFecha" class="form-label">Fecha y Hora de Medición *</label>
+            <input type="datetime-local" id="modalLecturaInputFecha" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="modalLecturaObservaciones" class="form-label">Observaciones de Inspección (Opcional)</label>
+            <textarea id="modalLecturaObservaciones" class="form-textarea" rows="2" placeholder="Ej. Medición rutinaria, precinto intacto..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalLectura')">Cancelar</button>
-          <button type="submit" class="btn btn-success" id="btnGuardarLectura">
-            Confirmar y Guardar Lectura
-          </button>
+          <button type="submit" class="btn btn-primary">Confirmar y Registrar</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- ============================================================== -->
-  <!-- MODALES DE ADMINISTRACIÓN -->
+  <!-- MODAL: NUEVA INSTALACIÓN -->
   <!-- ============================================================== -->
-
-  <!-- Modal: Nueva Instalación -->
-  <div class="modal-backdrop" id="modalInstalacion">
+  <div class="modal-backdrop" id="modalInstalacion" role="dialog" aria-modal="true" aria-labelledby="modalInstalacionTitulo">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 class="modal-title">Crear Nueva Instalación</h3>
-        <button class="btn-close" onclick="closeModal('modalInstalacion')">&times;</button>
+        <h3 class="modal-title" id="modalInstalacionTitulo">Nueva Instalación / Sede</h3>
+        <button class="btn-close" onclick="closeModal('modalInstalacion')" aria-label="Cerrar">&times;</button>
       </div>
       <form id="formInstalacion" onsubmit="submitNuevaInstalacion(event)">
         <div class="modal-body">
           <div class="form-group">
-            <label for="inputInstalacionNombre" class="form-label">Nombre de la Sede/Planta *</label>
+            <label for="inputInstalacionNombre" class="form-label">Nombre de la Sede *</label>
             <input type="text" id="inputInstalacionNombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
           </div>
           <div class="form-group">
-            <label for="inputInstalacionUbicacion" class="form-label">Dirección / Ubicación Geográfica *</label>
-            <input type="text" id="inputInstalacionUbicacion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
+            <label for="inputInstalacionDireccion" class="form-label">Dirección Física *</label>
+            <input type="text" id="inputInstalacionDireccion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
+          </div>
+          <div class="form-group">
+            <label for="inputInstalacionDesc" class="form-label">Descripción Operativa</label>
+            <textarea id="inputInstalacionDesc" class="form-textarea" rows="2" placeholder="Ej. Central de almacenamiento y distribución"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -304,12 +340,14 @@
     </div>
   </div>
 
-  <!-- Modal: Nuevo Tipo de Medidor -->
-  <div class="modal-backdrop" id="modalTipo">
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVO TIPO DE MEDIDOR -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalTipo" role="dialog" aria-modal="true" aria-labelledby="modalTipoTitulo">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 class="modal-title">Configurar Tipo de Medidor</h3>
-        <button class="btn-close" onclick="closeModal('modalTipo')">&times;</button>
+        <h3 class="modal-title" id="modalTipoTitulo">Configurar Nuevo Tipo de Medidor</h3>
+        <button class="btn-close" onclick="closeModal('modalTipo')" aria-label="Cerrar">&times;</button>
       </div>
       <form id="formTipo" onsubmit="submitNuevoTipo(event)">
         <div class="modal-body">
@@ -329,23 +367,21 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="selectTipoUnidad" class="form-label">Unidad de Medida *</label>
-              <select id="selectTipoUnidad" class="form-select" required>
-                <option value="LITROS">Litros (L)</option>
-                <option value="M3">Metros Cúbicos (m³)</option>
-                <option value="KWH">Kilowatt-hora (kWh)</option>
-                <option value="PORCENTAJE">Nivel Porcentual (%)</option>
-                <option value="OTRO">Otra Unidad</option>
-              </select>
+              <label for="inputTipoUnidad" class="form-label">Unidad de Medida *</label>
+              <input type="text" id="inputTipoUnidad" class="form-input" placeholder="Ej. m3, L, kWh, %" required>
             </div>
           </div>
           <div class="form-group">
-            <label for="selectTipoModo" class="form-label">Modo de Medición *</label>
-            <select id="selectTipoModo" class="form-select" required>
+            <label for="selectTipoMedicion" class="form-label">Modo de Medición *</label>
+            <select id="selectTipoMedicion" class="form-select" required>
               <option value="ACUMULATIVO">Acumulativo / Secuencial (No decreciente)</option>
-              <option value="NIVEL">Nivel (Capacidad de tanque fluctuante)</option>
-              <option value="INSTANTANEO">Instantáneo (Potencia o flujo actual)</option>
+              <option value="NIVEL">Nivel (Capacidad de tanque / Fluctuante)</option>
+              <option value="INSTANTANEO">Instantáneo (Flujo o potencia en tiempo real)</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label for="inputTipoDesc" class="form-label">Descripción</label>
+            <textarea id="inputTipoDesc" class="form-textarea" rows="2" placeholder="Especificaciones técnicas o rango"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -356,12 +392,14 @@
     </div>
   </div>
 
-  <!-- Modal: Nuevo Medidor Físico -->
-  <div class="modal-backdrop" id="modalMedidor">
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVO MEDIDOR FÍSICO -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalMedidor" role="dialog" aria-modal="true" aria-labelledby="modalMedidorTitulo">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 class="modal-title">Registrar Nuevo Medidor Físico</h3>
-        <button class="btn-close" onclick="closeModal('modalMedidor')">&times;</button>
+        <h3 class="modal-title" id="modalMedidorTitulo">Registrar Nuevo Medidor Físico</h3>
+        <button class="btn-close" onclick="closeModal('modalMedidor')" aria-label="Cerrar">&times;</button>
       </div>
       <form id="formMedidor" onsubmit="submitNuevoMedidor(event)">
         <div class="modal-body">
@@ -382,11 +420,11 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="inputMedidorCodigo" class="form-label">Código Identificador Único *</label>
-              <input type="text" id="inputMedidorCodigo" class="form-input" placeholder="Ej. MED-AG-001" required>
+              <input type="text" id="inputMedidorCodigo" class="form-input font-mono" placeholder="Ej. MED-AG-001" required>
             </div>
             <div class="form-group">
               <label for="inputMedidorSerie" class="form-label">N° de Serie Físico</label>
-              <input type="text" id="inputMedidorSerie" class="form-input" placeholder="Ej. SN-883492">
+              <input type="text" id="inputMedidorSerie" class="form-input font-mono" placeholder="Ej. SN-883492">
             </div>
           </div>
           <div class="form-group">
@@ -402,9 +440,13 @@
     </div>
   </div>
 
-  <!-- Toast Notification Container -->
-  <div class="toast-container" id="toastContainer"></div>
+  <!-- Contenedor Unificado de Toasts -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
+  <!-- Capas de Arquitectura Frontend (ADR 0002) -->
+  <script src="/js/api.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/components.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

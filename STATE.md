@@ -29,12 +29,16 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - [x] `specs/feat-002-catalogo-medidores.md` (Completado: Catálogo de Tipos de Medidores y Medidores)
   - [x] `specs/feat-003-registro-lecturas.md` (Completado: Ingesta de Lecturas con Invariantes Duras)
   - [x] `specs/feat-004-dashboard-admin.md` (Completado: Métricas, KPIs y Alertas de Administración)
+- [x] **Hito 2: Arquitectura Frontend & Design System (Completado: 2026-10-03)**
+  - Aprobación inmutable de `docs/adr/0002-frontend-design-system-y-componentes.md`.
+  - Design System Aurora implementado con tokens CSS semánticos y soporte nativo Modo Claro / Oscuro.
+  - Desacoplamiento de lógica de negocio: `ApiClient` centralizado, `ModalManager`, `ToastManager` y factoría de componentes reutilizables (`createMeterCard`, etc.).
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Ninguno actualmente (todas las specs de Hito 1 concluidas).*
-- **Módulo objetivo:** *Hito 1 consolidado.*
+- **Archivo:** *En preparación para Autenticación (Hito 3).*
+- **Módulo objetivo:** *Autenticación y Seguridad (JWT).*
 
 ---
 
@@ -47,3 +51,5 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-002-catalogo-medidores` | Ciclo TDD completado, 36/36 tests pasando, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-003-registro-lecturas` | Ciclo TDD completado, 51/51 tests pasando, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-004-dashboard-admin` | Ciclo TDD completado, 59/59 tests pasando, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Creación del Servidor HTTP y Dashboard Web Base | Fastify con SQLite y seed de datos demo, 60/60 tests pasando |
+| 2026-10-03 | Antigravity | Formalización de ADR 0002 y Frontend Design System | Tokens Claro/Oscuro, ApiClient desacoplado y componentes reutilizables |
