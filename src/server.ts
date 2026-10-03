@@ -78,7 +78,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     }
   );
 
-  const prisma = options.prisma ?? new PrismaClient();
+  const prisma: PrismaClient = options.prisma ?? new PrismaClient();
 
   // 1. Plugins de transporte
   await app.register(cors, {
