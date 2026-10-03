@@ -55,6 +55,9 @@ O sus comandos equivalentes:
 - Linter y formato: `npm run lint`
 - Suite de pruebas: `npm test`
 
-**Invariante de Generación de Artefactos Tipados:**
-- En proyectos con ORMs generativos (como Prisma), es mandatorio que `prisma generate` se ejecute antes de la verificación estricta de tipos (`tsc --noEmit`) y antes de la suite de pruebas, tanto en scripts locales como en pipelines remotos.
+**Invariante de Generación y Sincronización de Artefactos Tipados:**
+- **Configuración en package.json:** En proyectos con ORMs generativos (como Prisma), el script `"typecheck"` DEBE ser configurado explícitamente como `"prisma generate && tsc --noEmit"`. Prohibido delegar el typecheck únicamente a `tsc --noEmit` sin la re-emisión previa de tipos.
+- **Tipado Explícito en Servidores y Servicios:** Toda instancia u opción que reciba o construya el cliente del ORM debe contar con anotación de tipo explícita (ej: `const prisma: PrismaClient = options.prisma ?? new PrismaClient();`) para evitar fallos de inferencia transitoria en el AST del editor.
+- **Regeneración tras Modificación de Esquema:** Cada vez que el agente agregue o modifique modelos en `schema.prisma` u homólogo, debe ejecutar inmediatamente `npx prisma generate` en disco antes de tocar el código de los repositorios o controladores.
+- **Manejo de Caché del Language Server (tsserver):** Ante desfases visuales residuales en el editor después de modificar esquemas de datos, el agente debe instruir o verificar la recarga del servidor de tipos (`TypeScript: Restart TS Server` / recarga de ventana).
 
