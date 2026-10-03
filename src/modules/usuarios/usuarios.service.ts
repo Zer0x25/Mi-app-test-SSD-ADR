@@ -57,10 +57,22 @@ export interface IUsuariosRepository {
   isUsuarioAssignedToInstalacion(usuarioId: string, instalacionId: string): Promise<boolean>;
 }
 
+export interface IAuditoriaLogger {
+  registrarEvento(input: {
+    usuarioId?: string | null;
+    accion: "CAMBIO_ROL" | "RESET_PASSWORD_ADMIN" | "BAJA_MEDIDOR" | "CAMBIO_PRECINTO" | "LOGIN_FALLIDO";
+    entidad: string;
+    entidadId: string;
+    detalles?: Record<string, unknown> | null;
+    ip?: string | null;
+  }): Promise<unknown>;
+}
+
 export class UsuariosService {
   constructor(
     private readonly repository: IUsuariosRepository,
-    private readonly jwtSecret: string
+    private readonly jwtSecret: string,
+    private readonly auditoria?: IAuditoriaLogger
   ) {}
 
   /**
@@ -154,7 +166,7 @@ export class UsuariosService {
    * Restablecimiento administrativo de contraseña (por ADMIN):
    * Actualiza la contraseña del usuario sin necesidad de ingresar la clave anterior.
    */
-  async resetPasswordAdmin(usuarioId: string, rawInput: ResetPasswordInput): Promise<void> {
+  async resetPasswordAdmin(usuarioId: string, rawInput: ResetPasswordInput, actorId?: string): Promise<void> {
     const input = ResetPasswordInputSchema.parse(rawInput);
 
     const usuario = await this.repository.findById(usuarioId);
@@ -164,6 +176,16 @@ export class UsuariosService {
 
     const nuevoHash = await hashPassword(input.passwordNueva);
     await this.repository.update(usuarioId, { passwordHash: nuevoHash });
+
+    if (this.auditoria) {
+      await this.auditoria.registrarEvento({
+        usuarioId: actorId ?? null,
+        accion: "RESET_PASSWORD_ADMIN",
+        entidad: "USUARIO",
+        entidadId: usuarioId,
+        detalles: { email: usuario.email },
+      });
+    }
   }
 
   /**
@@ -190,7 +212,7 @@ export class UsuariosService {
   /**
    * Edita los atributos del usuario y sincroniza sus instalaciones asignadas (ADMIN).
    */
-  async editarUsuario(id: string, rawInput: EditarUsuarioInput): Promise<UsuarioResponse> {
+  async editarUsuario(id: string, rawInput: EditarUsuarioInput, actorId?: string): Promise<UsuarioResponse> {
     const input = EditarUsuarioInputSchema.parse(rawInput);
 
     const usuario = await this.repository.findById(id);
@@ -207,6 +229,20 @@ export class UsuariosService {
 
     if (input.instalacionesIds !== undefined) {
       await this.repository.syncAsignaciones(id, input.instalacionesIds);
+    }
+
+    if (this.auditoria && input.rol !== undefined && input.rol !== usuario.rol) {
+      await this.auditoria.registrarEvento({
+        usuarioId: actorId ?? null,
+        accion: "CAMBIO_ROL",
+        entidad: "USUARIO",
+        entidadId: id,
+        detalles: {
+          email: usuario.email,
+          rolAnterior: usuario.rol,
+          rolNuevo: input.rol,
+        },
+      });
     }
 
     return UsuarioResponseSchema.parse(actualizado);

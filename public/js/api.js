@@ -259,6 +259,18 @@ class ApiClient {
     getFichaMedidor: (id) =>
       this.request(`/api/mantenimiento/medidor/${encodeURIComponent(id)}`),
   };
+
+  // --- Dominio: Auditoría & Trazabilidad (feat-011) ---
+  auditoria = {
+    getEventos: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.accion) q.append("accion", params.accion);
+      if (params.entidad) q.append("entidad", params.entidad);
+      if (params.usuarioId) q.append("usuarioId", params.usuarioId);
+      if (params.limit) q.append("limit", String(params.limit));
+      return this.request(`/api/auditoria?${q.toString()}`);
+    },
+  };
 }
 
 // Instancia global unificada

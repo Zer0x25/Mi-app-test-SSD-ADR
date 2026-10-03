@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 7 Concluido (Modo Offline & PWA para Captura en Terreno)
+## 🧭 Fase Actual: Hito 8 Concluido (Seguridad, Healthchecks & Auditoría)
 
 - **Proyecto:** `Medidores`
-- **Estado:** PWA, Service Worker, captura fuera de línea resiliente y endpoint batch-sync completados y validados.
-- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 8: Seguridad & Observabilidad en Producción).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 129/129 tests en 19 suites, código de salida 0).
+- **Estado:** Rate limiting en Auth, probes operacionales /healthz y /readyz, y pista de auditoría inmutable completados y verificados.
+- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 9: Despacho de Notificaciones & Webhooks).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 143/143 tests en 21 suites, código de salida 0).
 
 ---
 
@@ -66,15 +66,21 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - [x] Indicadores de conectividad (Online/Offline) y botón de sincronización en Aurora UI.
   - [x] Auto-sincronización automática tras detección de evento `online`.
   - [x] Suite de pruebas expandida: 129/129 tests pasando (100%), Quality Gate 0.
+- [x] **Hito 8: Seguridad & Observabilidad en Producción (Completado: 2026-10-03)**
+  - `docs/adr/0004-seguridad-healthchecks-y-auditoria.md` formalizado.
+  - `specs/feat-011-seguridad-healthchecks-auditoria.md` implementado bajo Agentic TDD.
+  - Rate Limiting en autenticación (`POST /api/auth/login`) contra ataques de fuerza bruta (`@fastify/rate-limit`, máx 5 intentos/min, HTTP 429).
+  - Endpoints de salud operativa: `/healthz` (liveness con uptime) y `/readyz` (readiness con ping activo a SQLite con 200 OK o 503).
+  - Pista de Auditoría inmutable (Audit Log): modelo `AuditoriaEvento` y módulo `src/modules/auditoria/` para registrar eventos críticos (cambios de rol, bajas de medidores, rupturas de precintos y reset de contraseñas).
+  - Consulta RBAC de auditoría (`GET /api/auditoria`) restringida exclusivamente a administradores.
+  - Pestaña "Auditoría & Seguridad" en la interfaz Aurora UI con filtros por tipo de acción.
+  - Probes en `Dockerfile`, `docker-compose.yml` y `docker-compose.staging.yml` actualizados a `/readyz`.
+  - Suite de pruebas expandida: 143/143 tests pasando (100%), Quality Gate 0.
 
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 8: Seguridad & Observabilidad en Producción**
-  - Rate Limiting en autenticación (`POST /api/auth/login`) contra ataques de fuerza bruta (`@fastify/rate-limit`).
-  - Endpoints de salud operativa `/healthz` (liveness) y `/readyz` (readiness con ping activo a base de datos).
-  - Pista de Auditoría inmutable (Audit Log): modelo `AuditoriaEvento` para registrar cambios de rol, bajas de medidores y rupturas de precintos.
 - [ ] **Hito 9: Despacho de Notificaciones & Webhooks**
   - Integración saliente para alertas críticas (`FUGA_PROBABLE`, `SALTO_CONSUMO > 50%`).
   - Webhooks configurables (Slack / Discord / Teams / HTTP genérico).
@@ -89,8 +95,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 7 concluido (`specs/feat-010-pwa-offline-sync.md`).*
-- **Módulo objetivo:** *Modo Offline, PWA y Sincronización Resiliente.*
+- **Archivo:** *Hito 8 concluido (`specs/feat-011-seguridad-healthchecks-auditoria.md`).*
+- **Módulo objetivo:** *Seguridad, Healthchecks & Auditoría Inmutable.*
 
 ---
 
@@ -114,3 +120,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `infra-001-docker-y-cicd` | Multi-stage Dockerfile, docker-compose, CI workflow, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `infra-002-entorno-staging` | Staging compose, Zod NODE_ENV staging, 126/126 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-010-pwa-offline-sync` | PWA, Service Worker, Batch Sync y SyncManager, 129/129 tests, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `feat-011-seguridad-healthchecks-auditoria` | Rate limiting, probes /healthz y /readyz, y Auditoria inmutable, 143/143 tests, Quality Gate 0 |

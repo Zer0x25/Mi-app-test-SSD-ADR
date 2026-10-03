@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import Fastify, { FastifyInstance, FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
+import rateLimit from "@fastify/rate-limit";
 import { PrismaClient } from "@prisma/client";
 import { config } from "./core/config.js";
 
@@ -14,6 +15,7 @@ import { PrismaDashboardRepository } from "./modules/dashboard/dashboard.reposit
 import { PrismaUsuariosRepository } from "./modules/usuarios/usuarios.repository.js";
 import { PrismaReportesRepository } from "./modules/reportes/reportes.repository.js";
 import { PrismaAlertasRepository } from "./modules/alertas/alertas.repository.js";
+import { PrismaAuditoriaRepository } from "./modules/auditoria/auditoria.repository.js";
 
 // Servicios y Controladores
 import { InstalacionesService } from "./modules/instalaciones/instalaciones.service.js";
@@ -40,6 +42,8 @@ import { createAlertasController } from "./modules/alertas/alertas.controller.js
 import { PrismaMantenimientoRepository } from "./modules/mantenimiento/mantenimiento.repository.js";
 import { MantenimientoService } from "./modules/mantenimiento/mantenimiento.service.js";
 import { createMantenimientoController } from "./modules/mantenimiento/mantenimiento.controller.js";
+import { AuditoriaService } from "./modules/auditoria/auditoria.service.js";
+import { createAuditoriaController } from "./modules/auditoria/auditoria.controller.js";
 import { hashPassword } from "./modules/usuarios/auth.utils.js";
 
 // Errores
@@ -80,9 +84,19 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   const prisma: PrismaClient = options.prisma ?? new PrismaClient();
 
-  // 1. Plugins de transporte
+  // 1. Plugins de transporte y seguridad
   await app.register(cors, {
     origin: true,
+  });
+
+  await app.register(rateLimit, {
+    global: false,
+    errorResponseBuilder: (_req, context) => ({
+      statusCode: 429,
+      error: "TOO_MANY_REQUESTS",
+      message: `Demasiados intentos de acceso. Por favor intente nuevamente en ${Math.ceil(context.ttl / 1000)} segundos.`,
+      retryAfter: Math.ceil(context.ttl / 1000),
+    }),
   });
 
   if (options.serveStatic !== false) {
@@ -94,8 +108,11 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   }
 
   // 2. Instanciación de Repositorios y Servicios
+  const auditoriaRepo = new PrismaAuditoriaRepository(prisma);
+  const auditoriaService = new AuditoriaService(auditoriaRepo);
+
   const usuariosRepo = new PrismaUsuariosRepository(prisma);
-  const usuariosService = new UsuariosService(usuariosRepo, config.JWT_SECRET);
+  const usuariosService = new UsuariosService(usuariosRepo, config.JWT_SECRET, auditoriaService);
 
   // Hook de autenticación y RBAC transversal
   app.addHook("preHandler", async (request, reply) => {
@@ -170,9 +187,52 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         });
       }
     }
+
+    // Regla RBAC 4: Auditoría solo accesible para ADMIN
+    if (request.url.startsWith("/api/auditoria")) {
+      if (!user) {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Cabecera Authorization con formato Bearer <token> requerida.",
+        });
+      }
+      if (user.rol !== "ADMIN") {
+        return reply.status(403).send({
+          error: "ACCESO_DENEGADO",
+          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para consultar auditoría.`,
+        });
+      }
+    }
   });
 
-  // 3. Health check y Seed Demo
+  // 3. Probes de Salud Operativa y Seed Demo
+  app.get("/healthz", async () => {
+    return {
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    };
+  });
+
+  app.get("/readyz", async (_req, reply) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return {
+        status: "ready",
+        database: "connected",
+        timestamp: new Date().toISOString(),
+      };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      return reply.status(503).send({
+        status: "not_ready",
+        database: "disconnected",
+        timestamp: new Date().toISOString(),
+        error: errMsg,
+      });
+    }
+  });
+
   app.get("/api/health", async () => {
     return {
       status: "ok",
@@ -364,6 +424,43 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         }
       }
 
+      // 9. Pista de Auditoría inicial de prueba
+      const countAuditoria = await prisma.auditoriaEvento.count();
+      if (countAuditoria === 0) {
+        const medidorAgNorteId = medidoresMap.get("MED-AG-NORTE-01");
+        await prisma.auditoriaEvento.createMany({
+          data: [
+            {
+              accion: "CAMBIO_ROL",
+              entidad: "USUARIO",
+              entidadId: supervisorUser.id,
+              usuarioId: null,
+              detalles: JSON.stringify({ rolAnterior: "OPERADOR", rolNuevo: "SUPERVISOR", email: "supervisor@medidores.cl" }),
+              ip: "127.0.0.1",
+              createdAt: new Date(ahora - 5 * 24 * 3600 * 1000),
+            },
+            ...(medidorAgNorteId
+              ? [
+                  {
+                    accion: "CAMBIO_PRECINTO",
+                    entidad: "MEDIDOR",
+                    entidadId: medidorAgNorteId,
+                    usuarioId: null,
+                    detalles: JSON.stringify({
+                      medidorCodigo: "MED-AG-NORTE-01",
+                      precintoAnterior: "PREC-ANT-90",
+                      precintoNuevo: "PREC-AG-2026-01",
+                      tecnicoResponsable: "Ing. Rodrigo Silva (Dictuc)",
+                    }),
+                    ip: "127.0.0.1",
+                    createdAt: new Date(ahora - 90 * 24 * 3600 * 1000),
+                  },
+                ]
+              : []),
+          ],
+        });
+      }
+
       return reply.status(200).send({
         status: "ok",
         message: "Demostración y usuarios RBAC inicializados exitosamente",
@@ -444,7 +541,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   const alertasService = new AlertasService(alertasRepo);
 
   const mantenimientoRepo = new PrismaMantenimientoRepository(prisma);
-  const mantenimientoService = new MantenimientoService(mantenimientoRepo);
+  const mantenimientoService = new MantenimientoService(mantenimientoRepo, auditoriaService);
 
   // 5. Registro de Controladores
   await app.register(createUsuariosController(usuariosService), { prefix: "/api" });
@@ -455,6 +552,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await app.register(createReportesController(reportesService), { prefix: "/api" });
   await app.register(createAlertasController(alertasService), { prefix: "/api" });
   await app.register(createMantenimientoController(mantenimientoService), { prefix: "/api" });
+  await app.register(createAuditoriaController(auditoriaService), { prefix: "/api" });
 
   // 6. Endpoints complementarios para Frontend & RBAC
   app.get("/api/instalaciones", async () => {

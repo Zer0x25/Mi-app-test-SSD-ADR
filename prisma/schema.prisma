@@ -176,3 +176,19 @@ model RegistroMantenimiento {
 
   @@map("registros_mantenimiento")
 }
+
+model AuditoriaEvento {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  accion    String
+  entidad   String
+  entidadId String
+  detalles  String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([accion])
+  @@index([createdAt(sort: Desc)])
+  @@map("auditoria_eventos")
+}

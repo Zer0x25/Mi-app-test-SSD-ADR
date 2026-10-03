@@ -58,6 +58,14 @@ export function createUsuariosController(service: UsuariosService): FastifyPlugi
     // --------------------------------------------------------------------------
     fastify.post(
       "/auth/login",
+      {
+        config: {
+          rateLimit: {
+            max: 5,
+            timeWindow: 60 * 1000,
+          },
+        },
+      },
       async (request: FastifyRequest<{ Body: LoginInput }>, reply: FastifyReply) => {
         try {
           const result = await service.login(request.body);
@@ -174,7 +182,11 @@ export function createUsuariosController(service: UsuariosService): FastifyPlugi
           if (user.rol !== "ADMIN") {
             throw new AccesoDenegadoError("editar usuarios", user.rol);
           }
-          const actualizado = await service.editarUsuario(request.params.id, request.body);
+          const actualizado = await service.editarUsuario(
+            request.params.id,
+            request.body,
+            user.userId
+          );
           return reply.status(200).send(actualizado);
         } catch (error) {
           if (isDomainError(error)) {
@@ -206,7 +218,7 @@ export function createUsuariosController(service: UsuariosService): FastifyPlugi
           if (user.rol !== "ADMIN") {
             throw new AccesoDenegadoError("restablecer contraseñas", user.rol);
           }
-          await service.resetPasswordAdmin(request.params.id, request.body);
+          await service.resetPasswordAdmin(request.params.id, request.body, user.userId);
           return reply.status(200).send({
             status: "ok",
             message: "Contraseña restablecida exitosamente por el administrador.",

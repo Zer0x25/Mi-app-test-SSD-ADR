@@ -152,6 +152,7 @@ function aplicarPermisosUI() {
   const tabAlertasBtn = document.getElementById("tabAlertasBtn");
   const tabMantenimientoBtn = document.getElementById("tabMantenimientoBtn");
   const tabUsuariosBtn = document.getElementById("tabUsuariosBtn");
+  const tabAuditoriaBtn = document.getElementById("tabAuditoriaBtn");
   const tabOperadorBtn = document.getElementById("tabOperadorBtn");
 
   if (btnNuevaInstalacion) {
@@ -172,6 +173,7 @@ function aplicarPermisosUI() {
   if (tabAlertasBtn) tabAlertasBtn.style.display = esOperador ? "none" : "inline-flex";
   if (tabMantenimientoBtn) tabMantenimientoBtn.style.display = esOperador ? "none" : "inline-flex";
   if (tabUsuariosBtn) tabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  if (tabAuditoriaBtn) tabAuditoriaBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   if (tabOperadorBtn) tabOperadorBtn.style.display = "inline-flex";
 
   actualizarResumenAlertas();
@@ -191,6 +193,11 @@ function switchRole(role) {
     return;
   }
 
+  if (role === "auditoria" && currentUser?.rol !== "ADMIN") {
+    window.Toast.warning("La pista de auditoría está reservada para ADMIN.", "Permisos");
+    return;
+  }
+
   currentRoleTab = role;
   const tabs = [
     document.getElementById("tabAdminBtn"),
@@ -198,6 +205,7 @@ function switchRole(role) {
     document.getElementById("tabAlertasBtn"),
     document.getElementById("tabMantenimientoBtn"),
     document.getElementById("tabUsuariosBtn"),
+    document.getElementById("tabAuditoriaBtn"),
     document.getElementById("tabOperadorBtn"),
   ];
   const views = [
@@ -206,6 +214,7 @@ function switchRole(role) {
     document.getElementById("viewAlertas"),
     document.getElementById("viewMantenimiento"),
     document.getElementById("viewUsuarios"),
+    document.getElementById("viewAuditoria"),
     document.getElementById("viewOperador"),
   ];
 
@@ -236,6 +245,10 @@ function switchRole(role) {
     document.getElementById("tabUsuariosBtn")?.classList.add("active");
     document.getElementById("viewUsuarios")?.classList.add("active");
     cargarUsuariosAdmin();
+  } else if (role === "auditoria") {
+    document.getElementById("tabAuditoriaBtn")?.classList.add("active");
+    document.getElementById("viewAuditoria")?.classList.add("active");
+    cargarEventosAuditoria();
   } else {
     document.getElementById("tabOperadorBtn")?.classList.add("active");
     document.getElementById("viewOperador")?.classList.add("active");
@@ -1427,5 +1440,68 @@ window.onMantTipoChange = onMantTipoChange;
 window.submitRegistrarMantenimiento = submitRegistrarMantenimiento;
 window.cargarMantenimientosBitacora = cargarMantenimientosBitacora;
 window.consultarFichaMedidor = consultarFichaMedidor;
+
+// ------------------------------------------------------------------------------
+// 8. AUDITORÍA & TRAZABILIDAD INMUTABLE (HITO 8 / FEAT-011)
+// ------------------------------------------------------------------------------
+async function cargarEventosAuditoria() {
+  const tbody = document.getElementById("tbodyAuditoria");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Consultando bitácora de auditoría inmutable...</td></tr>';
+
+  try {
+    const accionFiltro = document.getElementById("filtroAuditoriaAccion")?.value || undefined;
+    const eventos = await window.api.auditoria.getEventos({
+      accion: accionFiltro,
+      limit: 50,
+    });
+
+    if (!eventos || eventos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No se registran eventos de auditoría para los filtros seleccionados.</td></tr>';
+      return;
+    }
+
+    const accionBadges = {
+      CAMBIO_ROL: '<span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3);">🔄 Cambio de Rol</span>',
+      RESET_PASSWORD_ADMIN: '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">🔑 Reset Clave</span>',
+      BAJA_MEDIDOR: '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">⛔ Baja Medidor</span>',
+      CAMBIO_PRECINTO: '<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">🔒 Precinto</span>',
+      LOGIN_FALLIDO: '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">⚠️ Login Fallido</span>',
+    };
+
+    tbody.innerHTML = eventos
+      .map((e) => {
+        const fecha = new Date(e.createdAt).toLocaleString("es-CL", { timeZone: "UTC" });
+        const badge = accionBadges[e.accion] || `<span class="badge badge-muted">${escapeHtml(e.accion)}</span>`;
+        let detallesHtml = "-";
+        if (e.detalles) {
+          try {
+            detallesHtml = `<pre style="margin: 0; font-size: 0.75rem; white-space: pre-wrap; font-family: var(--font-mono);">${escapeHtml(JSON.stringify(e.detalles, null, 1))}</pre>`;
+          } catch {
+            detallesHtml = escapeHtml(String(e.detalles));
+          }
+        }
+
+        return `
+          <tr>
+            <td style="white-space: nowrap; font-size: 0.8rem; font-family: var(--font-mono);">${fecha} UTC</td>
+            <td>${badge}</td>
+            <td><span class="badge badge-muted">${escapeHtml(e.entidad)}</span></td>
+            <td class="font-mono" style="font-size: 0.85rem; color: var(--text-primary);">${escapeHtml(e.entidadId)}</td>
+            <td>${detallesHtml}</td>
+            <td style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">${escapeHtml(e.ip || "127.0.0.1")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    console.error("Error al cargar auditoría:", error);
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--status-danger);">Error al cargar bitácora: ${escapeHtml(error.message)}</td></tr>`;
+    window.Toast.error(error.message, "Auditoría");
+  }
+}
+
+window.cargarEventosAuditoria = cargarEventosAuditoria;
 
 

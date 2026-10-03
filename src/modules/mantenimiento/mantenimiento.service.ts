@@ -53,8 +53,22 @@ export interface IMantenimientoRepository {
   listRegistros(filtro?: FiltroMantenimientos): Promise<MantenimientoEntity[]>;
 }
 
+export interface IMantenimientoAuditoriaLogger {
+  registrarEvento(input: {
+    usuarioId?: string | null;
+    accion: "CAMBIO_ROL" | "RESET_PASSWORD_ADMIN" | "BAJA_MEDIDOR" | "CAMBIO_PRECINTO" | "LOGIN_FALLIDO";
+    entidad: string;
+    entidadId: string;
+    detalles?: Record<string, unknown> | null;
+    ip?: string | null;
+  }): Promise<unknown>;
+}
+
 export class MantenimientoService {
-  constructor(private readonly repository: IMantenimientoRepository) {}
+  constructor(
+    private readonly repository: IMantenimientoRepository,
+    private readonly auditoria?: IMantenimientoAuditoriaLogger
+  ) {}
 
   async registrarMantenimiento(
     rawInput: RegistrarMantenimientoInput
@@ -131,6 +145,43 @@ export class MantenimientoService {
       nuevoMedidorCodigo: input.nuevoMedidorCodigo ?? null,
       observaciones: input.observaciones ?? null,
     });
+
+    if (this.auditoria) {
+      if (input.tipo === "BAJA_TECNICA" || input.tipo === "REEMPLAZO_EQUIPO") {
+        await this.auditoria.registrarEvento({
+          usuarioId: null,
+          accion: "BAJA_MEDIDOR",
+          entidad: "MEDIDOR",
+          entidadId: input.medidorId,
+          detalles: {
+            medidorCodigo: medidor.codigo,
+            tipoMantenimiento: input.tipo,
+            tecnicoResponsable: input.tecnicoResponsable,
+            motivoBaja: input.motivoBaja ?? null,
+            nuevoMedidorCodigo: input.nuevoMedidorCodigo ?? null,
+            lecturaRetiro: input.lecturaRetiro ?? null,
+          },
+        });
+      }
+
+      if (
+        input.tipo === "CAMBIO_PRECINTO" ||
+        (input.numeroPrecintoNuevo && input.numeroPrecintoNuevo !== medidor.precintoActual)
+      ) {
+        await this.auditoria.registrarEvento({
+          usuarioId: null,
+          accion: "CAMBIO_PRECINTO",
+          entidad: "MEDIDOR",
+          entidadId: input.medidorId,
+          detalles: {
+            medidorCodigo: medidor.codigo,
+            precintoAnterior: medidor.precintoActual ?? input.numeroPrecintoAnterior ?? null,
+            precintoNuevo: input.numeroPrecintoNuevo,
+            tecnicoResponsable: input.tecnicoResponsable,
+          },
+        });
+      }
+    }
 
     return {
       id: registro.id,

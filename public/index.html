@@ -90,6 +90,12 @@
           </svg>
           Usuarios
         </button>
+        <button class="role-btn" id="tabAuditoriaBtn" onclick="switchRole('auditoria')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Auditoría
+        </button>
         <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -647,6 +653,62 @@
             <tbody id="tbodyMantenimientosBitacora">
               <tr>
                 <td colspan="9" class="empty-state">Cargando bitácora de intervenciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 7: PISTA DE AUDITORÍA & SEGURIDAD (FEAT-011 / HITO 8) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewAuditoria" aria-labelledby="headingAuditoria">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingAuditoria">Pista de Auditoría &amp; Seguridad Operativa</h1>
+          <p class="view-desc">Bitácora inmutable de eventos críticos: cambios de rol, restablecimientos administrativos, bajas de equipos y cambios de precintos.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="cargarEventosAuditoria()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            Refrescar
+          </button>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <h2 class="card-title">🛡️ Eventos Críticos Registrados</h2>
+          <div class="filters-row" style="display: flex; gap: 10px; align-items: center;">
+            <label for="filtroAuditoriaAccion" style="font-size: 0.85rem; color: var(--text-secondary);">Filtrar Acción:</label>
+            <select class="form-input form-select" id="filtroAuditoriaAccion" onchange="cargarEventosAuditoria()" style="width: auto; min-width: 180px;">
+              <option value="">Todas las acciones</option>
+              <option value="CAMBIO_ROL">Cambios de Rol</option>
+              <option value="RESET_PASSWORD_ADMIN">Reset de Contraseña</option>
+              <option value="BAJA_MEDIDOR">Baja de Medidor</option>
+              <option value="CAMBIO_PRECINTO">Cambio de Precinto</option>
+              <option value="LOGIN_FALLIDO">Login Fallido</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaAuditoria">
+            <thead>
+              <tr>
+                <th>Fecha / Hora (UTC)</th>
+                <th>Acción</th>
+                <th>Entidad</th>
+                <th>ID Referencia</th>
+                <th>Detalles de Trazabilidad</th>
+                <th>IP Origen</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAuditoria">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando bitácora de auditoría...</td>
               </tr>
             </tbody>
           </table>
