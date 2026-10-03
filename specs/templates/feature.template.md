@@ -52,6 +52,15 @@ export type [Modulo]ErrorCode =
   | "[MODULO]_NOT_FOUND"
   | "[MODULO]_ALREADY_EXISTS"
   | "INVALID_OPERATION";
+
+export class [Entidad]NotFoundError extends DomainError {
+  readonly code = "[MODULO]_NOT_FOUND";
+  readonly statusCode = 404;
+
+  constructor(id: string) {
+    super(`No se encontró el registro con ID «${id}».`);
+  }
+}
 ```
 - Cada error de dominio debe mapearse a un código HTTP semántico en el controlador (400, 401, 403, 404, 409).
 - Prohibido lanzar `throw new Error("mensaje")` genéricos sin código de dominio tipado.

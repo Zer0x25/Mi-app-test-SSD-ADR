@@ -29,7 +29,17 @@ Habiéndose completado el Hito 0 y compilada la arquitectura base en `docs/adr/0
 ### 4. Manejo de Errores de Dominio Tipados
 - Queda terminantemente prohibido lanzar excepciones genéricas (`throw new Error("mensaje")`) o usar strings mágicos para identificar fallos.
 - Todo módulo debe declarar un tipo o enum con sus errores de dominio (ej. `export type [Modulo]ErrorCode = "MEDIDOR_NOT_FOUND" | "LECTURA_DECRECIENTE_PROHIBIDA"`).
-- Los controladores HTTP son responsables exclusivos de capturar estos errores de dominio y traducirlos a códigos HTTP semánticos (400, 401, 403, 404, 409, 422).
+- Toda clase que herede de `DomainError` (`src/core/errors.ts`) debe implementar obligatoriamente las propiedades `readonly code: string` y `readonly statusCode: number`, pasando a `super(message, details)` únicamente el mensaje y metadata contextual opcional:
+  ```typescript
+  export class MiErrorDomain extends DomainError {
+    readonly code = "MI_CODIGO_ERROR";
+    readonly statusCode = 400; // o 401, 403, 404, 409, 422, 503
+    constructor(motivo: string) {
+      super(`Mensaje explicativo: ${motivo}`);
+    }
+  }
+  ```
+- Los controladores HTTP son responsables exclusivos de capturar estos errores de dominio y traducirlos a códigos HTTP semánticos (400, 401, 403, 404, 409, 422, 503).
 
 ### 5. Configuración y Secretos
 - Prohibido acceder directamente a `process.env.*` en servicios, repositorios o controladores.
