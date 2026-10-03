@@ -7,9 +7,9 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ## 🧭 Fase Actual: Hito 1 (Desarrollo Activo de Features)
 
 - **Proyecto:** `Medidores`
-- **Estado:** `feat-003` completada exitosamente. Listo para el módulo de dashboard (`feat-004`).
-- **Acción requerida para comenzar:** Definir el siguiente requerimiento en `specs/feat-004-dashboard-admin.md`.
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 51/51 tests, código de salida 0).
+- **Estado:** Módulos de dominio (`feat-001`, `feat-002`, `feat-003`, `feat-004`) completados exitosamente.
+- **Acción requerida para comenzar:** Sistema base completo. En espera de nuevas funcionalidades o servidor principal/interfaz de usuario.
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 59/59 tests, código de salida 0).
 
 ---
 
@@ -24,17 +24,17 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Plantilla de especificación de dominio `specs/templates/feature.md`.
   - Andamiaje funcional con TypeScript, Fastify, Prisma, Zod, Vitest y ESLint.
   - Quality Gate verificado con salida exitosa 0.
-- [ ] **Hito 1: Desarrollo de Features de Dominio (En Progreso)**
+- [x] **Hito 1: Desarrollo de Features de Dominio (Completado: 2026-10-03)**
   - [x] `specs/feat-001-instalaciones-y-usuarios.md` (Completado: Módulo de Instalaciones y Asignaciones)
   - [x] `specs/feat-002-catalogo-medidores.md` (Completado: Catálogo de Tipos de Medidores y Medidores)
   - [x] `specs/feat-003-registro-lecturas.md` (Completado: Ingesta de Lecturas con Invariantes Duras)
-  - [ ] `specs/feat-004-dashboard-admin.md` (Pendiente: Métricas y Reportes)
+  - [x] `specs/feat-004-dashboard-admin.md` (Completado: Métricas, KPIs y Alertas de Administración)
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Ninguno actualmente (esperando siguiente requerimiento).*
-- **Módulo objetivo:** *Pendiente (`dashboard`).*
+- **Archivo:** *Ninguno actualmente (todas las specs de Hito 1 concluidas).*
+- **Módulo objetivo:** *Hito 1 consolidado.*
 
 ---
 
@@ -46,3 +46,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-001-instalaciones-y-usuarios` | Ciclo TDD completado, 19/19 tests pasando, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-002-catalogo-medidores` | Ciclo TDD completado, 36/36 tests pasando, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `feat-003-registro-lecturas` | Ciclo TDD completado, 51/51 tests pasando, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `feat-004-dashboard-admin` | Ciclo TDD completado, 59/59 tests pasando, Quality Gate 0 |
