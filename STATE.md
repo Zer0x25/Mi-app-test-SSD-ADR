@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 5 (Consolidación Operativa y Metrológica)
+## 🧭 Fase Actual: Hito 6 Concluido (Empaquetamiento Docker, Persistencia & CI/CD)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Módulos de dominio (`feat-001` a `feat-009`) completados exitosamente.
-- **Acción requerida para comenzar:** Sistema base completo. En espera de nuevas directrices o despliegue.
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 125/125 tests en 19 suites, código de salida 0).
+- **Estado:** Módulos de dominio e infraestructura productiva completados exitosamente.
+- **Acción requerida para comenzar:** Artefactos Docker, docker-compose y GitHub Actions validados. Sistema listo para distribución o despliegue.
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 125/125 tests en 19 suites, código de salida 0; Docker build y smoke test exitosos).
 
 ---
 
@@ -51,12 +51,20 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - `specs/feat-009-mantenimiento-y-calibracion.md`: Bitácora técnica metrológica, trazabilidad de precintos de seguridad numerados, control de calibraciones periódicas y bajas o reemplazos técnicos con validación de lecturas de retiro.
   - Interfaz gráfica con Aurora Design System: Nuevas pestañas de Reportes & Facturas, Alertas & Incidentes, y Mantenimiento & Calibración.
   - Suite de pruebas expandida a 19 archivos y 125 pruebas pasando exitosamente (100%), Quality Gate 0.
+- [x] **Hito 6: Empaquetamiento Docker & Pipeline CI/CD (Completado: 2026-10-03)**
+  - `docs/adr/0003-empaquetamiento-docker-y-pipeline-cicd.md` compilado e integrado.
+  - `specs/infra-001-docker-y-cicd.md` implementado y validado.
+  - Dockerfile multi-stage con Alpine (`builder` y `runner` minimalista de 265MB).
+  - Persistencia de SQLite en volumen `/app/data` y sincronización automática en `docker-entrypoint.sh`.
+  - Orquestación con `docker-compose.yml` (puerto 3000, volumen `medidores_data`, healthcheck integrado).
+  - Workflow de GitHub Actions con validación automática de `./scripts/verify.sh` y `docker build`.
+  - Quality Gate verificado con salida 0 (125/125 tests pasando, 100%).
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 5 concluido (`specs/feat-007-reportes-y-exportacion.md`, `specs/feat-008-alertas-y-anomalias.md`, `specs/feat-009-mantenimiento-y-calibracion.md`).*
-- **Módulo objetivo:** *Consolidación de Sistema Medidores.*
+- **Archivo:** *Hito 6 concluido (`specs/infra-001-docker-y-cicd.md`).*
+- **Módulo objetivo:** *Despliegue e Infraestructura Productiva.*
 
 ---
 
@@ -77,3 +85,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-008-alertas-y-anomalias` | Ciclo TDD completado, motor de detección y resolución de incidentes |
 | 2026-10-03 | Antigravity | Implementación de `feat-009-mantenimiento-y-calibracion` | Ciclo TDD completado, bitácora técnica, precintos y calibraciones |
 | 2026-10-03 | Antigravity | Integración Frontend Aurora Design System | Vistas y modales interactivos integrados, 125/125 tests, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `infra-001-docker-y-cicd` | Multi-stage Dockerfile, docker-compose, CI workflow, Quality Gate 0 |

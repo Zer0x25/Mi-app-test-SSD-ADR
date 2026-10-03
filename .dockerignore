@@ -1,0 +1,36 @@
+# Dependencias y compilados locales
+node_modules/
+dist/
+coverage/
+
+# Control de versiones y CI
+.git/
+.github/
+.agents/
+.githooks/
+
+# Variables de entorno y secretos locales
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Bases de datos locales
+*.db
+*.db-journal
+prisma/prisma/
+
+# Documentación y especificaciones
+specs/
+docs/
+*.md
+
+# Tests
+tests/
+
+# Logs e IDE
+*.log
+.vscode/
+.idea/
+.DS_Store

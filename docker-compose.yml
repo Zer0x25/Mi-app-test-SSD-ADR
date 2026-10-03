@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sistema-medidores:latest
+    container_name: sistema-medidores
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=file:/app/data/medidores.db
+      - JWT_SECRET=${JWT_SECRET:-super_secreto_productivo_medidores_change_me_987654}
+      - JWT_EXPIRES_IN=8h
+      - LOG_LEVEL=info
+    volumes:
+      - medidores_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  medidores_data:
+    name: medidores_data
