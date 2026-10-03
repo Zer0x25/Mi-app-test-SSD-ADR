@@ -339,11 +339,11 @@ function openModalLectura(medidorId) {
   document.getElementById("modalLecturaCodigo").innerText = medidor.codigo;
   document.getElementById("modalLecturaTipo").innerText = `${tipo.nombre} (${tipo.recurso})`;
   document.getElementById("modalLecturaUbicacion").innerText = medidor.ubicacionInterna;
-  document.getElementById("modalLecturaUnidad").innerText = tipo.unidadMedida || "";
+  document.getElementById("modalLecturaUnidad").innerText = tipo.unidadMedida || tipo.unidad || "";
 
   const valAnterior = medidor.ultimaLectura ? medidor.ultimaLectura.valor : null;
   document.getElementById("modalLecturaAnterior").innerText =
-    valAnterior !== null ? `${window.Components.formatNumber(valAnterior)} ${tipo.unidadMedida}` : "Sin lectura previa";
+    valAnterior !== null ? `${window.Components.formatNumber(valAnterior)} ${tipo.unidadMedida || tipo.unidad || ""}` : "Sin lectura previa";
 
   const inputValor = document.getElementById("modalLecturaInputValor");
   inputValor.value = "";

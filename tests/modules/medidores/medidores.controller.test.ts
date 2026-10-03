@@ -232,4 +232,42 @@ describe("MedidoresController HTTP Integration Suite", () => {
     expect(list.length).toBe(1);
     expect(list[0].codigo).toBe("MED-GLP-99");
   });
+
+  it("GET /api/medidores?instalacionId=... debe listar medidores por query param", async () => {
+    const instalacionId = crypto.randomUUID();
+    verif.activas.add(instalacionId);
+
+    const tipoRes = await app.inject({
+      method: "POST",
+      url: "/api/tipos-medidor",
+      payload: {
+        nombre: "Luz Trifásica",
+        recurso: "LUZ",
+        unidad: "KWH",
+        tipoMedicion: "ACUMULATIVO",
+      },
+    });
+    const tipoMedidorId = tipoRes.json().id;
+
+    await app.inject({
+      method: "POST",
+      url: "/api/medidores",
+      payload: {
+        instalacionId,
+        tipoMedidorId,
+        codigo: "MED-TRI-01",
+        ubicacionInterna: "Subestación",
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/medidores?instalacionId=${instalacionId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const list = res.json();
+    expect(list.length).toBe(1);
+    expect(list[0].codigo).toBe("MED-TRI-01");
+  });
 });

@@ -75,6 +75,36 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
     );
 
     fastify.get(
+      "/medidores",
+      async (
+        request: FastifyRequest<{ Querystring: { instalacionId?: string } }>,
+        reply: FastifyReply
+      ) => {
+        try {
+          if (request.query.instalacionId) {
+            const result = await service.listarMedidoresPorInstalacion(
+              request.query.instalacionId
+            );
+            return reply.status(200).send(result);
+          }
+          return reply.status(200).send([]);
+        } catch (error) {
+          if (isDomainError(error)) {
+            return reply.status(error.statusCode).send({
+              error: error.code,
+              message: error.message,
+              details: error.details,
+            });
+          }
+          return reply.status(500).send({
+            error: "INTERNAL_SERVER_ERROR",
+            message: "Error interno del servidor",
+          });
+        }
+      }
+    );
+
+    fastify.get(
       "/medidores/:id",
       async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
         try {

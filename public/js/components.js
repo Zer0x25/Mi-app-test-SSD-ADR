@@ -215,7 +215,7 @@ function createMeterCard(medidor) {
           </div>
           <div class="reading-display">
             <span class="reading-value">${lecturaValorFormatted}</span>
-            <span class="reading-unit">${escapeHtml(tipo.unidadMedida || "")}</span>
+            <span class="reading-unit">${escapeHtml(tipo.unidadMedida || tipo.unidad || "")}</span>
           </div>
         </div>
       </div>
