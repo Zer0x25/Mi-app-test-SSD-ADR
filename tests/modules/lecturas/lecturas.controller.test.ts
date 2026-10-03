@@ -190,4 +190,43 @@ describe("LecturasController HTTP Integration Suite", () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().valor).toBe(3500);
   });
+
+  describe("POST /api/lecturas/batch-sync", () => {
+    it("debe retornar 200 OK y reportar resultados cuando el lote es procesado", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/lecturas/batch-sync",
+        payload: {
+          lecturas: [
+            {
+              localId: "sync-1",
+              medidorId,
+              operadorId: operadorAutorizadoId,
+              valor: 4000,
+            },
+            {
+              localId: "sync-2",
+              medidorId,
+              operadorId: crypto.randomUUID(), // Operador no autorizado
+              valor: 4500,
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.total).toBe(2);
+      expect(data.syncedCount).toBe(1);
+      expect(data.rejectedCount).toBe(1);
+
+      const r1 = data.results.find((r: { localId: string }) => r.localId === "sync-1");
+      expect(r1.status).toBe("SYNCED");
+      expect(r1.lectura.valor).toBe(4000);
+
+      const r2 = data.results.find((r: { localId: string }) => r.localId === "sync-2");
+      expect(r2.status).toBe("REJECTED");
+      expect(r2.error.code).toBe("OPERADOR_NO_AUTORIZADO");
+    });
+  });
 });

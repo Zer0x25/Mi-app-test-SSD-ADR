@@ -16,6 +16,19 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function inicializarApp() {
+  if (window.syncManager) {
+    window.syncManager.init();
+    window.syncManager.onSyncComplete(async () => {
+      const select = document.getElementById("selectOperadorInstalacion");
+      if (select && select.value) {
+        await cargarMedidoresInstalacion(select.value);
+      }
+      if (currentRoleTab === "admin") {
+        await cargarDashboard();
+      }
+    });
+  }
+
   await sincronizarSesionUsuario();
   await cargarSelectsGlobales();
   if (currentUser?.rol === "OPERADOR") {
@@ -407,6 +420,14 @@ async function submitLectura(event) {
     observaciones: obs || undefined,
   };
 
+  // Si estamos explícitamente sin red (Modo Offline)
+  if (window.syncManager && !window.syncManager.isOnline()) {
+    window.syncManager.encolarLectura(payload);
+    window.Modal.close("modalLectura");
+    window.Toast.info(`Lectura de ${valor} guardada localmente (Modo Offline). Se sincronizará automáticamente al detectar red.`, "Guardado Local");
+    return;
+  }
+
   try {
     await window.api.lecturas.registrar(payload);
     window.Modal.close("modalLectura");
@@ -420,6 +441,20 @@ async function submitLectura(event) {
       await cargarDashboard();
     }
   } catch (err) {
+    // Si la llamada falló por caída de red imprevista
+    const isNetworkError =
+      !window.navigator.onLine ||
+      err.message?.includes("Failed to fetch") ||
+      err.message?.includes("NetworkError") ||
+      err.name === "TypeError";
+
+    if (isNetworkError && window.syncManager) {
+      window.syncManager.encolarLectura(payload);
+      window.Modal.close("modalLectura");
+      window.Toast.warning(`Sin respuesta del servidor. Lectura de ${valor} encolada localmente para sincronización.`, "Modo Offline");
+      return;
+    }
+
     window.Toast.error(err.message, "Validación Rechazada");
   }
 }

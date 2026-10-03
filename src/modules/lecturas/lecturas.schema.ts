@@ -33,6 +33,55 @@ export const LecturaResponseSchema = z.object({
 export type LecturaResponse = z.infer<typeof LecturaResponseSchema>;
 
 // ==============================================================================
+// DTOs para Sincronización en Lote (Offline Sync / PWA)
+// ==============================================================================
+
+export const BatchSyncItemSchema = z.object({
+  localId: z.string().min(1, "localId requerido para trazabilidad local"),
+  medidorId: z.string().uuid("Identificador de medidor inválido"),
+  operadorId: z.string().uuid("Identificador de operador inválido"),
+  valor: z.number().nonnegative("El valor de la medición no puede ser negativo"),
+  fechaLectura: z.coerce.date().optional(),
+  notas: z
+    .string()
+    .trim()
+    .max(255, "Las notas no pueden exceder 255 caracteres")
+    .optional(),
+});
+
+export const BatchSyncLecturasInputSchema = z.object({
+  lecturas: z
+    .array(BatchSyncItemSchema)
+    .min(1, "Debe enviar al menos una lectura para sincronizar"),
+});
+
+export type BatchSyncItem = z.infer<typeof BatchSyncItemSchema>;
+export type BatchSyncLecturasInput = z.infer<typeof BatchSyncLecturasInputSchema>;
+
+export const BatchSyncResultItemSchema = z.object({
+  localId: z.string(),
+  status: z.enum(["SYNCED", "REJECTED"]),
+  lectura: LecturaResponseSchema.optional(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      details: z.any().optional(),
+    })
+    .optional(),
+});
+
+export const BatchSyncLecturasResponseSchema = z.object({
+  total: z.number(),
+  syncedCount: z.number(),
+  rejectedCount: z.number(),
+  results: z.array(BatchSyncResultItemSchema),
+});
+
+export type BatchSyncResultItem = z.infer<typeof BatchSyncResultItemSchema>;
+export type BatchSyncLecturasResponse = z.infer<typeof BatchSyncLecturasResponseSchema>;
+
+// ==============================================================================
 // Errores de Dominio Tipados
 // ==============================================================================
 

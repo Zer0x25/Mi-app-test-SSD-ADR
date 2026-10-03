@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 6 Concluido (Empaquetamiento Docker, Persistencia & CI/CD)
+## 🧭 Fase Actual: Hito 7 Concluido (Modo Offline & PWA para Captura en Terreno)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Módulos de dominio e infraestructura productiva completados exitosamente.
-- **Acción requerida para comenzar:** Artefactos Docker, docker-compose y GitHub Actions validados. Sistema listo para distribución o despliegue.
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 125/125 tests en 19 suites, código de salida 0; Docker build y smoke test exitosos).
+- **Estado:** PWA, Service Worker, captura fuera de línea resiliente y endpoint batch-sync completados y validados.
+- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 8: Seguridad & Observabilidad en Producción).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 129/129 tests en 19 suites, código de salida 0).
 
 ---
 
@@ -46,7 +46,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Interfaz gráfica integrada con Aurora Design System.
   - Suite de pruebas expandida: 88/88 tests pasando (100%), Quality Gate 0.
 - [x] **Hito 5: Reportes, Alertas Automáticas y Mantenimiento Metrológico (Completado: 2026-10-03)**
-  - `specs/feat-007-reportes-y-exportacion.md`: Consumos netos consolidados, descarga CSV con cabeceras `Content-Disposition`, auditoría y conciliación contra facturas de servicios básicos con detección de desvío (&le; 5% `CONCILIADO`, &gt; 5% `DISCREPANCIA`).
+  - `specs/feat-007-reportes-y-exportacion.md`: Consumos netos consolidados, descarga CSV con cabeceras `Content-Disposition`, auditoría y conciliación contra facturas de servicios básicos con detección de desvío (≤ 5% `CONCILIADO`, > 5% `DISCREPANCIA`).
   - `specs/feat-008-alertas-y-anomalias.md`: Motor de detección temprana en vivo (`SIN_REPORTE > 48h`, `SALTO_CONSUMO > 50%`, `FUGA_PROBABLE`), ciclo de vida de incidentes (`ABIERTO`, `EN_REVISION`, `RESUELTO`) y métricas de severidad.
   - `specs/feat-009-mantenimiento-y-calibracion.md`: Bitácora técnica metrológica, trazabilidad de precintos de seguridad numerados, control de calibraciones periódicas y bajas o reemplazos técnicos con validación de lecturas de retiro.
   - Interfaz gráfica con Aurora Design System: Nuevas pestañas de Reportes & Facturas, Alertas & Incidentes, y Mantenimiento & Calibración.
@@ -58,12 +58,39 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Persistencia y aislamiento: volúmenes `medidores_data` y `medidores_staging_data` independientes.
   - Puertos: Producción en 3000, Staging en 3001 (permitiendo convivencia segura en el mismo servidor).
   - Quality Gate verificado con salida 0 (126/126 tests pasando, 100%).
+- [x] **Hito 7: Modo Offline y PWA para Captura en Terreno (Completado: 2026-10-03)**
+  - [x] `specs/feat-010-pwa-offline-sync.md` (Completado: Arquitectura PWA y Offline-First).
+  - [x] Manifest PWA (`manifest.webmanifest`), icono SVG y Service Worker (`sw.js`) para caching estático.
+  - [x] Endpoint backend de sincronización en lote `POST /api/lecturas/batch-sync` con validación individual de invariantes.
+  - [x] Cola offline local en cliente (`SyncManager`) con intercepción y persistencia de lecturas en `localStorage`.
+  - [x] Indicadores de conectividad (Online/Offline) y botón de sincronización en Aurora UI.
+  - [x] Auto-sincronización automática tras detección de evento `online`.
+  - [x] Suite de pruebas expandida: 129/129 tests pasando (100%), Quality Gate 0.
+
+---
+
+## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
+
+- [ ] **Hito 8: Seguridad & Observabilidad en Producción**
+  - Rate Limiting en autenticación (`POST /api/auth/login`) contra ataques de fuerza bruta (`@fastify/rate-limit`).
+  - Endpoints de salud operativa `/healthz` (liveness) y `/readyz` (readiness con ping activo a base de datos).
+  - Pista de Auditoría inmutable (Audit Log): modelo `AuditoriaEvento` para registrar cambios de rol, bajas de medidores y rupturas de precintos.
+- [ ] **Hito 9: Despacho de Notificaciones & Webhooks**
+  - Integración saliente para alertas críticas (`FUGA_PROBABLE`, `SALTO_CONSUMO > 50%`).
+  - Webhooks configurables (Slack / Discord / Teams / HTTP genérico).
+  - Notificaciones de aviso previo para medidores próximos a vencer calibración periódica.
+- [ ] **Hito 10: Suite de Pruebas E2E Automatizadas (Playwright)**
+  - Pruebas sintéticas completas de navegador: login de operador, registro de lecturas, visualización de dashboard, resolución de incidentes.
+  - Ejecución en modo headless dentro del flujo de GitHub Actions.
+- [ ] **Hito 11: Escalabilidad y Persistencia Multi-Contenedor (PostgreSQL)**
+  - Nuevo ADR para soporte dual SQLite (desarrollo local ágil) y PostgreSQL (producción distribuida con réplicas).
+  - Migración con Prisma hacia motor de base de datos cliente-servidor con pooling.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 6 concluido (`specs/infra-001-docker-y-cicd.md`, `specs/infra-002-entorno-staging.md`).*
-- **Módulo objetivo:** *Despliegue e Infraestructura Multi-Entorno (Dev, Staging, Prod).*
+- **Archivo:** *Hito 7 concluido (`specs/feat-010-pwa-offline-sync.md`).*
+- **Módulo objetivo:** *Modo Offline, PWA y Sincronización Resiliente.*
 
 ---
 
@@ -86,3 +113,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Integración Frontend Aurora Design System | Vistas y modales interactivos integrados, 125/125 tests, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `infra-001-docker-y-cicd` | Multi-stage Dockerfile, docker-compose, CI workflow, Quality Gate 0 |
 | 2026-10-03 | Antigravity | Implementación de `infra-002-entorno-staging` | Staging compose, Zod NODE_ENV staging, 126/126 tests, Quality Gate 0 |
+| 2026-10-03 | Antigravity | Implementación de `feat-010-pwa-offline-sync` | PWA, Service Worker, Batch Sync y SyncManager, 129/129 tests, Quality Gate 0 |

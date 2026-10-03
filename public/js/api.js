@@ -136,6 +136,11 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       }),
+    sincronizarLote: (payload) =>
+      this.request("/api/lecturas/batch-sync", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
   };
 
   // --- Dominio: Instalaciones ---

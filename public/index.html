@@ -24,6 +24,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   
+  <!-- PWA & Metadata (Hito 7) -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0ea5e9">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -140,10 +145,16 @@
           </svg>
           Cargar Datos Demo
         </button>
-        <div class="system-status">
-          <span class="status-pulse" aria-hidden="true"></span>
-          <span>En Línea</span>
+        <div id="networkStatusBadge" class="network-badge online" title="Conexión activa con el servidor">
+          <span class="network-dot"></span>
+          <span>En línea</span>
         </div>
+        <button id="syncQueueBtn" class="btn btn-sm btn-outline sync-queue-btn" style="display:none;" onclick="window.syncManager.sincronizar()" title="Sincronizar lecturas pendientes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+          Sincronizar (<span id="syncQueueCount">0</span>)
+        </button>
       </div>
     </div>
   </header>
@@ -1248,6 +1259,7 @@
   <script src="/js/api.js"></script>
   <script src="/js/theme.js"></script>
   <script src="/js/components.js"></script>
+  <script src="/js/sync-manager.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

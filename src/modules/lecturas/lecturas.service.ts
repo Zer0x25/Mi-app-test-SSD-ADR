@@ -2,6 +2,10 @@ import {
   RegistrarLecturaInput,
   RegistrarLecturaInputSchema,
   LecturaResponse,
+  BatchSyncLecturasInput,
+  BatchSyncLecturasInputSchema,
+  BatchSyncLecturasResponse,
+  BatchSyncResultItem,
   LecturaDecrecienteError,
   LecturaFechaFuturaError,
   LecturaDuplicadaError,
@@ -9,6 +13,7 @@ import {
   MedidorInactivoError,
   MedidorNotFoundError,
 } from "./lecturas.schema.js";
+import { isDomainError } from "../../core/errors.js";
 
 export interface LecturaEntity {
   id: string;
@@ -116,5 +121,69 @@ export class LecturasService {
       throw new MedidorNotFoundError(medidorId);
     }
     return await this.repository.findUltimaLectura(medidorId);
+  }
+
+  async sincronizarLote(rawInput: BatchSyncLecturasInput): Promise<BatchSyncLecturasResponse> {
+    const input = BatchSyncLecturasInputSchema.parse(rawInput);
+
+    // Ordenar lecturas por fechaLectura ascendente para preservar cronología en acumulativos
+    const ordenadas = [...input.lecturas].sort((a, b) => {
+      const ta = a.fechaLectura ? new Date(a.fechaLectura).getTime() : 0;
+      const tb = b.fechaLectura ? new Date(b.fechaLectura).getTime() : 0;
+      return ta - tb;
+    });
+
+    const results: BatchSyncResultItem[] = [];
+    let syncedCount = 0;
+    let rejectedCount = 0;
+
+    for (const item of ordenadas) {
+      try {
+        const lectura = await this.registrarLectura({
+          medidorId: item.medidorId,
+          operadorId: item.operadorId,
+          valor: item.valor,
+          fechaLectura: item.fechaLectura,
+          notas: item.notas,
+        });
+
+        results.push({
+          localId: item.localId,
+          status: "SYNCED",
+          lectura,
+        });
+        syncedCount++;
+      } catch (error: unknown) {
+        rejectedCount++;
+        if (isDomainError(error)) {
+          results.push({
+            localId: item.localId,
+            status: "REJECTED",
+            error: {
+              code: error.code,
+              message: error.message,
+              details: error.details,
+            },
+          });
+        } else {
+          const msg = error instanceof Error ? error.message : String(error);
+          results.push({
+            localId: item.localId,
+            status: "REJECTED",
+            error: {
+              code: "INTERNAL_ERROR",
+              message: msg,
+            },
+          });
+        }
+      }
+    }
+
+    return {
+      total: input.lecturas.length,
+      syncedCount,
+      rejectedCount,
+      results,
+    };
   }
 }

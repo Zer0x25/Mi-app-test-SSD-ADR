@@ -298,4 +298,92 @@ describe("LecturasService Suite (Agentic TDD)", () => {
       expect(ultima?.valor).toBe(120);
     });
   });
+
+  describe("Sincronización en Lote (Offline Sync / PWA)", () => {
+    it("debe sincronizar exitosamente un lote de lecturas procesándolas en orden cronológico", async () => {
+      const ahora = Date.now();
+      const t1 = new Date(ahora - 30000);
+      const t2 = new Date(ahora - 20000);
+      const t3 = new Date(ahora - 10000);
+
+      const res = await service.sincronizarLote({
+        lecturas: [
+          {
+            localId: "offline-2",
+            medidorId: medidorAcumulativoId,
+            operadorId,
+            valor: 200,
+            fechaLectura: t2,
+          },
+          {
+            localId: "offline-1",
+            medidorId: medidorAcumulativoId,
+            operadorId,
+            valor: 100,
+            fechaLectura: t1,
+          },
+          {
+            localId: "offline-3",
+            medidorId: medidorAcumulativoId,
+            operadorId,
+            valor: 300,
+            fechaLectura: t3,
+          },
+        ],
+      });
+
+      expect(res.total).toBe(3);
+      expect(res.syncedCount).toBe(3);
+      expect(res.rejectedCount).toBe(0);
+      expect(res.results.every((r) => r.status === "SYNCED")).toBe(true);
+
+      const ultima = await service.obtenerUltimaLectura(medidorAcumulativoId);
+      expect(ultima?.valor).toBe(300);
+    });
+
+    it("debe manejar lotes mixtos: persistir lecturas válidas y reportar errores de dominio para lecturas inválidas", async () => {
+      const ahora = Date.now();
+      const t1 = new Date(ahora - 20000);
+      const t2 = new Date(ahora - 10000);
+
+      // Registrar una lectura inicial de 500
+      await service.registrarLectura({
+        medidorId: medidorAcumulativoId,
+        operadorId,
+        valor: 500,
+        fechaLectura: t1,
+      });
+
+      const res = await service.sincronizarLote({
+        lecturas: [
+          {
+            localId: "offline-decreciente",
+            medidorId: medidorAcumulativoId,
+            operadorId,
+            valor: 450, // Inválido: menor a 500 en acumulativo
+            fechaLectura: t2,
+          },
+          {
+            localId: "offline-nivel-valido",
+            medidorId: medidorNivelId,
+            operadorId,
+            valor: 80, // Válido
+            fechaLectura: t2,
+          },
+        ],
+      });
+
+      expect(res.total).toBe(2);
+      expect(res.syncedCount).toBe(1);
+      expect(res.rejectedCount).toBe(1);
+
+      const rRechazado = res.results.find((r) => r.localId === "offline-decreciente");
+      expect(rRechazado?.status).toBe("REJECTED");
+      expect(rRechazado?.error?.code).toBe("LECTURA_DECRECIENTE_PROHIBIDA");
+
+      const rExitoso = res.results.find((r) => r.localId === "offline-nivel-valido");
+      expect(rExitoso?.status).toBe("SYNCED");
+      expect(rExitoso?.lectura?.valor).toBe(80);
+    });
+  });
 });
