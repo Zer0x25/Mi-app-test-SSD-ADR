@@ -52,6 +52,23 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     logger: false,
   });
 
+  // Permitir cuerpos vacíos cuando Content-Type es application/json
+  app.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (_req, body: string, done) => {
+      if (!body || body.trim() === "") {
+        return done(null, {});
+      }
+      try {
+        const json = JSON.parse(body);
+        done(null, json);
+      } catch (err: unknown) {
+        done(err as Error, undefined);
+      }
+    }
+  );
+
   const prisma = options.prisma ?? new PrismaClient();
 
   // 1. Plugins de transporte

@@ -39,7 +39,7 @@ class ApiClient {
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     };
 
@@ -169,6 +169,7 @@ class ApiClient {
     seed: () =>
       this.request("/api/demo/seed", {
         method: "POST",
+        body: JSON.stringify({}),
       }),
   };
 }
