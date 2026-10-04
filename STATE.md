@@ -212,3 +212,5 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Formalización de ADR 0011 y SDD `feat-017` (Hito 13.1) | Fichas Adaptativas Móviles (Stacked Cards) para todas las tablas (`.data-table`) sin scroll horizontal |
 | 2026-10-04 | Antigravity | Implementación de `feat-017-fichas-moviles-tablas-responsive` | CSS `@media (max-width: 768px)`, inyección `data-label`, botones >= 44px, E2E (29/29 Playwright + 206/206 Vitest) |
 | 2026-10-04 | Antigravity | Corrección de desbordamiento en fichas móviles (.cell-stacked) | Eliminación de overflow en badges múltiples, saltos de línea y bloques pre JSON en fichas a 320px, 0 desbordes confirmados |
+| 2026-10-04 | Antigravity | Ejecución `/learn` (Regla 19 en AGENTS.md) | Formalización de invariantes de contención (`.cell-stacked`, `.badges-wrapper`, ruptura de texto y aislamiento de bloques `<pre>`) en fichas móviles |
+
