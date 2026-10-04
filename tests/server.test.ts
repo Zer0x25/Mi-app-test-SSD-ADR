@@ -62,6 +62,7 @@ describe("Fastify Server E2E Health Check & Security", () => {
       $queryRaw: async () => {
         throw new Error("Conexión perdida con SQLite / disco bloqueado");
       },
+      $queryRawUnsafe: async () => [],
       // Stubs mínimos para arranque de buildServer
       usuario: { findUnique: async () => null, count: async () => 0 },
       instalacion: { findMany: async () => [] },

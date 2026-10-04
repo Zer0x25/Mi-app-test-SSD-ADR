@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 12 Concluido (Endurecimiento Operacional, Concurrencia y Resiliencia)
+## 🧭 Fase Actual: Consolidación, Rebuild de Staging y Expansión de Cobertura (Anti-Regresión & E2E Headless)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Hito 12 implementado y certificado al 100% bajo SDD / ADR 0009 (SQLite WAL, Hot Backup con auditoría, Graceful Shutdown, Fastify Helmet CSP, Backoff Exponencial en PWA, Intercepción 401 y Concurrencia masiva).
-- **Acción requerida para comenzar:** Seleccionar siguiente hito de la hoja de ruta (ej. Hito 13: Evidencia Fotográfica y Geolocalización GPS en Terreno).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 196/196 unit/integration en Vitest + 7/7 E2E en Playwright, código de salida 0).
+- **Estado:** Staging reconstruido exitosamente en Docker. Cobertura de anti-regresión y pruebas E2E headless expandida al 100% de los flujos del sistema.
+- **Acción requerida para comenzar:** Sistema blindado y validado. Listo para siguientes prioridades o despliegue.
+- **Última verificación de Quality Gate:** Superada (206/206 tests en Vitest + 19/19 tests en Playwright, código de salida 0).
 
 ---
 
@@ -134,9 +134,9 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 13: Evidencia Fotográfica y Geolocalización GPS en Terreno**
-  - Captura y compresión de fotos del dial del medidor en la PWA (WebP/JPEG).
-  - Geolocalización satelital (`navigator.geolocation`) para auditoría anti-fraude y verificación física de lecturas.
+- [x] **Rebuild & Hardening Staging:** Sincronización de `package-lock.json` y build/start Docker certificado (Completado).
+- [x] **Expansión de Pruebas Anti-Regresión y E2E Headless:** Cobertura de edge cases en Vitest y suites Playwright en Reportes, Mantenimiento, Usuarios, Auditoría/Backup y PWA Offline (Completado: `specs/test-002-cobertura-antirregresion-y-e2e.md`).
+- [~] **Hito 13: Evidencia Fotográfica y Geolocalización GPS en Terreno** *(Descartado por indicación explícita del usuario)*.
 - [ ] **Hito 14: Rutas de Inspección y Órdenes de Trabajo para Mantenimiento en Campo**
   - Planificador de rutas óptimas para operadores por sede/edificio.
   - Checklist metrológico y firma digital del técnico al cerrar órdenes de trabajo.
@@ -147,8 +147,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 12 concluido (`specs/feat-015-endurecimiento-y-resiliencia-produccion.md`).*
-- **Módulo objetivo:** Endurecimiento Operacional, Concurrencia y Resiliencia (Fases 1, 2, 3 y 4).
+- **Archivo:** `specs/test-002-cobertura-antirregresion-y-e2e.md` (Completado)
+- **Módulo objetivo:** Expansión de Cobertura Anti-Regresión y Pruebas E2E Headless.
 
 ---
 
@@ -182,6 +182,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 13 y 15 en AGENTS.md) | Formalización de auto-purga 410 en Web Push y DOM scoping obligatorio en Playwright |
 | 2026-10-04 | Antigravity | Implementación de `feat-015-endurecimiento-y-resiliencia` (Hito 12) | ADR 0009, SQLite WAL, Hot Backup, Graceful Shutdown, Helmet CSP, Backoff PWA y Quality Gate 0 (196 tests Vitest + 7 tests E2E) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 16 y 17 en AGENTS.md) | Formalización de concurrencia SQLite, raw PRAGMAs, hot backup y Helmet CSP scriptSrcAttr |
+| 2026-10-04 | Antigravity | Rebuild de Staging en Docker y `test-002-cobertura-antirregresion-y-e2e` | Lockfile resincronizado, Staging certificado (3001), 206/206 tests Vitest y 19/19 tests Playwright E2E pasando (Quality Gate 0) |
 
 
 

@@ -290,6 +290,15 @@ class ApiClient {
     },
   };
 
+  // --- Dominio: Administración & Respaldo (feat-015 / Hito 12) ---
+  admin = {
+    generarBackup: (payload = {}) =>
+      this.request("/api/admin/backup", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+  };
+
   // --- Dominio: Webhooks & Integraciones (feat-012) ---
   webhooks = {
     getAll: () => this.request("/api/webhooks"),

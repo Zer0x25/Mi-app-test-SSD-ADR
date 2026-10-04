@@ -1443,6 +1443,7 @@ async function consultarFichaMedidor() {
 }
 
 // Enlace global para el DOM HTML
+window.getCurrentUser = () => currentUser;
 window.switchRole = switchRole;
 window.loginComo = loginComo;
 window.openModal = (id) => window.Modal.open(id);
@@ -1548,6 +1549,25 @@ async function cargarEventosAuditoria() {
 }
 
 window.cargarEventosAuditoria = cargarEventosAuditoria;
+
+async function ejecutarBackupSistema() {
+  const btn = document.getElementById("btnGenerarBackup");
+  if (btn) btn.disabled = true;
+  try {
+    window.Toast.info("Iniciando copia atómica en caliente de base de datos...", "Respaldo SQLite");
+    const res = await window.api.admin.generarBackup();
+    const tamanoKb = (res.tamanoBytes / 1024).toFixed(1);
+    window.Toast.success(`Snapshot creado: ${res.archivo} (${tamanoKb} KB)`, "Respaldo Exitoso");
+    await cargarEventosAuditoria();
+  } catch (error) {
+    console.error("Error al generar backup:", error);
+    window.Toast.error(error.message || "Error al generar backup", "Fallo de Respaldo");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+window.ejecutarBackupSistema = ejecutarBackupSistema;
 
 // ------------------------------------------------------------------------------
 // 9. INTEGRACIONES & WEBHOOKS (HITO 9 / FEAT-012)
