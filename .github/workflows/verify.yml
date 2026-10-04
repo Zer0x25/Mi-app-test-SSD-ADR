@@ -36,16 +36,22 @@ jobs:
             echo "Repositorio en fase de semilla (Hito 0): omitiendo instalación de paquetes."
           fi
 
+      - name: Preparar entorno
+        run: |
+          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            cp .env.example .env
+          fi
+
       - name: Generar cliente de Prisma
         run: |
           if [ -f "prisma/schema.prisma" ]; then
             npx prisma generate
           fi
 
-      - name: Preparar entorno
+      - name: Sincronizar esquema de base de datos
         run: |
-          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
-            cp .env.example .env
+          if [ -f "prisma/schema.prisma" ]; then
+            npx prisma db push --skip-generate
           fi
 
       - name: Permisos de ejecución para scripts

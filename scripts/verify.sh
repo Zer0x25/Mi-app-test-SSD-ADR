@@ -70,6 +70,7 @@ fi
 
 if [ -f "prisma/schema.prisma" ]; then
   npx prisma generate > /dev/null 2>&1 || true
+  npx prisma db push --skip-generate > /dev/null 2>&1 || true
 fi
 
 # 1. Chequeo de Tipos Estricto
