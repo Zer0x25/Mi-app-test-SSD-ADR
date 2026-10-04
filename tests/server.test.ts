@@ -9,6 +9,16 @@ import { WebhookDispatcherService } from "../src/modules/webhooks/webhooks.servi
 describe("Fastify Server E2E Health Check & Security", () => {
   let app: FastifyInstance;
 
+  const adminToken = signJwt(
+    {
+      userId: "11111111-1111-1111-1111-111111111111",
+      email: "admin@test.cl",
+      nombre: "Admin Test",
+      rol: "ADMIN",
+    },
+    config.JWT_SECRET
+  );
+
   afterAll(async () => {
     if (app) {
       await app.close();
@@ -134,15 +144,6 @@ describe("Fastify Server E2E Health Check & Security", () => {
   });
 
   describe("Control de Acceso RBAC en /api/webhooks", () => {
-    const adminToken = signJwt(
-      {
-        userId: "11111111-1111-1111-1111-111111111111",
-        email: "admin@test.cl",
-        nombre: "Admin Test",
-        rol: "ADMIN",
-      },
-      config.JWT_SECRET
-    );
     const supervisorToken = signJwt(
       {
         userId: "22222222-2222-2222-2222-222222222222",
@@ -328,18 +329,21 @@ describe("Fastify Server E2E Health Check & Security", () => {
       const resInvalido = await app.inject({
         method: "GET",
         url: "/api/lecturas/recientes?limit=no-es-numero",
+        headers: { authorization: `Bearer ${adminToken}` },
       });
       expect(resInvalido.statusCode).toBe(400);
 
       const resExcedido = await app.inject({
         method: "GET",
         url: "/api/lecturas/recientes?limit=999",
+        headers: { authorization: `Bearer ${adminToken}` },
       });
       expect(resExcedido.statusCode).toBe(400);
 
       const resValido = await app.inject({
         method: "GET",
         url: "/api/lecturas/recientes?limit=5",
+        headers: { authorization: `Bearer ${adminToken}` },
       });
       expect(resValido.statusCode).toBe(200);
       expect(Array.isArray(resValido.json())).toBe(true);

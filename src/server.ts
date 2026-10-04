@@ -168,24 +168,54 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
     const user = (request as unknown as { user?: { rol: string; userId: string } }).user;
 
-    // Regla RBAC 1: Crear Instalación solo permitido para ADMIN
-    if (request.method === "POST" && request.url.startsWith("/api/instalaciones")) {
-      if (user) {
-        if (user.rol !== "ADMIN") {
-          return reply.status(403).send({
-            error: "ACCESO_DENEGADO",
-            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para crear instalaciones.`,
-          });
-        }
+    // 1. Blindaje Perimetral Zero-Trust (ADR 0013 / feat-019)
+    // Preservar 404 para rutas que no existen en el enrutador de Fastify
+    if (request.is404) {
+      return;
+    }
+
+    // Si una ruta bajo /api/ cayó en el fallback comodín de archivos estáticos (/*), no es un endpoint válido
+    if (request.url.startsWith("/api/") && request.routeOptions?.url === "/*") {
+      return reply.status(404).send({
+        error: "NOT_FOUND",
+        message: `Ruta ${request.method} ${request.url} no encontrada.`,
+      });
+    }
+
+    const isPublicApiRoute =
+      request.url === "/healthz" ||
+      request.url === "/readyz" ||
+      request.url.startsWith("/api/health") ||
+      request.url.startsWith("/api/config") ||
+      request.url.startsWith("/api/auth/login") ||
+      request.url.startsWith("/api/auth/register") ||
+      request.url.startsWith("/api/demo/seed");
+
+    if (request.url.startsWith("/api/") && !isPublicApiRoute) {
+      if (!user) {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Cabecera Authorization con formato Bearer <token> requerida.",
+        });
       }
     }
 
-    // Regla RBAC 2: Crear Medidores
-    // - ADMIN: permitido en cualquier sede
-    // - SUPERVISOR: permitido solo si tiene la instalación asignada
-    // - OPERADOR: denegado
-    if (request.method === "POST" && request.url.startsWith("/api/medidores")) {
-      if (user) {
+    if (user) {
+      // Regla RBAC 1: Crear o modificar Instalación solo permitido para ADMIN
+      if (request.method !== "GET" && request.url.startsWith("/api/instalaciones")) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para crear o modificar instalaciones.`,
+          });
+        }
+      }
+
+      // Regla RBAC 2: Crear Medidores
+      // - ADMIN: permitido en cualquier sede
+      // - SUPERVISOR: permitido solo si tiene la instalación asignada
+      // - OPERADOR: denegado
+      if (request.method === "POST" && request.url.startsWith("/api/medidores")) {
         const body = request.body as { instalacionId?: string } | undefined;
         if (user.rol === "OPERADOR") {
           return reply.status(403).send({
@@ -206,96 +236,82 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
           }
         }
       }
-    }
 
-    // Regla RBAC 3: Gestión de Usuarios solo permitido para ADMIN
-    if (request.url.startsWith("/api/usuarios")) {
-      if (!user) {
-        return reply.status(401).send({
-          error: "UNAUTHORIZED",
-          message: "Cabecera Authorization con formato Bearer <token> requerida.",
-        });
+      // Regla RBAC 3: Gestión de Usuarios solo permitido para ADMIN
+      if (request.url.startsWith("/api/usuarios")) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar usuarios.`,
+          });
+        }
       }
-      if (user.rol !== "ADMIN") {
-        return reply.status(403).send({
-          error: "ACCESO_DENEGADO",
-          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar usuarios.`,
-        });
-      }
-    }
 
-    // Regla RBAC 4: Auditoría solo accesible para ADMIN
-    if (request.url.startsWith("/api/auditoria")) {
-      if (!user) {
-        return reply.status(401).send({
-          error: "UNAUTHORIZED",
-          message: "Cabecera Authorization con formato Bearer <token> requerida.",
-        });
+      // Regla RBAC 4: Auditoría solo accesible para ADMIN
+      if (request.url.startsWith("/api/auditoria")) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para consultar auditoría.`,
+          });
+        }
       }
-      if (user.rol !== "ADMIN") {
-        return reply.status(403).send({
-          error: "ACCESO_DENEGADO",
-          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para consultar auditoría.`,
-        });
-      }
-    }
 
-    // Regla RBAC 5: Webhooks administrable solo por ADMIN (SUPERVISOR puede disparar check-calibraciones)
-    if (request.url.startsWith("/api/webhooks")) {
-      if (!user) {
-        return reply.status(401).send({
-          error: "UNAUTHORIZED",
-          message: "Cabecera Authorization con formato Bearer <token> requerida.",
-        });
+      // Regla RBAC 5: Webhooks administrable solo por ADMIN (SUPERVISOR puede disparar check-calibraciones)
+      if (request.url.startsWith("/api/webhooks")) {
+        if (request.url.includes("/check-calibraciones")) {
+          if (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR") {
+            return reply.status(403).send({
+              error: "ACCESO_DENEGADO",
+              message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para evaluar calibraciones.`,
+            });
+          }
+        } else if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar webhooks.`,
+          });
+        }
       }
-      if (request.url.includes("/check-calibraciones")) {
+
+      // Regla RBAC 6: Pruebas e historial de Notificaciones restringido a ADMIN y SUPERVISOR
+      if (
+        request.url.startsWith("/api/notificaciones/telegram/test") ||
+        request.url.startsWith("/api/notificaciones/push/test") ||
+        request.url.startsWith("/api/notificaciones/historial")
+      ) {
         if (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR") {
           return reply.status(403).send({
             error: "ACCESO_DENEGADO",
-            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para evaluar calibraciones.`,
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para realizar pruebas o consultar historial de notificaciones.`,
           });
         }
-      } else if (user.rol !== "ADMIN") {
-        return reply.status(403).send({
-          error: "ACCESO_DENEGADO",
-          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar webhooks.`,
-        });
       }
-    }
 
-    // Regla RBAC 6: Pruebas e historial de Notificaciones restringido a ADMIN y SUPERVISOR
-    if (
-      request.url.startsWith("/api/notificaciones/telegram/test") ||
-      request.url.startsWith("/api/notificaciones/push/test") ||
-      request.url.startsWith("/api/notificaciones/historial")
-    ) {
-      if (!user) {
-        return reply.status(401).send({
-          error: "UNAUTHORIZED",
-          message: "Cabecera Authorization con formato Bearer <token> requerida.",
-        });
+      // Regla RBAC 7: Respaldo de Base de Datos exclusivo para ADMIN
+      if (request.url.startsWith("/api/admin/backup")) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para generar respaldos de base de datos.`,
+          });
+        }
       }
-      if (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR") {
-        return reply.status(403).send({
-          error: "ACCESO_DENEGADO",
-          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para realizar pruebas o consultar historial de notificaciones.`,
-        });
-      }
-    }
 
-    // Regla RBAC 7: Respaldo de Base de Datos exclusivo para ADMIN
-    if (request.url.startsWith("/api/admin/backup")) {
-      if (!user) {
-        return reply.status(401).send({
-          error: "UNAUTHORIZED",
-          message: "Cabecera Authorization con formato Bearer <token> requerida.",
-        });
-      }
-      if (user.rol !== "ADMIN") {
-        return reply.status(403).send({
-          error: "ACCESO_DENEGADO",
-          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para generar respaldos de base de datos.`,
-        });
+      // Regla RBAC 8: Módulos de Gestión Administrativa (Dashboard, Reportes, Alertas, Mantenimiento)
+      // Denegados para OPERADOR (Modo Terreno exclusivo)
+      if (
+        request.url.startsWith("/api/dashboard") ||
+        request.url.startsWith("/api/reportes") ||
+        request.url.startsWith("/api/alertas") ||
+        request.url.startsWith("/api/mantenimiento")
+      ) {
+        if (user.rol === "OPERADOR") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «OPERADOR» no tiene permisos para acceder a módulos administrativos.`,
+          });
+        }
       }
     }
   });

@@ -169,6 +169,18 @@ Para garantizar la consulta y acción rápida en terreno sobre smartphones (320p
 - **Envoltorio Flexible para Insignias y Chips (`.badges-wrapper`):** Toda colección dinámica de badges (ej. instalaciones asignadas, etiquetas múltiples) DEBE envolverse dentro de un contenedor `<div class="badges-wrapper">` configurado con `display: flex; flex-wrap: wrap; gap: 0.35rem; width: 100%;` para garantizar que los elementos salten de línea suavemente en pantallas angostas (320px) sin forzar el ancho de la tarjeta.
 - **Ruptura Forzada de Cadenas e Hilos Continuos:** Todo contenido textual arbitrario en celdas móviles (identificadores, correos, nombres, descripciones técnicas) debe poseer propiedades de corte de palabra (`word-break: break-word; overflow-wrap: anywhere;`) para impedir desbordes por palabras o tokens continuos sin espacios.
 - **Aislamiento Estricto de Bloques Técnicos (`<pre>` en móviles):** Los bloques `<pre>` que rendericen datos crudos, trazas o metadatos JSON deben limitarse a `max-width: 100%; overflow-x: auto; white-space: pre-wrap; font-size: 0.75rem;`, permitiendo inspección técnica sin alterar la geometría de la ficha.
-
-
-
+### 20. Blindaje Perimetral Zero-Trust en API REST y Matriz RBAC Fail-Closed (ADR 0013)
+Para garantizar la inmunidad ante accesos directos por API y asegurar que la seguridad jamás dependa de la visibilidad en la interfaz:
+- **Política Fail-Closed por Defecto en `/api/*`:** Toda ruta bajo el prefijo `/api/` es privada y protegida por defecto. Ante peticiones sin cabecera `Authorization: Bearer <token>` válida, el hook transversal (`preHandler`) DEBE responder de inmediato con `HTTP 401 Unauthorized` (`error: "UNAUTHORIZED"`).
+- **Allow-List Explícita de Rutas Públicas Exentas:** Únicamente las siguientes rutas están autorizadas para responder sin autenticación:
+  - Probes de salud y orquestación: `/healthz`, `/readyz`, `/api/health`.
+  - Configuración y flags de entorno: `/api/config`.
+  - Autenticación y registro: `/api/auth/login`, `/api/auth/register`.
+  - Inicialización idempotente de pruebas y semillas: `/api/demo/seed`.
+  - Shell de navegación y recursos estáticos del PWA.
+- **Prohibición de Guardias Vulnerables (`if (user)`):** Queda terminantemente prohibido utilizar condicionales del tipo `if (user) { ... }` para validar permisos. El flujo de autorización en el hook transversal debe estructurarse obligatoriamente validando primero la autenticación del usuario (`if (!user) return 401;`) antes de evaluar el rol (`if (user.rol !== ...) return 403;`).
+- **Enforzamiento de la Matriz RBAC en Backend:**
+  - `ADMIN`: Control irrestricto sobre todos los recursos y módulos.
+  - `SUPERVISOR`: Acceso a dashboard, reportes, alertas, mantenimiento y medidores de sus sedes asignadas. Bloqueado con `HTTP 403 Forbidden` de: creación/edición de sedes (`/api/instalaciones`), medidores en sedes no asignadas, gestión de usuarios (`/api/usuarios`), auditoría (`/api/auditoria`) y respaldos de base de datos (`/api/admin/backup`).
+  - `OPERADOR`: Modo Terreno exclusivo. Solo puede consultar medidores asignados y registrar lecturas (`POST /api/lecturas`, `POST /api/lecturas/batch-sync`). Bloqueado con `HTTP 403 Forbidden` de: Dashboard ejecutivo (`/api/dashboard/*`), Reportes (`/api/reportes/*`), Alertas (`/api/alertas/*`), Mantenimiento (`/api/mantenimiento/*`), creación de medidores o sedes, usuarios, auditoría, webhooks, notificaciones y backups.
+- **Preservación de Semántica HTTP 404:** El hook perimetral debe evaluar `if (request.is404) return;` para permitir que el manejador `setNotFoundHandler` de Fastify retorne limpiamente `HTTP 404 Not Found` en rutas inexistentes sin enmascararlas espuriamente como 401.

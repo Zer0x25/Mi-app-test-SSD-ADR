@@ -4,17 +4,26 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 15 Completado - Autenticación Visual Diferenciada por Entorno y Pantalla de Login (Dev vs. Staging/Prod)
+## 🧭 Fase Actual: Sistema Blindado - Perímetro Zero-Trust y Matriz RBAC Certificados
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, con Quality Gate determinista y suite E2E ampliada con cobertura completa de autenticación formal y multi-entorno.
-- **Acción requerida para comenzar:** Definir alcance de Hito 16 (Sub-Facturación y Liquidación de Consumos) o próximas prioridades operativas según indicación del usuario.
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (207/207 tests en Vitest + 43/43 tests en Playwright E2E pasando, 100%).
-
+- **Estado:** Estable, seguro y validado en Dev y Staging.
+- **Spec Completado:** [`specs/feat-019-blindaje-perimetral-api-zero-trust-y-rbac.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/specs/feat-019-blindaje-perimetral-api-zero-trust-y-rbac.md)
+- **ADR Asociado:** [`docs/adr/0013-blindaje-perimetral-api-zero-trust-y-matriz-rbac.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/docs/adr/0013-blindaje-perimetral-api-zero-trust-y-matriz-rbac.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (233/233 tests en Vitest + 44/44 tests en Playwright E2E pasando al 100%).
+- **Certificación Staging:** Contenedor Docker `sistema-medidores:staging` en ejecución, probado con `curl` (rechazo anónimo 401, preservación 404) y suite E2E de login real en Playwright superada.
 
 ---
 
 ## 📋 Registro de Hitos
+
+- [x] **Hito 15.1: Blindaje Perimetral API Zero-Trust y Matriz RBAC Fail-Closed (Completado: 2026-10-04)**
+  - ADR 0013 y Spec `feat-019` implementados bajo Agentic TDD.
+  - Blindaje perimetral absoluto en hook `preHandler`: toda ruta privada bajo `/api/*` exige cabecera `Authorization: Bearer <token>` válida (HTTP 401).
+  - Allow-list explícita para rutas públicas (`/healthz`, `/readyz`, `/api/health`, `/api/config`, `/api/auth/login`, `/api/auth/register`, `/api/demo/seed`).
+  - Preservación semántica de códigos HTTP 404: rutas inexistentes bajo `/api/` retornan 404 Not Found (tanto con como sin `@fastify/static` activo), evitando enmascaramiento falso como 401.
+  - Matriz RBAC exhaustiva: `OPERADOR` restringido a Modo Terreno (denegado 403 en `/api/dashboard`, `/api/reportes`, `/api/alertas`, `/api/mantenimiento` y creación de entidades); `SUPERVISOR` restringido a sedes asignadas; `ADMIN` con acceso total.
+  - Suite de 27 pruebas dedicadas en `tests/server.rbac-perimeter.test.ts` pasando al 100%. Quality Gate `./scripts/verify.sh` superado con código de salida 0 (233 tests unitarios/integración + 44 tests Playwright E2E). Contenedor Staging certificado en puerto 3001.
 
 - [x] **Hito -1: Blueprint Semilla Inicial**
   - Estructura agnóstica de gobernanza creada (`AGENTS.md`, `.agents/`, `docs/adr/`, `specs/templates/`, `scripts/`).
