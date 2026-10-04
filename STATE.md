@@ -232,5 +232,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Implementación de `test-003-cobertura-integral-e2e-y-bug-hunting` (Hito 14) | Corrección de bugs de catálogo, esquema, sesión y carrera modal; 5 nuevas suites E2E Playwright (37/37 tests pasando, 100%) y Quality Gate 0 (206 tests Vitest) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 4 y 15 en AGENTS.md) | Formalización de discriminación 401 en clientes web, restauración de semillas y aislamiento con entidades efímeras en E2E |
 | 2026-10-04 | Antigravity | Sincronización integral de `README.md` | Actualización de README con arquitectura actual, 11 ADRs, Staging Docker, PWA, Playwright E2E y comandos |
+| 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 8 y 15 en AGENTS.md) | Formalización de certificación E2E en Staging y resolución de rutas con symlinks en CLIs de testing |
+
 
 
