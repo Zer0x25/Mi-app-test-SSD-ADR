@@ -8,27 +8,28 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
     // --------------------------------------------------------------------------
     // Catálogo de Tipos de Medidor
     // --------------------------------------------------------------------------
-    fastify.post(
-      "/tipos-medidor",
-      async (request: FastifyRequest<{ Body: CrearTipoMedidorInput }>, reply: FastifyReply) => {
-        try {
-          const result = await service.crearTipoMedidor(request.body);
-          return reply.status(201).send(result);
-        } catch (error) {
-          if (isDomainError(error)) {
-            return reply.status(error.statusCode).send({
-              error: error.code,
-              message: error.message,
-              details: error.details,
-            });
-          }
-          return reply.status(500).send({
-            error: "INTERNAL_SERVER_ERROR",
-            message: "Error interno del servidor",
+    const handleCrearTipo = async (request: FastifyRequest<{ Body: CrearTipoMedidorInput }>, reply: FastifyReply) => {
+      try {
+        const result = await service.crearTipoMedidor(request.body);
+        return reply.status(201).send(result);
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
           });
         }
+        return reply.status(500).send({
+          error: "INTERNAL_SERVER_ERROR",
+          message: "Error interno del servidor",
+        });
       }
-    );
+    };
+
+    fastify.post("/tipos-medidor", handleCrearTipo);
+    fastify.post("/medidores/tipos", handleCrearTipo);
+
 
     fastify.get("/tipos-medidor", async (_request: FastifyRequest, reply: FastifyReply) => {
       try {

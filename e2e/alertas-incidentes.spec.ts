@@ -59,4 +59,42 @@ test.describe("Flujo E2E: Detección y Resolución de Alertas e Incidentes", () 
     await page.selectOption("#filtroAlertasEstado", "RESUELTO");
     await expect(page.locator("#tbodyAlertasIncidentes")).toContainText("RESUELTO");
   });
+
+  test("debe permitir configurar una nueva regla dinámica de alerta y reflejarla en la tabla de reglas activas", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector("#mainNavbar", { state: "visible" });
+
+    // 1. Navegar a Alertas
+    await page.click("#tabAlertasBtn");
+    await expect(page.locator("#viewAlertas")).toBeVisible();
+
+    // 2. Abrir modal de configuración de reglas
+    await page.click("button:has-text('Ver / Crear Reglas')");
+    const modalReglas = page.locator("#modalConfigurarReglas");
+    await expect(modalReglas).toHaveClass(/open/);
+
+    // 3. Completar formulario de nueva regla
+    const timestamp = Date.now().toString().slice(-4);
+    const nombreRegla = `Alerta Eléctrica Crítica ${timestamp}`;
+    await page.locator("#reglaNombre").fill(nombreRegla);
+    await page.locator("#reglaTipo").selectOption("SALTO_CONSUMO");
+    await page.locator("#reglaRecurso").selectOption("LUZ");
+    await page.locator("#reglaUmbral").fill("75.5");
+
+    // 4. Enviar formulario
+    await page.locator("#formCrearRegla button[type='submit']").click();
+
+    // Validar toast de éxito
+    await expect(page.locator(".toast-success", { hasText: "Regla de alerta creada exitosamente" })).toBeVisible();
+
+    // 5. Verificar que la tabla de reglas activas contenga la nueva regla
+    const tbodyReglas = page.locator("#tbodyReglasAlertas");
+    await expect(tbodyReglas).toContainText(nombreRegla);
+    await expect(tbodyReglas).toContainText("75.5");
+
+    // Cerrar modal
+    await page.locator("#modalConfigurarReglas button:has-text('Cerrar')").click();
+    await expect(modalReglas).not.toHaveClass(/open/);
+  });
 });
+

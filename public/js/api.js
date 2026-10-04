@@ -58,7 +58,8 @@ class ApiClient {
       const data = isJson ? await response.json() : await response.text();
 
       if (!response.ok) {
-        if (response.status === 401 && !endpoint.includes("/auth/login")) {
+        const isPasswordMismatch = (typeof data === "object" && (data.error === "PASSWORD_ACTUAL_INVALIDA" || data.code === "PASSWORD_ACTUAL_INVALIDA")) || endpoint.includes("/auth/cambiar-password");
+        if (response.status === 401 && !endpoint.includes("/auth/login") && !isPasswordMismatch) {
           this.clearToken();
           window.dispatchEvent(
             new CustomEvent("medidores:session-expired", {
@@ -174,9 +175,9 @@ class ApiClient {
 
   // --- Dominio: Medidores & Tipos ---
   medidores = {
-    getTipos: () => this.request("/api/medidores/tipos"),
+    getTipos: () => this.request("/api/tipos-medidor"),
     createTipo: (payload) =>
-      this.request("/api/medidores/tipos", {
+      this.request("/api/tipos-medidor", {
         method: "POST",
         body: JSON.stringify(payload),
       }),

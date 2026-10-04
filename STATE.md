@@ -4,12 +4,13 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 13.1 - Fichas Adaptativas Móviles en Listados (Completado con Éxito)
+## 🧭 Fase Actual: Hito 14 Completado - Sistema Estable y Blindado con Cobertura E2E Integral
 
 - **Proyecto:** `Medidores`
-- **Estado:** Hito 13.1 completado bajo metodología Agentic TDD y Quality Gate determinista. Fichas táctiles apiladas implementadas en todas las tablas (`.data-table`) con atributos `data-label`, botones ergonómicos >= 44px y cero desborde horizontal.
-- **Acción requerida para comenzar:** Seleccionar siguiente hito del backlog (Hito 14: Rutas de Inspección y Órdenes de Trabajo en Campo).
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (206/206 tests en Vitest + 29/29 tests en Playwright E2E pasando, 100%).
+- **Estado:** Estable, con Quality Gate determinista y suite E2E ampliada al 100% de los flujos críticos.
+- **Acción requerida para comenzar:** Definir alcance de Hito 15 (Sub-Facturación y Liquidación de Consumos) o próximas prioridades operativas según indicación del usuario.
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (206/206 tests en Vitest + 37/37 tests en Playwright E2E pasando, 100%).
+
 
 ---
 
@@ -151,22 +152,37 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Suite de pruebas Playwright (`e2e/responsive-mobile-cards.spec.ts`) con 4/4 tests pasando.
   - Quality Gate verificado con código de salida 0 (206/206 Vitest + 29/29 Playwright E2E pasando, 100%).
 
+- [x] **Hito 14: Búsqueda Exhaustiva de Bugs y Cobertura Integral E2E (Completado: 2026-10-04)**
+  - Especificación `specs/test-003-cobertura-integral-e2e-y-bug-hunting.md` implementada.
+  - Corrección de bugs críticos descubiertos en E2E:
+    - Normalización de rutas de tipos de medidor (`/tipos-medidor` y `/medidores/tipos`).
+    - Corrección de esquema DTO en creación de instalaciones (`ubicacion` vs `direccion`).
+    - Eliminación de deslogueo erróneo por 401 en cambio de contraseña (`isPasswordMismatch` guard).
+    - Prevención de condiciones de carrera en carga asíncrona de selectores en modal de mantenimiento.
+    - Idempotencia total en seed demo (`upsert` restaurando `nombre` y `activo: true` en usuarios y medidores).
+  - 5 nuevas suites E2E en Playwright implementadas:
+    - Catálogo y Aprovisionamiento (`e2e/catalogo-aprovisionamiento.spec.ts`).
+    - Seguridad, Perfil y Autoservicio (`e2e/seguridad-usuarios-perfil.spec.ts`).
+    - Ciclo de Vida Metrológico y Bajas Técnicas (`e2e/mantenimiento-ciclo-vida.spec.ts`).
+    - Reglas Dinámicas de Alerta en Caliente (`e2e/alertas-incidentes.spec.ts`).
+    - Resiliencia de UI y Empty States (`e2e/resiliencia-ui-empty-states.spec.ts`).
+  - Cobertura E2E ampliada a 37/37 pruebas pasando (100% verde en 15 suites).
+  - Quality Gate verificado con código de salida 0 (206/206 Vitest + 37/37 Playwright E2E).
+
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 14: Rutas de Inspección y Órdenes de Trabajo para Mantenimiento en Campo**
-  - Planificador de rutas óptimas para operadores por sede/edificio.
-  - Checklist metrológico y firma digital del técnico al cerrar órdenes de trabajo.
 - [ ] **Hito 15: Sub-Facturación y Liquidación de Consumos (Medidores Remarcadores)**
-  - Cálculo de prorrateo por m³/kWh según tarifas escalonadas y cargos fijos.
-  - Generación de comprobantes y recibos de cobro por local o departamento.
+  - Jerarquía de medidores remarcadores por local, oficina o departamento vinculados a un medidor matriz/general.
+  - Cálculo de prorrateo por m³/kWh según tarifas configurables, cargos fijos y balance de áreas comunes.
+  - Generación de comprobantes, reportes de cobro y exportación de pre-liquidaciones.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** Ninguno (Hito 13.1 finalizado con éxito)
-- **Módulo objetivo:** Pendiente de selección para Hito 14.
+- **Archivo:** Ninguno (Hito 14 finalizado con éxito).
+- **Módulo objetivo:** En espera de especificación para Hito 15.
 
 ---
 
@@ -213,4 +229,5 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Implementación de `feat-017-fichas-moviles-tablas-responsive` | CSS `@media (max-width: 768px)`, inyección `data-label`, botones >= 44px, E2E (29/29 Playwright + 206/206 Vitest) |
 | 2026-10-04 | Antigravity | Corrección de desbordamiento en fichas móviles (.cell-stacked) | Eliminación de overflow en badges múltiples, saltos de línea y bloques pre JSON en fichas a 320px, 0 desbordes confirmados |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Regla 19 en AGENTS.md) | Formalización de invariantes de contención (`.cell-stacked`, `.badges-wrapper`, ruptura de texto y aislamiento de bloques `<pre>`) en fichas móviles |
+| 2026-10-04 | Antigravity | Implementación de `test-003-cobertura-integral-e2e-y-bug-hunting` (Hito 14) | Corrección de bugs de catálogo, esquema, sesión y carrera modal; 5 nuevas suites E2E Playwright (37/37 tests pasando, 100%) y Quality Gate 0 (206 tests Vitest) |
 

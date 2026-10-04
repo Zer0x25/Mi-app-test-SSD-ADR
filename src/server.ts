@@ -347,7 +347,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
       await prisma.usuario.upsert({
         where: { email: "admin@medidores.cl" },
-        update: { passwordHash: defaultPasswordHash, rol: "ADMIN", activo: true },
+        update: { passwordHash: defaultPasswordHash, rol: "ADMIN", activo: true, nombre: "Administrador Central" },
         create: {
           email: "admin@medidores.cl",
           passwordHash: defaultPasswordHash,
@@ -359,7 +359,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
       const supervisorUser = await prisma.usuario.upsert({
         where: { email: "supervisor@medidores.cl" },
-        update: { passwordHash: defaultPasswordHash, rol: "SUPERVISOR", activo: true },
+        update: { passwordHash: defaultPasswordHash, rol: "SUPERVISOR", activo: true, nombre: "Carlos Supervisor (Planta Norte)" },
         create: {
           email: "supervisor@medidores.cl",
           passwordHash: defaultPasswordHash,
@@ -371,7 +371,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
       const operadorUser = await prisma.usuario.upsert({
         where: { email: "operador@medidores.cl" },
-        update: { passwordHash: defaultPasswordHash, rol: "OPERADOR", activo: true },
+        update: { passwordHash: defaultPasswordHash, rol: "OPERADOR", activo: true, nombre: "Juan Operador Terreno" },
         create: {
           email: "operador@medidores.cl",
           passwordHash: defaultPasswordHash,
@@ -444,10 +444,11 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
       const medidoresMap = new Map<string, string>();
       for (const m of medidoresData) {
-        let medidor = await prisma.medidor.findUnique({ where: { codigo: m.codigo } });
-        if (!medidor) {
-          medidor = await prisma.medidor.create({ data: { ...m, activo: true } });
-        }
+        const medidor = await prisma.medidor.upsert({
+          where: { codigo: m.codigo },
+          update: { activo: true, instalacionId: m.instalacionId, tipoMedidorId: m.tipoMedidorId, ubicacionInterna: m.ubicacionInterna },
+          create: { ...m, activo: true },
+        });
         medidoresMap.set(m.codigo, medidor.id);
       }
 

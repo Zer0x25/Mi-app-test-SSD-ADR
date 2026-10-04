@@ -135,7 +135,7 @@ function aplicarPermisosUI() {
       <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${currentUser.nombre}</span>
         <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}">${currentUser.rol}</span>
-        <button class="btn btn-outline btn-sm" onclick="openModal('modalCambiarPassword')" title="Cambiar mi contraseña" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+        <button class="btn btn-outline btn-sm" id="btnOpenModalCambiarPassword" onclick="openModal('modalCambiarPassword')" title="Cambiar mi contraseña" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
           🔑 Clave
         </button>
       </div>
@@ -149,7 +149,7 @@ function aplicarPermisosUI() {
           <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${currentUser.nombre}</span>
           <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}" style="width: fit-content;">${currentUser.rol}</span>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="openModal('modalCambiarPassword'); window.closeMobileMenu();" title="Cambiar mi contraseña" style="min-height: 38px;">
+        <button class="btn btn-outline btn-sm" id="btnOpenModalCambiarPasswordMobile" onclick="openModal('modalCambiarPassword'); window.closeMobileMenu();" title="Cambiar mi contraseña" style="min-height: 38px;">
           🔑 Clave
         </button>
       </div>
@@ -617,14 +617,12 @@ async function submitNuevaInstalacion(event) {
   }
 
   const nombre = document.getElementById("inputInstalacionNombre").value.trim();
-  const direccion = document.getElementById("inputInstalacionDireccion").value.trim();
-  const descripcion = document.getElementById("inputInstalacionDesc").value.trim();
+  const ubicacion = document.getElementById("inputInstalacionDireccion").value.trim();
 
   try {
     await window.api.instalaciones.create({
       nombre,
-      direccion,
-      descripcion: descripcion || undefined,
+      ubicacion,
     });
 
     window.Modal.close("modalInstalacion");
@@ -641,17 +639,22 @@ async function submitNuevoTipo(event) {
   event.preventDefault();
   const nombre = document.getElementById("inputTipoNombre").value.trim();
   const recurso = document.getElementById("selectTipoRecurso").value;
-  const unidadMedida = document.getElementById("inputTipoUnidad").value.trim();
+  const rawUnidad = document.getElementById("inputTipoUnidad").value.trim().toUpperCase();
+  let unidad = rawUnidad;
+  if (rawUnidad === "M3" || rawUnidad === "M³") unidad = "M3";
+  else if (rawUnidad === "L" || rawUnidad === "LTS" || rawUnidad === "LITRO" || rawUnidad === "LITROS") unidad = "LITROS";
+  else if (rawUnidad === "KWH" || rawUnidad === "KW/H") unidad = "KWH";
+  else if (rawUnidad === "%" || rawUnidad === "PORCENTAJE") unidad = "PORCENTAJE";
+  else if (!["LITROS", "M3", "KWH", "PORCENTAJE"].includes(rawUnidad)) unidad = "OTRO";
+
   const tipoMedicion = document.getElementById("selectTipoMedicion").value;
-  const descripcion = document.getElementById("inputTipoDesc").value.trim();
 
   try {
     await window.api.medidores.createTipo({
       nombre,
       recurso,
-      unidadMedida,
+      unidad,
       tipoMedicion,
-      descripcion: descripcion || undefined,
     });
 
     window.Modal.close("modalTipo");
@@ -685,8 +688,7 @@ async function submitNuevoMedidor(event) {
     window.Toast.success(`Medidor «${codigo}» dado de alta exitosamente.`);
     await cargarDashboard();
   } catch (err) {
-    // Si es un supervisor intentando crear en una instalación ajena, el backend retornará INSTALACION_NO_ASIGNADA
-    window.Toast.error(err.message, "Permisos de Supervisor");
+    window.Toast.error(err.message, "Error al crear medidor");
   }
 }
 
@@ -1281,6 +1283,9 @@ async function poblarSelectsMantenimiento() {
   const selectModal = document.getElementById("mantMedidorId");
   const selectFicha = document.getElementById("selectFichaMedidor");
 
+  const prevModalVal = selectModal?.value;
+  const prevFichaVal = selectFicha?.value;
+
   try {
     // Cargar todos los medidores de todas las instalaciones
     todosLosMedidoresCache = [];
@@ -1295,15 +1300,21 @@ async function poblarSelectsMantenimiento() {
       (m) => `<option value="${m.id}">${escapeHtml(m.codigo)} — ${escapeHtml(m.instalacionNombre)} (${m.activo ? 'Activo' : 'Baja'})</option>`
     ).join("");
 
-    if (selectModal) selectModal.innerHTML = `<option value="">Selecciona un medidor...</option>` + options;
-    if (selectFicha) selectFicha.innerHTML = `<option value="">Selecciona un medidor...</option>` + options;
+    if (selectModal) {
+      selectModal.innerHTML = `<option value="">Selecciona un medidor...</option>` + options;
+      if (prevModalVal) selectModal.value = prevModalVal;
+    }
+    if (selectFicha) {
+      selectFicha.innerHTML = `<option value="">Selecciona un medidor...</option>` + options;
+      if (prevFichaVal) selectFicha.value = prevFichaVal;
+    }
   } catch (e) {
     console.warn("Error poblando medidores de mantenimiento:", e);
   }
 }
 
-function openModalRegistrarMantenimiento() {
-  poblarSelectsMantenimiento();
+async function openModalRegistrarMantenimiento() {
+  await poblarSelectsMantenimiento();
   const inputFecha = document.getElementById("mantFecha");
   if (inputFecha) {
     const ahora = new Date();
