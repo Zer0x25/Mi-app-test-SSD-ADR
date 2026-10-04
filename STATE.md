@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Consolidación, Rebuild de Staging y Expansión de Cobertura (Anti-Regresión & E2E Headless)
+## 🧭 Fase Actual: Hito 13 - Adaptabilidad Responsiva Mobile-First y Usabilidad en Terreno (Completado con Éxito)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Staging reconstruido exitosamente en Docker. Cobertura de anti-regresión y pruebas E2E headless expandida al 100% de los flujos del sistema.
-- **Acción requerida para comenzar:** Sistema blindado y validado. Listo para siguientes prioridades o despliegue.
-- **Última verificación de Quality Gate:** Superada (206/206 tests en Vitest + 19/19 tests en Playwright, código de salida 0).
+- **Estado:** Hito 13 completado bajo metodología Agentic TDD y Quality Gate determinista. Escala completa de breakpoints (320px, 375px, 425px, 768px, 1024px+) implementada con navegación por Drawer móvil accesible, zero horizontal overflow y touch-target ergonomics.
+- **Acción requerida para comenzar:** Seleccionar siguiente hito del backlog (Hito 14: Rutas de Inspección y Órdenes de Trabajo en Campo).
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (206/206 tests en Vitest + 24/24 tests en Playwright E2E pasando, 100%).
 
 ---
 
@@ -130,13 +130,21 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Frontend resiliente: retroceso exponencial con jitter aleatorio (±15%) en `SyncManager`, captura global de expiración de sesión (401) en `ApiClient` con evento `medidores:session-expired`, y estados de error con recuperación interactiva (`renderErrorState`).
   - Suite de pruebas de concurrencia y validación completa del Quality Gate (196/196 Vitest pasando + 7/7 E2E Playwright pasando, 100%).
 
+- [x] **Hito 13: Adaptabilidad Responsiva Mobile-First y Usabilidad en Terreno (Completado: 2026-10-04)**
+  - Formalización inmutable de ADR 0010 (`docs/adr/0010-diseno-responsivo-y-adaptabilidad-movil.md`).
+  - Especificación `specs/feat-016-adaptabilidad-movil-responsive.md` implementada bajo Agentic TDD.
+  - Menú hamburguesa accesible / Drawer móvil en cabecera para los 9 módulos, simulación RBAC y perfil de usuario.
+  - Escala progresiva de breakpoints: 320px (XS / iPhone SE 1st Gen), 375px (SM / iPhone Estándar), 425px (MD / Phablet), 768px (LG / Tablet), 1024px+ (XL / Desktop).
+  - Eliminación de overflow horizontal (`zero horizontal overflow`) en toda la aplicación (`max-width: 100%`, `overflow-x: hidden`).
+  - Touch targets ergonómicos mínimos (>= 44px) y prevención de auto-zoom indeseado en iOS Safari (`font-size: 16px` en inputs).
+  - Modales adaptados a viewport dinámico (`dvh`) con cabecera y pie `position: sticky` y scroll interno.
+  - Suite de pruebas E2E móvil en Playwright (`e2e/responsive-mobile.spec.ts`) con 5 escenarios en múltiples viewports.
+  - Quality Gate verificado con código de salida 0 (206/206 tests Vitest + 24/24 tests Playwright E2E pasando, 100%).
+
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [x] **Rebuild & Hardening Staging:** Sincronización de `package-lock.json` y build/start Docker certificado (Completado).
-- [x] **Expansión de Pruebas Anti-Regresión y E2E Headless:** Cobertura de edge cases en Vitest y suites Playwright en Reportes, Mantenimiento, Usuarios, Auditoría/Backup y PWA Offline (Completado: `specs/test-002-cobertura-antirregresion-y-e2e.md`).
-- [~] **Hito 13: Evidencia Fotográfica y Geolocalización GPS en Terreno** *(Descartado por indicación explícita del usuario)*.
 - [ ] **Hito 14: Rutas de Inspección y Órdenes de Trabajo para Mantenimiento en Campo**
   - Planificador de rutas óptimas para operadores por sede/edificio.
   - Checklist metrológico y firma digital del técnico al cerrar órdenes de trabajo.
@@ -147,8 +155,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** `specs/test-002-cobertura-antirregresion-y-e2e.md` (Completado)
-- **Módulo objetivo:** Expansión de Cobertura Anti-Regresión y Pruebas E2E Headless.
+- **Archivo:** Ninguno (Hito 13 finalizado con éxito)
+- **Módulo objetivo:** Pendiente de selección para Hito 14.
 
 ---
 
@@ -187,3 +195,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Optimización y Modularización de Pipeline CI | Separación en 3 jobs paralelos (Quality Gate, Playwright E2E y Docker Builds), fix regex unidad M3 y GitHub Actions 100% verde |
 | 2026-10-04 | Antigravity | Corrección CSP connect-src, Service Worker y Autocomplete | Dominios Google Fonts en CSP connect-src, exclusión de orígenes externos en sw.js fetch y atributos autocomplete en inputs de contraseña |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 12 y 17 en AGENTS.md) | Formalización de acotamiento de origen en Service Worker, dominios en connect-src y atributos autocomplete obligatorios |
+| 2026-10-04 | Antigravity | Formalización de ADR 0010 y SDD `feat-016` (Hito 13) | Estrategia Mobile-First (320px -> 375px -> 425px+), Drawer accesible, touch targets y E2E móvil |
+| 2026-10-04 | Antigravity | Implementación de `feat-016-adaptabilidad-movil-responsive` | Breakpoints 320px a 1024px+, Drawer móvil, zero overflow y suite Playwright móvil (24/24 E2E + 206/206 Vitest) |
+| 2026-10-04 | Antigravity | Ejecución `/learn` (Regla 18 en AGENTS.md) | Formalización de arquitectura responsiva mobile-first, ergonomía táctil y visibility en drawers off-canvas para Playwright |
+

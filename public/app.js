@@ -123,17 +123,33 @@ function aplicarPermisosUI() {
 
   // 1. Navbar: Usuario activo y badge de rol y botón de cambio de clave
   const userPill = document.getElementById("navUserPill");
+  const mobileUserSection = document.getElementById("mobileUserSection");
+  const roleBadgeClasses = {
+    ADMIN: "badge-blue",
+    SUPERVISOR: "badge-amber",
+    OPERADOR: "badge-emerald",
+  };
+
   if (userPill) {
-    const roleBadgeClasses = {
-      ADMIN: "badge-blue",
-      SUPERVISOR: "badge-amber",
-      OPERADOR: "badge-emerald",
-    };
     userPill.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${currentUser.nombre}</span>
         <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}">${currentUser.rol}</span>
         <button class="btn btn-outline btn-sm" onclick="openModal('modalCambiarPassword')" title="Cambiar mi contraseña" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+          🔑 Clave
+        </button>
+      </div>
+    `;
+  }
+
+  if (mobileUserSection) {
+    mobileUserSection.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0.85rem; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+        <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+          <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${currentUser.nombre}</span>
+          <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}" style="width: fit-content;">${currentUser.rol}</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openModal('modalCambiarPassword'); window.closeMobileMenu();" title="Cambiar mi contraseña" style="min-height: 38px;">
           🔑 Clave
         </button>
       </div>
@@ -186,6 +202,34 @@ function aplicarPermisosUI() {
   if (tabNotificacionesBtn) tabNotificacionesBtn.style.display = (currentUser.rol === "ADMIN" || currentUser.rol === "SUPERVISOR") ? "inline-flex" : "none";
   if (tabOperadorBtn) tabOperadorBtn.style.display = "inline-flex";
 
+  // Sincronizar botones de navegación en drawer móvil
+  const mobileTabAdminBtn = document.getElementById("mobileTabAdminBtn");
+  const mobileTabReportesBtn = document.getElementById("mobileTabReportesBtn");
+  const mobileTabAlertasBtn = document.getElementById("mobileTabAlertasBtn");
+  const mobileTabMantenimientoBtn = document.getElementById("mobileTabMantenimientoBtn");
+  const mobileTabUsuariosBtn = document.getElementById("mobileTabUsuariosBtn");
+  const mobileTabAuditoriaBtn = document.getElementById("mobileTabAuditoriaBtn");
+  const mobileTabWebhooksBtn = document.getElementById("mobileTabWebhooksBtn");
+  const mobileTabNotificacionesBtn = document.getElementById("mobileTabNotificacionesBtn");
+  const mobileTabOperadorBtn = document.getElementById("mobileTabOperadorBtn");
+
+  if (mobileTabAdminBtn) mobileTabAdminBtn.style.display = esOperador ? "none" : "flex";
+  if (mobileTabReportesBtn) mobileTabReportesBtn.style.display = esOperador ? "none" : "flex";
+  if (mobileTabAlertasBtn) mobileTabAlertasBtn.style.display = esOperador ? "none" : "flex";
+  if (mobileTabMantenimientoBtn) mobileTabMantenimientoBtn.style.display = esOperador ? "none" : "flex";
+  if (mobileTabUsuariosBtn) mobileTabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "flex" : "none";
+  if (mobileTabAuditoriaBtn) mobileTabAuditoriaBtn.style.display = currentUser.rol === "ADMIN" ? "flex" : "none";
+  if (mobileTabWebhooksBtn) mobileTabWebhooksBtn.style.display = currentUser.rol === "ADMIN" ? "flex" : "none";
+  if (mobileTabNotificacionesBtn) mobileTabNotificacionesBtn.style.display = (currentUser.rol === "ADMIN" || currentUser.rol === "SUPERVISOR") ? "flex" : "none";
+  if (mobileTabOperadorBtn) mobileTabOperadorBtn.style.display = "flex";
+
+  const mobileRoleAdmin = document.getElementById("mobileRoleAdmin");
+  const mobileRoleSupervisor = document.getElementById("mobileRoleSupervisor");
+  const mobileRoleOperador = document.getElementById("mobileRoleOperador");
+  if (mobileRoleAdmin) mobileRoleAdmin.classList.toggle("active", currentUser.rol === "ADMIN");
+  if (mobileRoleSupervisor) mobileRoleSupervisor.classList.toggle("active", currentUser.rol === "SUPERVISOR");
+  if (mobileRoleOperador) mobileRoleOperador.classList.toggle("active", currentUser.rol === "OPERADOR");
+
   actualizarResumenAlertas();
 }
 
@@ -229,6 +273,15 @@ function switchRole(role) {
     document.getElementById("tabWebhooksBtn"),
     document.getElementById("tabNotificacionesBtn"),
     document.getElementById("tabOperadorBtn"),
+    document.getElementById("mobileTabAdminBtn"),
+    document.getElementById("mobileTabReportesBtn"),
+    document.getElementById("mobileTabAlertasBtn"),
+    document.getElementById("mobileTabMantenimientoBtn"),
+    document.getElementById("mobileTabUsuariosBtn"),
+    document.getElementById("mobileTabAuditoriaBtn"),
+    document.getElementById("mobileTabWebhooksBtn"),
+    document.getElementById("mobileTabNotificacionesBtn"),
+    document.getElementById("mobileTabOperadorBtn"),
   ];
   const views = [
     document.getElementById("viewAdmin"),
@@ -247,43 +300,52 @@ function switchRole(role) {
 
   if (role === "admin") {
     document.getElementById("tabAdminBtn")?.classList.add("active");
+    document.getElementById("mobileTabAdminBtn")?.classList.add("active");
     document.getElementById("viewAdmin")?.classList.add("active");
     cargarDashboard();
   } else if (role === "reportes") {
     document.getElementById("tabReportesBtn")?.classList.add("active");
+    document.getElementById("mobileTabReportesBtn")?.classList.add("active");
     document.getElementById("viewReportes")?.classList.add("active");
     inicializarFiltrosReporte();
     cargarReporteConsumos();
     cargarFacturasReportes();
   } else if (role === "alertas") {
     document.getElementById("tabAlertasBtn")?.classList.add("active");
+    document.getElementById("mobileTabAlertasBtn")?.classList.add("active");
     document.getElementById("viewAlertas")?.classList.add("active");
     cargarAlertasIncidentes();
     cargarReglasAlertas();
     actualizarResumenAlertas();
   } else if (role === "mantenimiento") {
     document.getElementById("tabMantenimientoBtn")?.classList.add("active");
+    document.getElementById("mobileTabMantenimientoBtn")?.classList.add("active");
     document.getElementById("viewMantenimiento")?.classList.add("active");
     poblarSelectsMantenimiento();
     cargarMantenimientosBitacora();
   } else if (role === "usuarios") {
     document.getElementById("tabUsuariosBtn")?.classList.add("active");
+    document.getElementById("mobileTabUsuariosBtn")?.classList.add("active");
     document.getElementById("viewUsuarios")?.classList.add("active");
     cargarUsuariosAdmin();
   } else if (role === "auditoria") {
     document.getElementById("tabAuditoriaBtn")?.classList.add("active");
+    document.getElementById("mobileTabAuditoriaBtn")?.classList.add("active");
     document.getElementById("viewAuditoria")?.classList.add("active");
     cargarEventosAuditoria();
   } else if (role === "webhooks") {
     document.getElementById("tabWebhooksBtn")?.classList.add("active");
+    document.getElementById("mobileTabWebhooksBtn")?.classList.add("active");
     document.getElementById("viewWebhooks")?.classList.add("active");
     cargarWebhooks();
   } else if (role === "notificaciones") {
     document.getElementById("tabNotificacionesBtn")?.classList.add("active");
+    document.getElementById("mobileTabNotificacionesBtn")?.classList.add("active");
     document.getElementById("viewNotificaciones")?.classList.add("active");
     inicializarVistaNotificaciones();
   } else {
     document.getElementById("tabOperadorBtn")?.classList.add("active");
+    document.getElementById("mobileTabOperadorBtn")?.classList.add("active");
     document.getElementById("viewOperador")?.classList.add("active");
     cargarSelectorOperador();
   }

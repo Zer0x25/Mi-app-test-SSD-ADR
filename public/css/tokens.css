@@ -40,6 +40,14 @@
   --status-danger: #ef4444;
   --status-info: #3b82f6;
 
+  /* Dimensiones y Breakpoints Responsivos (ADR 0010) */
+  --breakpoint-xs: 320px;
+  --breakpoint-sm: 375px;
+  --breakpoint-md: 425px;
+  --breakpoint-lg: 768px;
+  --breakpoint-xl: 1024px;
+  --touch-target-min: 44px;
+
   /* Soporte para controles nativos de formulario */
   color-scheme: dark light;
 }

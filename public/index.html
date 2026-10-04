@@ -176,9 +176,145 @@
           </svg>
           Sincronizar (<span id="syncQueueCount">0</span>)
         </button>
+        <button class="mobile-menu-toggle" id="btnMobileMenuToggle" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="mobileMenuDrawer" onclick="window.toggleMobileMenu()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
       </div>
     </div>
   </header>
+
+  <!-- ============================================================== -->
+  <!-- MENÚ MÓVIL Y DRAWER ACCESIBLE (ADR 0010 / Hito 13) -->
+  <!-- ============================================================== -->
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" onclick="window.closeMobileMenu()"></div>
+  <aside class="mobile-drawer" id="mobileMenuDrawer" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Menú principal de navegación">
+    <div class="mobile-drawer-header">
+      <div class="brand-group">
+        <div class="brand-logo" style="width:32px; height:32px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <span class="mobile-drawer-title" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">Menú Medidores</span>
+      </div>
+      <button class="btn btn-icon btn-ghost" id="btnCloseMobileMenu" onclick="window.closeMobileMenu()" aria-label="Cerrar menú">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="mobile-drawer-body">
+      <!-- Usuario Activo en Móvil -->
+      <div class="mobile-user-section" id="mobileUserSection"></div>
+
+      <!-- Navegación por Módulos -->
+      <nav class="mobile-nav-list" aria-label="Módulos del sistema">
+        <button class="mobile-nav-btn active" id="mobileTabAdminBtn" onclick="switchRole('admin'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabReportesBtn" onclick="switchRole('reportes'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Reportes &amp; Facturas
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabAlertasBtn" onclick="switchRole('alertas'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Alertas
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabMantenimientoBtn" onclick="switchRole('mantenimiento'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Mantenimiento
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabUsuariosBtn" onclick="switchRole('usuarios'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Usuarios
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabAuditoriaBtn" onclick="switchRole('auditoria'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Auditoría
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabWebhooksBtn" onclick="switchRole('webhooks'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Webhooks
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabNotificacionesBtn" onclick="switchRole('notificaciones'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Notificaciones
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabOperadorBtn" onclick="switchRole('operador'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Modo Terreno
+        </button>
+      </nav>
+
+      <!-- Simulador de Roles para Móvil -->
+      <div class="mobile-simulator-section">
+        <span class="simulator-label">Simular Usuario (RBAC):</span>
+        <div class="mobile-simulator-buttons">
+          <button class="btn btn-sm btn-outline mobile-simulator-btn active" id="mobileRoleAdmin" onclick="loginComo('ADMIN'); window.closeMobileMenu();">
+            👑 Admin Global
+          </button>
+          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleSupervisor" onclick="loginComo('SUPERVISOR'); window.closeMobileMenu();">
+            🛡️ Supervisor Planta
+          </button>
+          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleOperador" onclick="loginComo('OPERADOR'); window.closeMobileMenu();">
+            👷 Operador Terreno
+          </button>
+        </div>
+      </div>
+
+      <!-- Acciones Adicionales -->
+      <div class="mobile-drawer-actions">
+        <button class="btn btn-outline" onclick="window.Theme.toggle()" style="width: 100%; justify-content: center; min-height: 44px;">
+          🌓 Alternar Modo Claro / Oscuro
+        </button>
+        <button class="btn btn-secondary" onclick="seedDemoData(); window.closeMobileMenu();" style="width: 100%; justify-content: center; min-height: 44px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Recargar Datos Demo
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <!-- Contenedor Principal de Vistas -->
   <main class="main-content">

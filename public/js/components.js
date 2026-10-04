@@ -373,3 +373,77 @@ window.Components = {
   createErrorState,
   renderErrorState,
 };
+
+// ------------------------------------------------------------------------------
+// 8. CONTROLADOR DE MENÚ MÓVIL Y DRAWER ACCESIBLE (ADR 0010)
+// ------------------------------------------------------------------------------
+class MobileMenuManager {
+  constructor() {
+    this.initListeners();
+  }
+
+  toggle() {
+    const drawer = document.getElementById("mobileMenuDrawer");
+    if (drawer && drawer.classList.contains("open")) {
+      this.close();
+    } else {
+      this.open();
+    }
+  }
+
+  open() {
+    const drawer = document.getElementById("mobileMenuDrawer");
+    const backdrop = document.getElementById("mobileDrawerBackdrop");
+    const toggleBtn = document.getElementById("btnMobileMenuToggle");
+    if (drawer) {
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+    }
+    if (backdrop) {
+      backdrop.classList.add("open");
+    }
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-expanded", "true");
+    }
+    document.body.style.overflow = "hidden";
+  }
+
+  close() {
+    const drawer = document.getElementById("mobileMenuDrawer");
+    const backdrop = document.getElementById("mobileDrawerBackdrop");
+    const toggleBtn = document.getElementById("btnMobileMenuToggle");
+    if (drawer) {
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+    }
+    if (backdrop) {
+      backdrop.classList.remove("open");
+    }
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-expanded", "false");
+    }
+    document.body.style.overflow = "";
+  }
+
+  initListeners() {
+    // Cerrar al pulsar Escape
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        this.close();
+      }
+    });
+
+    // Cerrar automáticamente si la ventana se amplía a desktop
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 768) {
+        this.close();
+      }
+    });
+  }
+}
+
+window.MobileMenu = new MobileMenuManager();
+window.toggleMobileMenu = () => window.MobileMenu.toggle();
+window.openMobileMenu = () => window.MobileMenu.open();
+window.closeMobileMenu = () => window.MobileMenu.close();
+
