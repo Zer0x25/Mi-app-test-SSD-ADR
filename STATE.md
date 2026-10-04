@@ -152,6 +152,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-013-logs-estructurados-y-error-webhooks` | ADR 0006, Pino nativo, reqId, errorHandler y webhooks 500 fail-safe, 174/174 tests |
 | 2026-10-03 | Antigravity | Ejecución `/learn` (Reglas 13 y 14 en AGENTS.md) | Formalización de webhooks salientes y observabilidad crítica en AGENTS.md y UI |
 | 2026-10-03 | Antigravity | Implementación de `test-001-e2e-playwright` (Hito 10) | ADR 0007, Playwright en modo headless, suites E2E completas y CI (6/6 tests) |
+| 2026-10-03 | Antigravity | Ejecución `/learn` (Reglas 11 y 15 en AGENTS.md) | Formalización de exención segura E2E y desacoplamiento de runners (Vitest vs Playwright) |
 
 
 
