@@ -97,6 +97,7 @@ Todo sistema que registre eventos críticos o de trazabilidad normativa (cambios
 ### 11. Protección Perimetral y Rate Limiting Diferenciado
 - **Autenticación Protegida:** Los endpoints sensibles a ataques automatizados de fuerza bruta o robo de credenciales (`POST /api/auth/login`) deben implementar Rate Limiting por IP (umbral de 5 peticiones por minuto, respondiendo HTTP 429 Too Many Requests con cabecera `Retry-After`).
 - **Respeto a Sincronización en Lote:** Los límites globales de tasa no deben asfixiar las peticiones de operadores en terreno tras períodos prolongados sin red; los endpoints de datos y sincronización en lote (`/api/lecturas/batch-sync`) deben contar con umbrales holgados o exenciones controladas.
+- **Exención Segura para Pruebas E2E Sintéticas:** Los limitadores de tasa no deben asfixiar las suites de pruebas automatizadas sintéticas de navegador (Playwright); deben implementar una exención controlada (`allowList`) basada en cabeceras de prueba estrictas (ej. `x-e2e-client`) inyectadas únicamente por el runner en su configuración (`extraHTTPHeaders`), preservando el umbral de bloqueo de 5 peticiones/min para el tráfico regular y las pruebas de penetración.
 
 ### 12. Arquitectura PWA y Sincronización Resiliente (Offline-First)
 En aplicaciones con soporte fuera de línea para trabajo en terreno:
@@ -115,4 +116,12 @@ Para garantizar la trazabilidad operativa y el diagnóstico preventivo en entorn
 - **Logs Estructurados y Correlación de Solicitudes:** La aplicación debe utilizar un logger nativo con salida JSON estructurada (Pino), correlacionando cada ciclo de vida de petición con un identificador único `request.id` (`reqId`) y adaptando dinámicamente el nivel de registro (`LOG_LEVEL`) según el entorno (`test`, `development`, `staging`, `production`).
 - **Discriminación Estricta de Errores (4xx vs 5xx):** En el manejador global de errores (`app.setErrorHandler`), los errores de cliente o de dominio (`DomainError`, validaciones Zod 400, autenticación 401, autorización 403, no encontrado 404) deben retornar su código HTTP semántico y registrarse sin activar alarmas operativas ni generar fatiga de notificaciones.
 - **Trigger Automático ante Excepciones Críticas (>= 500):** Todo fallo no controlado de servidor (`statusCode >= 500`) debe emitir un log de nivel `error` con traza completa y disparar asíncronamente un evento de error crítico (`sistema.error_critico`) hacia la infraestructura de monitoreo o webhooks, encapsulado en un bloque fail-safe para garantizar que la respuesta 500 al cliente jamás sea alterada ni demorada.
+
+### 15. Convivencia y Desacoplamiento de Runners de Prueba (Vitest vs. Playwright)
+En proyectos que integren pruebas unitarias/integración rápidas con pruebas sintéticas de navegador de extremo a extremo (E2E):
+- **Aislamiento Estricto de Runners:** El runner unitario (Vitest) DEBE excluir explícitamente el directorio de pruebas E2E (`exclude: ['e2e/**']` en `vitest.config.ts`) para evitar colisiones de ejecución, dobles ejecuciones o fallos de entorno en suites no preparadas para navegador.
+- **Arranque Determinista con WebServer:** La suite de Playwright debe utilizar la directiva `webServer` en `playwright.config.ts` para arrancar y validar la vivacidad del backend (`/readyz` o `/api/health`) antes de despachar tráfico de prueba.
+- **Idempotencia y Semilla de Datos:** Toda prueba E2E debe inicializar su estado de datos de manera predecible utilizando endpoints de semilla (`POST /api/demo/seed`) en `beforeEach` o identificadores únicos con timestamps para evitar colisiones de reintento.
+- **Manejo de Diálogos Nativos del Navegador:** En interacciones de usuario que activen diálogos del sistema (`window.confirm`, `window.alert`), las pruebas deben declarar obligatoriamente el manejador de eventos (`page.once('dialog', dialog => dialog.accept())`) antes del clic desencadenante, evitando cancelaciones silenciosas por defecto.
+- **Exclusión en Artefactos de Producción:** El compilador de producción (`tsconfig.build.json`) DEBE excluir tanto `tests/**/*` como `e2e/**/*` para garantizar que la distribución final (`dist/`) quede limpia de código de prueba.
 
