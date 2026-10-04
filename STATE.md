@@ -230,4 +230,5 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Corrección de desbordamiento en fichas móviles (.cell-stacked) | Eliminación de overflow en badges múltiples, saltos de línea y bloques pre JSON en fichas a 320px, 0 desbordes confirmados |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Regla 19 en AGENTS.md) | Formalización de invariantes de contención (`.cell-stacked`, `.badges-wrapper`, ruptura de texto y aislamiento de bloques `<pre>`) en fichas móviles |
 | 2026-10-04 | Antigravity | Implementación de `test-003-cobertura-integral-e2e-y-bug-hunting` (Hito 14) | Corrección de bugs de catálogo, esquema, sesión y carrera modal; 5 nuevas suites E2E Playwright (37/37 tests pasando, 100%) y Quality Gate 0 (206 tests Vitest) |
+| 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 4 y 15 en AGENTS.md) | Formalización de discriminación 401 en clientes web, restauración de semillas y aislamiento con entidades efímeras en E2E |
 
