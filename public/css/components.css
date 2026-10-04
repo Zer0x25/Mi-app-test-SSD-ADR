@@ -1506,6 +1506,159 @@
   }
 }
 
+/* ------------------------------------------------------------------------------
+   15. PANTALLA DE LOGIN FORMAL Y MULTI-ENTORNO (ADR 0012 / Spec feat-018)
+   ------------------------------------------------------------------------------ */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 160px);
+  padding: 1.5rem 1rem;
+}
+
+.login-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2.25rem 2rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-normal);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.login-logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent-primary);
+  margin-bottom: 1rem;
+}
+
+.login-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+.login-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.login-alert {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--border-danger, #ef4444);
+  color: var(--text-danger, #ef4444);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper .form-input {
+  padding-right: 2.75rem;
+  width: 100%;
+}
+
+.btn-toggle-password {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  font-size: 1rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.btn-toggle-password:hover {
+  color: var(--text-primary);
+}
+
+.btn-login-submit {
+  width: 100%;
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.login-dev-box {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--border-subtle);
+  text-align: center;
+}
+
+.dev-box-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.dev-quick-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Ocultación de controles y navegación cuando no hay autenticación */
+body.not-authenticated .main-nav,
+body.not-authenticated .role-simulator-bar,
+body.not-authenticated #navUserPill,
+body.not-authenticated .mobile-menu-trigger,
+body.not-authenticated #btnSeedDemo {
+  display: none !important;
+}
+
+/* En pantallas móviles */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem 1.25rem;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+  }
+  .login-wrapper {
+    min-height: calc(100vh - 120px);
+    padding: 0.5rem;
+  }
+}
+
 
 
 

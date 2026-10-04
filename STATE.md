@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 14 Completado - Sistema Estable y Blindado con Cobertura E2E Integral
+## 🧭 Fase Actual: Hito 15 Completado - Autenticación Visual Diferenciada por Entorno y Pantalla de Login (Dev vs. Staging/Prod)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, con Quality Gate determinista y suite E2E ampliada al 100% de los flujos críticos.
-- **Acción requerida para comenzar:** Definir alcance de Hito 15 (Sub-Facturación y Liquidación de Consumos) o próximas prioridades operativas según indicación del usuario.
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (206/206 tests en Vitest + 37/37 tests en Playwright E2E pasando, 100%).
+- **Estado:** Estable, con Quality Gate determinista y suite E2E ampliada con cobertura completa de autenticación formal y multi-entorno.
+- **Acción requerida para comenzar:** Definir alcance de Hito 16 (Sub-Facturación y Liquidación de Consumos) o próximas prioridades operativas según indicación del usuario.
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (207/207 tests en Vitest + 43/43 tests en Playwright E2E pasando, 100%).
 
 
 ---
@@ -169,11 +169,22 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Cobertura E2E ampliada a 37/37 pruebas pasando (100% verde en 15 suites).
   - Quality Gate verificado con código de salida 0 (206/206 Vitest + 37/37 Playwright E2E).
 
+- [x] **Hito 15: Autenticación Visual Diferenciada por Entorno y Pantalla de Login (Completado: 2026-10-04)**
+  - Formalización inmutable de ADR 0012 (`docs/adr/0012-autenticacion-visual-diferenciada-por-entorno.md`).
+  - Especificación `specs/feat-018-pantalla-login-y-sesion-multi-entorno.md` implementada bajo Agentic TDD.
+  - Endpoint backend `GET /api/config` para resolver `NODE_ENV` y bandera `devRoleSwitcher`.
+  - Pantalla formal de Inicio de Sesión (`#viewLogin`) con Aurora Design System, inputs semánticos (`autocomplete`), toggle de contraseña y feedback accesible de errores (401/429).
+  - Discriminación estricta de entorno: barra de simulación y drawer rápido activos en desarrollo; completamente ocultos y auto-login bloqueado en Staging y Producción.
+  - Flujo de Cierre de Sesión (Logout) integrado en navbar y drawer móvil con redirección limpia a login y persistencia contra auto-login indeseado.
+  - Prevención de condiciones de carrera en hidratación asíncrona de sesión (`sessionSyncPromise` en `switchRole`).
+  - Suite E2E ampliada con `e2e/login-pantalla-real.spec.ts` (6 nuevos tests, 43/43 tests Playwright pasando, 100%).
+  - Quality Gate verificado con código de salida 0 (207/207 Vitest + 43/43 Playwright E2E).
+
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 15: Sub-Facturación y Liquidación de Consumos (Medidores Remarcadores)**
+- [ ] **Hito 16: Sub-Facturación y Liquidación de Consumos (Medidores Remarcadores)**
   - Jerarquía de medidores remarcadores por local, oficina o departamento vinculados a un medidor matriz/general.
   - Cálculo de prorrateo por m³/kWh según tarifas configurables, cargos fijos y balance de áreas comunes.
   - Generación de comprobantes, reportes de cobro y exportación de pre-liquidaciones.
@@ -181,8 +192,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** Ninguno (Hito 14 finalizado con éxito).
-- **Módulo objetivo:** En espera de especificación para Hito 15.
+- **Archivo:** Ninguno (Hito 15 finalizado con éxito).
+- **Módulo objetivo:** En espera de especificación para Hito 16.
 
 ---
 
@@ -233,6 +244,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 4 y 15 en AGENTS.md) | Formalización de discriminación 401 en clientes web, restauración de semillas y aislamiento con entidades efímeras en E2E |
 | 2026-10-04 | Antigravity | Sincronización integral de `README.md` | Actualización de README con arquitectura actual, 11 ADRs, Staging Docker, PWA, Playwright E2E y comandos |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 8 y 15 en AGENTS.md) | Formalización de certificación E2E en Staging y resolución de rutas con symlinks en CLIs de testing |
+| 2026-10-04 | Antigravity | Implementación de ADR 0012 y `feat-018` (Hito 15) | Login formal, logout, multi-entorno (dev vs staging/prod), 43/43 E2E Playwright y 207 tests Vitest (Quality Gate 0) |
 
 
 

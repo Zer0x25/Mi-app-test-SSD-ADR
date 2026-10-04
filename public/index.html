@@ -320,6 +320,97 @@
   <main class="main-content">
 
     <!-- ============================================================== -->
+    <!-- VISTA 0: INICIO DE SESIÓN FORMAL (ADR 0012 / Spec feat-018)    -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewLogin" aria-labelledby="headingLogin">
+      <div class="login-wrapper">
+        <div class="login-card">
+          <div class="login-header">
+            <div class="login-logo-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+            </div>
+            <h1 class="login-title" id="headingLogin">Iniciar Sesión</h1>
+            <p class="login-subtitle">Sistema Medidores · Telemetría y Gestión Metrológica</p>
+          </div>
+
+          <!-- Alerta Inline de Error -->
+          <div id="loginErrorAlert" class="login-alert" style="display: none;" role="alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span id="loginErrorMessage">Credenciales incorrectas</span>
+          </div>
+
+          <form id="formLogin" class="login-form" onsubmit="handleLoginSubmit(event)">
+            <div class="form-group">
+              <label for="loginEmail" class="form-label">Correo Electrónico</label>
+              <input 
+                type="email" 
+                id="loginEmail" 
+                name="email" 
+                class="form-input" 
+                placeholder="usuario@medidores.cl" 
+                autocomplete="username" 
+                required 
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="loginPassword" class="form-label">Contraseña</label>
+              <div class="password-input-wrapper">
+                <input 
+                  type="password" 
+                  id="loginPassword" 
+                  name="password" 
+                  class="form-input" 
+                  placeholder="Tu contraseña" 
+                  autocomplete="current-password" 
+                  required 
+                />
+                <button 
+                  type="button" 
+                  class="btn-toggle-password" 
+                  id="btnTogglePassword" 
+                  onclick="toggleLoginPasswordVisibility()" 
+                  aria-label="Mostrar u ocultar contraseña" 
+                  title="Mostrar/ocultar contraseña"
+                >
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-login-submit">
+              <span id="btnLoginText">Ingresar al Sistema</span>
+              <span id="btnLoginSpinner" class="spinner" style="display: none; margin-left: 0.5rem;"></span>
+            </button>
+          </form>
+
+          <!-- Acceso Rápido de Desarrollo (solo en devRoleSwitcher) -->
+          <div id="loginDevQuickAccess" class="login-dev-box" style="display: none;">
+            <span class="dev-box-title">⚡ Acceso Rápido de Desarrollo (Dev):</span>
+            <div class="dev-quick-buttons">
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickAdmin" onclick="autofillAndLogin('admin@medidores.cl', 'demo1234')">
+                👑 Admin
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickSupervisor" onclick="autofillAndLogin('supervisor@medidores.cl', 'demo1234')">
+                🛡️ Supervisor
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickOperador" onclick="autofillAndLogin('operador@medidores.cl', 'demo1234')">
+                👷 Operador
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
     <!-- VISTA 1: DASHBOARD ADMINISTRADOR -->
     <!-- ============================================================== -->
     <section class="view-panel active" id="viewAdmin" aria-labelledby="headingAdmin">

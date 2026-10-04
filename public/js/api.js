@@ -358,6 +358,11 @@ class ApiClient {
     getHistorial: (limit = 50) =>
       this.request(`/api/notificaciones/historial?limit=${limit}`),
   };
+
+  // --- Dominio: Configuración del Sistema (feat-018) ---
+  config = {
+    get: () => this.request("/api/config"),
+  };
 }
 
 // Instancia global unificada

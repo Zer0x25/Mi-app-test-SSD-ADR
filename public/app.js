@@ -9,11 +9,42 @@ let currentRoleTab = "admin";
 let instalacionesCache = [];
 let tiposMedidorCache = [];
 let medidoresOperadorCache = [];
+let systemConfig = {
+  env: "development",
+  features: { devRoleSwitcher: true },
+};
+
+let sessionSyncPromise = null;
 
 // Inicialización del Ciclo de Vida
 document.addEventListener("DOMContentLoaded", () => {
   inicializarApp();
 });
+
+async function cargarConfiguracionSistema() {
+  try {
+    const res = await window.api.config.get();
+    if (res && res.features) {
+      systemConfig = res;
+    }
+  } catch (err) {
+    console.warn("No se pudo obtener /api/config, usando defaults de desarrollo:", err);
+  }
+
+  const roleSimulatorBar = document.getElementById("roleSimulatorBar");
+  const mobileSimulatorSection = document.querySelector(".mobile-simulator-section");
+  const loginDevBox = document.getElementById("loginDevQuickAccess");
+
+  if (!systemConfig.features?.devRoleSwitcher) {
+    if (roleSimulatorBar) roleSimulatorBar.style.display = "none";
+    if (mobileSimulatorSection) mobileSimulatorSection.style.display = "none";
+    if (loginDevBox) loginDevBox.style.display = "none";
+  } else {
+    if (roleSimulatorBar) roleSimulatorBar.style.display = "";
+    if (mobileSimulatorSection) mobileSimulatorSection.style.display = "";
+    if (loginDevBox) loginDevBox.style.display = "block";
+  }
+}
 
 async function inicializarApp() {
   if (window.syncManager) {
@@ -29,43 +60,94 @@ async function inicializarApp() {
     });
   }
 
-  // Manejo Global de Expiración de Sesión (ADR 0009 / Hito 12)
+  // Manejo Global de Expiración de Sesión (ADR 0009 / Hito 12 / ADR 0012)
   window.addEventListener("medidores:session-expired", () => {
     currentUser = null;
-    aplicarPermisosUI();
+    mostrarPantallaLogin();
+    window.Toast.warning("Tu sesión ha expirado. Por favor ingresa nuevamente.", "Sesión Expirada");
   });
 
-  await sincronizarSesionUsuario();
-  await cargarSelectsGlobales();
-  if (currentUser?.rol === "OPERADOR") {
-    switchRole("operador");
-  } else {
-    await cargarDashboard();
+  sessionSyncPromise = sincronizarSesionUsuario();
+  await sessionSyncPromise;
+  if (currentUser) {
+    await cargarSelectsGlobales();
+    if (currentUser.rol === "OPERADOR") {
+      switchRole("operador");
+    } else {
+      await cargarDashboard();
+    }
   }
 }
 
 // ------------------------------------------------------------------------------
 // 1. GESTIÓN DE SESIÓN Y AUTENTICACIÓN (JWT & RBAC)
 // ------------------------------------------------------------------------------
+function mostrarPantallaLogin() {
+  document.body.classList.add("not-authenticated");
+
+  const views = document.querySelectorAll(".view-panel");
+  views.forEach((v) => v.classList.remove("active"));
+
+  const viewLogin = document.getElementById("viewLogin");
+  if (viewLogin) viewLogin.classList.add("active");
+
+  const passInput = document.getElementById("loginPassword");
+  const errAlert = document.getElementById("loginErrorAlert");
+  if (passInput) passInput.value = "";
+  if (errAlert) errAlert.style.display = "none";
+}
+
+function mostrarAppPrincipal() {
+  document.body.classList.remove("not-authenticated");
+
+  const viewLogin = document.getElementById("viewLogin");
+  if (viewLogin) viewLogin.classList.remove("active");
+
+  if (currentUser?.rol === "OPERADOR") {
+    switchRole("operador");
+  } else {
+    switchRole("admin");
+  }
+}
+
 async function sincronizarSesionUsuario() {
+  await cargarConfiguracionSistema();
+
   const token = window.api.getToken();
   if (token) {
     try {
       currentUser = await window.api.auth.me();
+      mostrarAppPrincipal();
       aplicarPermisosUI();
       return;
     } catch {
       window.api.clearToken();
+      currentUser = null;
     }
   }
 
-  // Si no hay sesión activa, autenticar por defecto con demo Admin
+  // Si no hay sesión o expiró:
+  // En Staging/Prod (devRoleSwitcher === false), obligar a login sin auto-login
+  if (!systemConfig.features?.devRoleSwitcher) {
+    mostrarPantallaLogin();
+    return;
+  }
+
+  // En Dev (devRoleSwitcher === true): si el usuario cerró sesión voluntariamente, mostrar login
+  if (sessionStorage.getItem("user_logged_out") === "true") {
+    mostrarPantallaLogin();
+    return;
+  }
+
+  // En Dev: auto-login por defecto como Admin para agilidad
   try {
     const auth = await window.api.auth.login({
       email: "admin@medidores.cl",
       password: "demo1234",
     });
     currentUser = auth.usuario;
+    mostrarAppPrincipal();
+    aplicarPermisosUI();
   } catch {
     currentUser = {
       id: "demo-admin-id",
@@ -73,14 +155,107 @@ async function sincronizarSesionUsuario() {
       nombre: "Administrador Central",
       rol: "ADMIN",
     };
+    mostrarAppPrincipal();
+    aplicarPermisosUI();
   }
-  aplicarPermisosUI();
+}
+
+async function cerrarSesion() {
+  window.api.auth.logout();
+  currentUser = null;
+  sessionStorage.setItem("user_logged_out", "true");
+  mostrarPantallaLogin();
+  window.Toast.info("Sesión finalizada correctamente.", "Autenticación");
+}
+
+async function handleLoginSubmit(e) {
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById("loginEmail");
+  const passwordInput = document.getElementById("loginPassword");
+  const submitBtn = document.getElementById("btnLoginSubmit");
+  const btnText = document.getElementById("btnLoginText");
+  const btnSpinner = document.getElementById("btnLoginSpinner");
+  const errAlert = document.getElementById("loginErrorAlert");
+  const errMsg = document.getElementById("loginErrorMessage");
+
+  if (!emailInput || !passwordInput) return;
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!email || !password) {
+    if (errAlert && errMsg) {
+      errMsg.textContent = "Por favor ingrese su correo y contraseña.";
+      errAlert.style.display = "flex";
+    }
+    return;
+  }
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (btnText) btnText.textContent = "Verificando...";
+  if (btnSpinner) btnSpinner.style.display = "inline-block";
+  if (errAlert) errAlert.style.display = "none";
+
+  try {
+    const res = await window.api.auth.login({ email, password });
+    sessionStorage.removeItem("user_logged_out");
+    currentUser = res.usuario;
+    window.Toast.success(`Bienvenido/a, ${currentUser.nombre}`, "Inicio de Sesión");
+
+    mostrarAppPrincipal();
+    aplicarPermisosUI();
+    await cargarSelectsGlobales();
+    if (currentUser.rol === "OPERADOR") {
+      switchRole("operador");
+    } else {
+      switchRole("admin");
+      await cargarDashboard();
+    }
+  } catch (err) {
+    if (errAlert && errMsg) {
+      if (err.statusCode === 401) {
+        errMsg.textContent = "Credenciales incorrectas. Verifique correo o contraseña.";
+      } else if (err.statusCode === 429) {
+        errMsg.textContent = err.message || "Demasiados intentos. Por favor espere unos momentos.";
+      } else {
+        errMsg.textContent = err.message || "No se pudo conectar con el servidor.";
+      }
+      errAlert.style.display = "flex";
+    }
+    window.Toast.error(err.message || "Credenciales inválidas", "Error de Autenticación");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (btnText) btnText.textContent = "Ingresar al Sistema";
+    if (btnSpinner) btnSpinner.style.display = "none";
+  }
+}
+
+function autofillAndLogin(email, pass) {
+  const emailInput = document.getElementById("loginEmail");
+  const passwordInput = document.getElementById("loginPassword");
+  if (emailInput) emailInput.value = email;
+  if (passwordInput) passwordInput.value = pass;
+  handleLoginSubmit();
+}
+
+function toggleLoginPasswordVisibility() {
+  const input = document.getElementById("loginPassword");
+  const btn = document.getElementById("btnTogglePassword");
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    if (btn) btn.textContent = "🔒";
+  } else {
+    input.type = "password";
+    if (btn) btn.textContent = "👁️";
+  }
 }
 
 /**
  * Conmuta rápidamente la sesión entre los 3 roles de prueba (ADMIN, SUPERVISOR, OPERADOR)
  */
 async function loginComo(rol) {
+  sessionStorage.removeItem("user_logged_out");
   const creds = {
     ADMIN: { email: "admin@medidores.cl", pass: "demo1234" },
     SUPERVISOR: { email: "supervisor@medidores.cl", pass: "demo1234" },
@@ -97,6 +272,7 @@ async function loginComo(rol) {
     currentUser = res.usuario;
     window.Toast.success(`Sesión iniciada como ${currentUser.nombre} (${currentUser.rol})`, "Autenticación");
 
+    mostrarAppPrincipal();
     aplicarPermisosUI();
 
     // Actualizar vista según el nuevo rol
@@ -138,20 +314,30 @@ function aplicarPermisosUI() {
         <button class="btn btn-outline btn-sm" id="btnOpenModalCambiarPassword" onclick="openModal('modalCambiarPassword')" title="Cambiar mi contraseña" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
           🔑 Clave
         </button>
+        <button class="btn btn-outline btn-sm" id="btnLogout" onclick="cerrarSesion()" title="Cerrar sesión" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--status-danger, #ef4444);">
+          🚪 Salir
+        </button>
       </div>
     `;
   }
 
   if (mobileUserSection) {
     mobileUserSection.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0.85rem; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-        <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-          <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${currentUser.nombre}</span>
-          <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}" style="width: fit-content;">${currentUser.rol}</span>
+      <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem 0.85rem; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+            <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${currentUser.nombre}</span>
+            <span class="badge ${roleBadgeClasses[currentUser.rol] || 'badge-muted'}" style="width: fit-content;">${currentUser.rol}</span>
+          </div>
         </div>
-        <button class="btn btn-outline btn-sm" id="btnOpenModalCambiarPasswordMobile" onclick="openModal('modalCambiarPassword'); window.closeMobileMenu();" title="Cambiar mi contraseña" style="min-height: 38px;">
-          🔑 Clave
-        </button>
+        <div style="display: flex; gap: 0.5rem; width: 100%;">
+          <button class="btn btn-outline btn-sm" id="btnOpenModalCambiarPasswordMobile" onclick="openModal('modalCambiarPassword'); window.closeMobileMenu();" title="Cambiar mi contraseña" style="min-height: 38px; flex: 1; justify-content: center;">
+            🔑 Clave
+          </button>
+          <button class="btn btn-outline btn-sm" id="btnMobileLogout" onclick="cerrarSesion(); window.closeMobileMenu();" title="Cerrar sesión" style="min-height: 38px; flex: 1; justify-content: center; color: var(--status-danger, #ef4444);">
+            🚪 Salir
+          </button>
+        </div>
       </div>
     `;
   }
@@ -236,7 +422,11 @@ function aplicarPermisosUI() {
 // ------------------------------------------------------------------------------
 // 2. NAVEGACIÓN Y CONMUTACIÓN DE PESTAÑAS (VISTAS)
 // ------------------------------------------------------------------------------
-function switchRole(role) {
+async function switchRole(role) {
+  if (sessionSyncPromise) {
+    await sessionSyncPromise;
+  }
+
   if (role !== "operador" && currentUser?.rol === "OPERADOR") {
     window.Toast.warning("El perfil OPERADOR solo tiene acceso al Modo Terreno.", "Permisos");
     return;
@@ -284,6 +474,7 @@ function switchRole(role) {
     document.getElementById("mobileTabOperadorBtn"),
   ];
   const views = [
+    document.getElementById("viewLogin"),
     document.getElementById("viewAdmin"),
     document.getElementById("viewReportes"),
     document.getElementById("viewAlertas"),
@@ -1523,6 +1714,12 @@ async function consultarFichaMedidor() {
 window.getCurrentUser = () => currentUser;
 window.switchRole = switchRole;
 window.loginComo = loginComo;
+window.handleLoginSubmit = handleLoginSubmit;
+window.cerrarSesion = cerrarSesion;
+window.autofillAndLogin = autofillAndLogin;
+window.toggleLoginPasswordVisibility = toggleLoginPasswordVisibility;
+window.mostrarPantallaLogin = mostrarPantallaLogin;
+window.mostrarAppPrincipal = mostrarAppPrincipal;
 window.openModal = (id) => window.Modal.open(id);
 window.closeModal = (id) => window.Modal.close(id);
 window.openModalLectura = openModalLectura;

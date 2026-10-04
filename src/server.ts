@@ -340,6 +340,15 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     },
   });
 
+  app.get("/api/config", async () => {
+    return {
+      env: config.NODE_ENV,
+      features: {
+        devRoleSwitcher: config.NODE_ENV === "development" || config.NODE_ENV === "test",
+      },
+    };
+  });
+
   app.post("/api/demo/seed", async (_req, reply) => {
     try {
       // 1. Usuarios Demo con los 3 Roles: ADMIN, SUPERVISOR, OPERADOR
