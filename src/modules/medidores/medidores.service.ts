@@ -37,6 +37,10 @@ export interface MedidorEntity {
   createdAt: Date;
   updatedAt: Date;
   tipoMedidor?: TipoMedidorEntity;
+  ultimaLectura?: {
+    valor: number;
+    timestamp: Date;
+  } | null;
 }
 
 export interface IMedidoresRepository {

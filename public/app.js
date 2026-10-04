@@ -244,6 +244,7 @@ function switchRole(role) {
     document.getElementById("tabAlertasBtn")?.classList.add("active");
     document.getElementById("viewAlertas")?.classList.add("active");
     cargarAlertasIncidentes();
+    cargarReglasAlertas();
     actualizarResumenAlertas();
   } else if (role === "mantenimiento") {
     document.getElementById("tabMantenimientoBtn")?.classList.add("active");
@@ -1446,6 +1447,10 @@ window.abrirModalResolverIncidente = abrirModalResolverIncidente;
 window.submitResolverIncidente = submitResolverIncidente;
 window.cargarReglasAlertas = cargarReglasAlertas;
 window.submitCrearRegla = submitCrearRegla;
+window.openModalConfigurarReglas = () => {
+  window.Modal.open("modalConfigurarReglas");
+  cargarReglasAlertas();
+};
 
 window.openModalRegistrarMantenimiento = openModalRegistrarMantenimiento;
 window.onMantMedidorChange = onMantMedidorChange;

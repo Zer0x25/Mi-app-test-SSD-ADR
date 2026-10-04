@@ -21,6 +21,6 @@
     "outDir": "./dist",
     "rootDir": "./"
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "tests/**/*", "e2e/**/*"],
   "exclude": ["node_modules", "dist"]
 }

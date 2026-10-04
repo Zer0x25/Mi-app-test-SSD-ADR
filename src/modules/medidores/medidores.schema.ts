@@ -81,6 +81,13 @@ export const MedidorResponseSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   tipoMedidor: TipoMedidorResponseSchema.optional(),
+  ultimaLectura: z
+    .object({
+      valor: z.number(),
+      timestamp: z.date(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type MedidorResponse = z.infer<typeof MedidorResponseSchema>;

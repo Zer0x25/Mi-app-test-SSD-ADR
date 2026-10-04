@@ -20,6 +20,8 @@ lerna-debug.log*
 # Cobertura y reportes de tests
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
 
 # Variables de entorno y secretos
 .env

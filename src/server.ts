@@ -264,12 +264,16 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     }
   });
 
-  app.get("/api/health", async () => {
-    return {
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      service: "Sistema Medidores",
-    };
+  app.route({
+    method: ["GET", "POST"],
+    url: "/api/health",
+    handler: async () => {
+      return {
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        service: "Sistema Medidores",
+      };
+    },
   });
 
   app.post("/api/demo/seed", async (_req, reply) => {

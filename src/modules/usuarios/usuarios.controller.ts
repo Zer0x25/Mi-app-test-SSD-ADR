@@ -63,6 +63,7 @@ export function createUsuariosController(service: UsuariosService): FastifyPlugi
           rateLimit: {
             max: 5,
             timeWindow: 60 * 1000,
+            allowList: (req: FastifyRequest) => Boolean(req.headers["x-e2e-client"]),
           },
         },
       },

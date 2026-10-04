@@ -54,6 +54,12 @@ jobs:
       - name: Ejecutar Quality Gate
         run: ./scripts/verify.sh
 
+      - name: Instalar navegadores Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar Pruebas E2E (Playwright)
+        run: npm run test:e2e
+
       - name: Validar empaquetado Docker
         run: docker build -t sistema-medidores:ci-test .
 

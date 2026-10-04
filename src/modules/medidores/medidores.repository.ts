@@ -56,9 +56,16 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
   async findMedidorById(id: string): Promise<MedidorEntity | null> {
     const m = await this.prisma.medidor.findUnique({
       where: { id },
-      include: { tipoMedidor: true },
+      include: {
+        tipoMedidor: true,
+        lecturas: {
+          orderBy: { fechaLectura: "desc" },
+          take: 1,
+        },
+      },
     });
     if (!m) return null;
+    const ult = m.lecturas?.[0];
     return {
       ...m,
       tipoMedidor: m.tipoMedidor
@@ -69,6 +76,12 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
             tipoMedicion: m.tipoMedidor.tipoMedicion as TipoMedicion,
           }
         : undefined,
+      ultimaLectura: ult
+        ? {
+            valor: ult.valor,
+            timestamp: ult.fechaLectura,
+          }
+        : null,
     };
   }
 
@@ -108,18 +121,33 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
   async listMedidoresByInstalacion(instalacionId: string): Promise<MedidorEntity[]> {
     const list = await this.prisma.medidor.findMany({
       where: { instalacionId, activo: true },
-      include: { tipoMedidor: true },
+      include: {
+        tipoMedidor: true,
+        lecturas: {
+          orderBy: { fechaLectura: "desc" },
+          take: 1,
+        },
+      },
     });
-    return list.map((m) => ({
-      ...m,
-      tipoMedidor: m.tipoMedidor
-        ? {
-            ...m.tipoMedidor,
-            recurso: m.tipoMedidor.recurso as RecursoMedidor,
-            unidad: m.tipoMedidor.unidad as UnidadMedida,
-            tipoMedicion: m.tipoMedidor.tipoMedicion as TipoMedicion,
-          }
-        : undefined,
-    }));
+    return list.map((m) => {
+      const ult = m.lecturas?.[0];
+      return {
+        ...m,
+        tipoMedidor: m.tipoMedidor
+          ? {
+              ...m.tipoMedidor,
+              recurso: m.tipoMedidor.recurso as RecursoMedidor,
+              unidad: m.tipoMedidor.unidad as UnidadMedida,
+              tipoMedicion: m.tipoMedidor.tipoMedicion as TipoMedicion,
+            }
+          : undefined,
+        ultimaLectura: ult
+          ? {
+              valor: ult.valor,
+              timestamp: ult.fechaLectura,
+            }
+          : null,
+      };
+    });
   }
 }

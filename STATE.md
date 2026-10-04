@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 9 Extendido Concluido (Observabilidad y Triggers de Webhooks ante Errores Críticos)
+## 🧭 Fase Actual: Hito 10 Concluido (Suite de Pruebas E2E Automatizadas con Playwright)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Observabilidad nativa con Pino, correlación `reqId`, manejador de errores y despacho fail-safe de webhooks `sistema.error_critico` completados bajo TDD.
-- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 10: Suite de Pruebas E2E Automatizadas con Playwright).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 174/174 tests en 23 suites, código de salida 0).
+- **Estado:** Suites sintéticas de navegador completas y verificadas con Playwright en modo headless (Login & RBAC, Captura de Lecturas en Terreno, Detección/Resolución de Alertas, Administración y Diagnóstico de Webhooks).
+- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 11: Escalabilidad y Persistencia Multi-Contenedor con PostgreSQL).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 174/174 unit/integration en Vitest + 6/6 E2E en Playwright, código de salida 0).
 
 ---
 
@@ -98,11 +98,23 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
+- [x] **Hito 10: Suite de Pruebas E2E Automatizadas con Playwright (Completado: 2026-10-03)**
+  - Formalización inmutable de `docs/adr/0007-pruebas-e2e-playwright.md`.
+  - Especificación `specs/test-001-e2e-playwright.md` implementada bajo Agentic TDD.
+  - `@playwright/test` y Chromium headless configurados con auto-lanzamiento (`webServer`).
+  - Cobertura de flujos de usuario completos:
+    - Login y Control de Acceso RBAC (`e2e/login-rbac.spec.ts`).
+    - Captura de lecturas en terreno e invariantes decrecientes (`e2e/lecturas-terreno.spec.ts`).
+    - Detección en vivo y resolución de alertas operativas (`e2e/alertas-incidentes.spec.ts`).
+    - Administración, ping sintético y bitácora de webhooks (`e2e/webhooks-administracion.spec.ts`).
+  - Aislamiento respecto a Vitest en `vitest.config.ts`.
+  - Pipeline de CI en `.github/workflows/verify.yml` actualizado con paso Playwright.
+  - Quality Gate verificado: 174/174 tests Vitest pasando + 6/6 tests E2E Playwright pasando (100%).
+
+---
+
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 10: Suite de Pruebas E2E Automatizadas (Playwright)**
-  - Pruebas sintéticas completas de navegador: login de operador, registro de lecturas, visualización de dashboard, resolución de incidentes.
-  - Ejecución en modo headless dentro del flujo de GitHub Actions.
 - [ ] **Hito 11: Escalabilidad y Persistencia Multi-Contenedor (PostgreSQL)**
   - Nuevo ADR para soporte dual SQLite (desarrollo local ágil) y PostgreSQL (producción distribuida con réplicas).
   - Migración con Prisma hacia motor de base de datos cliente-servidor con pooling.
@@ -110,8 +122,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 9 Extendido concluido (`specs/feat-013-logs-estructurados-y-error-webhooks.md`).*
-- **Módulo objetivo:** Observabilidad, Logs Estructurados (Pino), Error Handling y Triggers de Webhooks.
+- **Archivo:** *Hito 10 concluido (`specs/test-001-e2e-playwright.md`).*
+- **Módulo objetivo:** Pruebas E2E Automatizadas con Playwright (Login RBAC, Lecturas en Terreno, Alertas, Webhooks).
 
 ---
 
@@ -139,6 +151,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-012-webhooks-notificaciones` | Webhooks salientes, firma HMAC, fail-safe, UI y 170/170 tests pasando |
 | 2026-10-03 | Antigravity | Implementación de `feat-013-logs-estructurados-y-error-webhooks` | ADR 0006, Pino nativo, reqId, errorHandler y webhooks 500 fail-safe, 174/174 tests |
 | 2026-10-03 | Antigravity | Ejecución `/learn` (Reglas 13 y 14 en AGENTS.md) | Formalización de webhooks salientes y observabilidad crítica en AGENTS.md y UI |
+| 2026-10-03 | Antigravity | Implementación de `test-001-e2e-playwright` (Hito 10) | ADR 0007, Playwright en modo headless, suites E2E completas y CI (6/6 tests) |
+
 
 
 
