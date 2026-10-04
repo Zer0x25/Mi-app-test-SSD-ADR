@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 
 test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat-018)", () => {
   test.beforeEach(async ({ request }) => {
@@ -7,24 +7,32 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
     expect(res.ok()).toBeTruthy();
   });
 
-  test("debe permitir cerrar sesión desde el dashboard y desplegar la pantalla de Login formal", async ({ page }) => {
+  async function irAPantallaLogin(page: Page) {
     await page.goto("/");
-
-    // 1. En dev arranca con sesión activa
-    const userPill = page.locator("#navUserPill");
-    await expect(userPill).toBeVisible();
-
-    // 2. Hacer clic en botón de Salir / Logout
     const btnLogout = page.locator("#btnLogout");
-    await expect(btnLogout).toBeVisible();
-    await btnLogout.click();
+    const viewLogin = page.locator("#viewLogin");
 
-    // 3. Validar despliegue de pantalla de login formal
+    // Esperar al primer elemento visible (o bien el botón de salir de dev o la vista de login de staging)
+    await Promise.race([
+      btnLogout.waitFor({ state: "visible" }),
+      viewLogin.waitFor({ state: "visible" }),
+    ]);
+
+    if (await btnLogout.isVisible()) {
+      await btnLogout.click();
+    }
+    await expect(viewLogin).toBeVisible();
+  }
+
+  test("debe permitir cerrar sesión desde el dashboard o cargar el login si no hay sesión", async ({ page }) => {
+    await irAPantallaLogin(page);
+
+    // Validar despliegue de pantalla de login formal
     const viewLogin = page.locator("#viewLogin");
     await expect(viewLogin).toBeVisible();
     await expect(page.locator("#headingLogin")).toHaveText("Iniciar Sesión");
 
-    // 4. Validar campos con sus respectivos autocompletes y etiquetas
+    // Validar campos con sus respectivos autocompletes y etiquetas
     const emailInput = page.locator("#loginEmail");
     const passwordInput = page.locator("#loginPassword");
     await expect(emailInput).toBeVisible();
@@ -32,14 +40,13 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
     await expect(passwordInput).toBeVisible();
     await expect(passwordInput).toHaveAttribute("autocomplete", "current-password");
 
-    // 5. Validar que la navegación y controles principales queden ocultos
+    // Validar que la navegación y controles principales queden ocultos
     await expect(page.locator(".main-nav")).toBeHidden();
     await expect(page.locator("#btnLogout")).toBeHidden();
   });
 
   test("debe alternar la visibilidad de la contraseña al pulsar el botón del ojo", async ({ page }) => {
-    await page.goto("/");
-    await page.click("#btnLogout");
+    await irAPantallaLogin(page);
 
     const passwordInput = page.locator("#loginPassword");
     const btnToggle = page.locator("#btnTogglePassword");
@@ -56,8 +63,7 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
   });
 
   test("debe rechazar credenciales incorrectas (401) mostrando alerta visual de error", async ({ page }) => {
-    await page.goto("/");
-    await page.click("#btnLogout");
+    await irAPantallaLogin(page);
 
     await page.fill("#loginEmail", "admin@medidores.cl");
     await page.fill("#loginPassword", "clave-totalmente-erronea");
@@ -72,8 +78,7 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
   });
 
   test("debe iniciar sesión exitosamente con credenciales válidas y cargar el dashboard", async ({ page }) => {
-    await page.goto("/");
-    await page.click("#btnLogout");
+    await irAPantallaLogin(page);
 
     await page.fill("#loginEmail", "admin@medidores.cl");
     await page.fill("#loginPassword", "demo1234");
@@ -91,8 +96,7 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
   });
 
   test("debe iniciar sesión como OPERADOR y redirigir directamente a Modo Terreno", async ({ page }) => {
-    await page.goto("/");
-    await page.click("#btnLogout");
+    await irAPantallaLogin(page);
 
     await page.fill("#loginEmail", "operador@medidores.cl");
     await page.fill("#loginPassword", "demo1234");
@@ -108,8 +112,8 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
     await expect(page.locator("#tabUsuariosBtn")).toBeHidden();
   });
 
-  test("en entorno simulado Staging/Prod (devRoleSwitcher: false), oculta el conmutador de roles y bloquea auto-login", async ({ page }) => {
-    // Interceptar /api/config simulando entorno staging
+  test("en entorno Staging/Prod (devRoleSwitcher: false), oculta el conmutador de roles y bloquea auto-login", async ({ page }) => {
+    // Interceptar /api/config simulando entorno staging (o si ya es staging lo confirma)
     await page.route("**/api/config", (route) => {
       route.fulfill({
         status: 200,
