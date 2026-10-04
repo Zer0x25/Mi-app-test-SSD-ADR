@@ -1,14 +1,18 @@
-name: Quality Gate Determinista
+name: Quality Gate y Pipeline CI
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  verify:
-    name: Ejecución de Quality Gate
+  # ==============================================================================
+  # Job 1: Quality Gate Determinista (Tipos, Linter, Pruebas Unitarias/Integración)
+  # ==============================================================================
+  quality-gate:
+    name: 1. Quality Gate (Types, Lint, Vitest)
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
@@ -20,52 +24,110 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Configurar Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+          node-version: 22
+          cache: "npm"
 
-      - name: Instalar dependencias (si aplica)
-        run: |
-          if [ -f "package-lock.json" ]; then
-            npm ci
-          elif [ -f "package.json" ]; then
-            npm install
-          else
-            echo "Repositorio en fase de semilla (Hito 0): omitiendo instalación de paquetes."
-          fi
+      - name: Instalar dependencias
+        run: npm ci
 
-      - name: Preparar entorno
+      - name: Aprovisionar entorno de pruebas
         run: |
           if [ ! -f ".env" ] && [ -f ".env.example" ]; then
             cp .env.example .env
           fi
 
       - name: Generar cliente de Prisma
-        run: |
-          if [ -f "prisma/schema.prisma" ]; then
-            npx prisma generate
-          fi
+        run: npx prisma generate
 
       - name: Sincronizar esquema de base de datos
-        run: |
-          if [ -f "prisma/schema.prisma" ]; then
-            npx prisma db push --skip-generate
-          fi
+        run: npx prisma db push --skip-generate
 
-      - name: Permisos de ejecución para scripts
+      - name: Asignar permisos de ejecución
         run: chmod +x scripts/*.sh
 
       - name: Ejecutar Quality Gate
         run: ./scripts/verify.sh
 
+  # ==============================================================================
+  # Job 2: Pruebas Sintéticas de Extremo a Extremo (Playwright Headless)
+  # ==============================================================================
+  playwright-e2e:
+    name: 2. Pruebas E2E Headless (Playwright)
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "file:./prisma/dev.db"
+      JWT_SECRET: "super_secreto_medidores_ci_github_actions_123456"
+      JWT_EXPIRES_IN: "8h"
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Aprovisionar entorno de pruebas
+        run: |
+          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            cp .env.example .env
+          fi
+
+      - name: Generar cliente de Prisma
+        run: npx prisma generate
+
+      - name: Sincronizar esquema de base de datos
+        run: npx prisma db push --skip-generate
+
+      - name: Cachear binarios de Playwright
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Instalar navegadores Playwright
         run: npx playwright install --with-deps chromium
 
-      - name: Ejecutar Pruebas E2E (Playwright)
+      - name: Ejecutar Suite E2E (10 módulos, 19 pruebas)
         run: npm run test:e2e
 
-      - name: Validar empaquetado Docker
-        run: docker build -t sistema-medidores:ci-test .
+      - name: Subir reporte y trazas en caso de fallo
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-ci
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
 
+  # ==============================================================================
+  # Job 3: Validación de Empaquetamiento y Contenerización (Docker Prod & Staging)
+  # ==============================================================================
+  docker-validation:
+    name: 3. Validación Docker (Prod & Staging)
+    needs: quality-gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Validar empaquetado Docker Producción
+        run: docker build -t sistema-medidores:ci-prod .
+
+      - name: Validar empaquetado Docker Staging
+        run: docker compose -f docker-compose.staging.yml build

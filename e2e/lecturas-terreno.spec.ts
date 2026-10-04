@@ -48,9 +48,10 @@ test.describe("Flujo E2E: Captura y Validación de Lecturas en Terreno (Modo Ope
     await expect(page.locator("#modalLecturaCodigo")).toHaveText("MED-AG-NORTE-01");
 
     // 5. Probar Invariante Negativa: Lectura Decreciente Prohibida
-    // Extraer lectura previa del DOM del modal para asegurar invariante independientemente del estado previo de la base
+    // Extraer lectura previa del DOM del modal aislando solo la cifra numérica de la unidad (ej. evitar el '3' de 'M3')
     const txtLecturaPrevia = await page.locator("#modalLecturaAnterior").innerText();
-    const cleanNum = txtLecturaPrevia.replace(/[^0-9,.]/g, "").replace(/\./g, "").replace(",", ".");
+    const matchNum = txtLecturaPrevia.match(/([0-9.,]+)/);
+    const cleanNum = matchNum ? matchNum[1].replace(/\./g, "").replace(",", ".") : "1289";
     const valorPrevio = parseFloat(cleanNum) || 1289;
     const valorMenor = Math.max(0, valorPrevio - 100).toFixed(1);
 
