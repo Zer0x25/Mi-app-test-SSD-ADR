@@ -772,16 +772,16 @@ async function cargarUsuariosAdmin() {
 
         return `
           <tr>
-            <td>
+            <td data-label="Usuario">
               <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(u.nombre)}</div>
             </td>
-            <td class="font-mono" style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(u.email)}</td>
-            <td>
+            <td data-label="Email" class="font-mono" style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(u.email)}</td>
+            <td data-label="Rol">
               <span class="badge ${roleBadgeClasses[u.rol] || 'badge-muted'}">${u.rol}</span>
             </td>
-            <td>${estadoBadge}</td>
-            <td>${instalacionesBadges}</td>
-            <td style="text-align: right; white-space: nowrap;">
+            <td data-label="Estado">${estadoBadge}</td>
+            <td data-label="Instalaciones Asignadas">${instalacionesBadges}</td>
+            <td data-label="Acciones" class="table-actions" style="text-align: right; white-space: nowrap;">
               <button class="btn btn-outline btn-sm" onclick="abrirModalEditarUsuario('${u.id}')" title="Editar datos y sedes" style="margin-right: 0.35rem;">
                 ✏️ Editar
               </button>
@@ -970,14 +970,14 @@ async function cargarReporteConsumos() {
       const meta = getResourceMeta(c.recurso);
       return `
         <tr>
-          <td><strong>${escapeHtml(c.instalacionNombre)}</strong></td>
-          <td class="font-mono">${escapeHtml(c.medidorCodigo)}</td>
-          <td><span class="badge ${meta.badgeClass}">${meta.icon} ${escapeHtml(c.recurso)}</span></td>
-          <td><span class="badge badge-muted">${escapeHtml(c.unidad)}</span></td>
-          <td style="text-align: right;" class="font-mono">${formatNumber(c.lecturaInicial)}</td>
-          <td style="text-align: right;" class="font-mono">${formatNumber(c.lecturaFinal)}</td>
-          <td style="text-align: right;" class="font-mono"><strong style="color: var(--accent-primary); font-size: 1.05rem;">${formatNumber(c.consumoNeto)}</strong></td>
-          <td style="text-align: center;"><span class="badge badge-blue">${c.totalLecturas} lecturas</span></td>
+          <td data-label="Sede"><strong>${escapeHtml(c.instalacionNombre)}</strong></td>
+          <td data-label="Medidor" class="font-mono">${escapeHtml(c.medidorCodigo)}</td>
+          <td data-label="Recurso"><span class="badge ${meta.badgeClass}">${meta.icon} ${escapeHtml(c.recurso)}</span></td>
+          <td data-label="Unidad"><span class="badge badge-muted">${escapeHtml(c.unidad)}</span></td>
+          <td data-label="Lectura Inicial" style="text-align: right;" class="font-mono">${formatNumber(c.lecturaInicial)}</td>
+          <td data-label="Lectura Final" style="text-align: right;" class="font-mono">${formatNumber(c.lecturaFinal)}</td>
+          <td data-label="Consumo Neto" style="text-align: right;" class="font-mono"><strong style="color: var(--accent-primary); font-size: 1.05rem;">${formatNumber(c.consumoNeto)}</strong></td>
+          <td data-label="Muestras" style="text-align: center;"><span class="badge badge-blue">${c.totalLecturas} lecturas</span></td>
         </tr>
       `;
     }).join("");
@@ -1040,15 +1040,15 @@ async function cargarFacturasReportes() {
 
       return `
         <tr>
-          <td><strong class="font-mono">${escapeHtml(f.numeroFactura || "S/N")}</strong></td>
-          <td>${escapeHtml(inst?.nombre || f.instalacionId.slice(0, 8))}</td>
-          <td><span class="badge ${meta.badgeClass}">${meta.icon} ${escapeHtml(f.recurso)}</span></td>
-          <td style="font-size: 0.85rem;">${iniStr} &rarr; ${finStr}</td>
-          <td style="text-align: right;" class="font-mono"><strong>${formatNumber(f.consumoFacturado)}</strong> ${escapeHtml(f.unidad)}</td>
-          <td style="text-align: right;" class="font-mono">${f.consumoMedido !== null ? formatNumber(f.consumoMedido) : "--"} ${escapeHtml(f.unidad)}</td>
-          <td style="text-align: right;" class="font-mono">${f.diferenciaConsumo !== null ? (f.diferenciaConsumo > 0 ? `+${formatNumber(f.diferenciaConsumo)}` : formatNumber(f.diferenciaConsumo)) : "--"}</td>
-          <td style="text-align: right;" class="font-mono">${f.porcentajeDesvio !== null ? `${f.porcentajeDesvio > 0 ? `+${f.porcentajeDesvio}` : f.porcentajeDesvio}%` : "--"}</td>
-          <td>${estadoBadge}</td>
+          <td data-label="N° Factura"><strong class="font-mono">${escapeHtml(f.numeroFactura || "S/N")}</strong></td>
+          <td data-label="Sede">${escapeHtml(inst?.nombre || f.instalacionId.slice(0, 8))}</td>
+          <td data-label="Recurso"><span class="badge ${meta.badgeClass}">${meta.icon} ${escapeHtml(f.recurso)}</span></td>
+          <td data-label="Período" style="font-size: 0.85rem;">${iniStr} &rarr; ${finStr}</td>
+          <td data-label="Facturado" style="text-align: right;" class="font-mono"><strong>${formatNumber(f.consumoFacturado)}</strong> ${escapeHtml(f.unidad)}</td>
+          <td data-label="Medido" style="text-align: right;" class="font-mono">${f.consumoMedido !== null ? formatNumber(f.consumoMedido) : "--"} ${escapeHtml(f.unidad)}</td>
+          <td data-label="Diferencia" style="text-align: right;" class="font-mono">${f.diferenciaConsumo !== null ? (f.diferenciaConsumo > 0 ? `+${formatNumber(f.diferenciaConsumo)}` : formatNumber(f.diferenciaConsumo)) : "--"}</td>
+          <td data-label="% Desvío" style="text-align: right;" class="font-mono">${f.porcentajeDesvio !== null ? `${f.porcentajeDesvio > 0 ? `+${f.porcentajeDesvio}` : f.porcentajeDesvio}%` : "--"}</td>
+          <td data-label="Estado">${estadoBadge}</td>
         </tr>
       `;
     }).join("");
@@ -1161,14 +1161,14 @@ async function cargarAlertasIncidentes() {
 
       return `
         <tr>
-          <td style="font-size: 0.85rem;">${fechaStr}</td>
-          <td><strong>${escapeHtml(i.instalacionNombre || "--")}</strong></td>
-          <td class="font-mono">${escapeHtml(i.medidorCodigo || "--")}</td>
-          <td><span class="badge badge-muted">${escapeHtml(i.tipo)}</span></td>
-          <td>${severidadBadge}</td>
-          <td style="max-width: 320px; font-size: 0.85rem;">${escapeHtml(i.mensaje)}</td>
-          <td>${estadoBadge}</td>
-          <td style="text-align: right;">${btnAccion}</td>
+          <td data-label="Fecha Detección" style="font-size: 0.85rem;">${fechaStr}</td>
+          <td data-label="Sede"><strong>${escapeHtml(i.instalacionNombre || "--")}</strong></td>
+          <td data-label="Medidor" class="font-mono">${escapeHtml(i.medidorCodigo || "--")}</td>
+          <td data-label="Tipo Anomalía"><span class="badge badge-muted">${escapeHtml(i.tipo)}</span></td>
+          <td data-label="Severidad">${severidadBadge}</td>
+          <td data-label="Diagnóstico" style="max-width: 320px; font-size: 0.85rem;">${escapeHtml(i.mensaje)}</td>
+          <td data-label="Estado">${estadoBadge}</td>
+          <td data-label="Acción" class="table-actions" style="text-align: right;">${btnAccion}</td>
         </tr>
       `;
     }).join("");
@@ -1234,11 +1234,11 @@ async function cargarReglasAlertas() {
     }
     tbody.innerHTML = reglas.map((r) => `
       <tr>
-        <td><strong>${escapeHtml(r.nombre)}</strong></td>
-        <td><span class="badge badge-muted">${escapeHtml(r.tipo)}</span></td>
-        <td>${escapeHtml(r.recurso || "Todos")}</td>
-        <td class="font-mono">${r.umbralValor}</td>
-        <td>${r.activa ? `<span class="badge badge-emerald">Activa</span>` : `<span class="badge badge-muted">Inactiva</span>`}</td>
+        <td data-label="Regla"><strong>${escapeHtml(r.nombre)}</strong></td>
+        <td data-label="Tipo"><span class="badge badge-muted">${escapeHtml(r.tipo)}</span></td>
+        <td data-label="Recurso">${escapeHtml(r.recurso || "Todos")}</td>
+        <td data-label="Umbral" class="font-mono">${r.umbralValor}</td>
+        <td data-label="Estado">${r.activa ? `<span class="badge badge-emerald">Activa</span>` : `<span class="badge badge-muted">Inactiva</span>`}</td>
       </tr>
     `).join("");
   } catch (err) {
@@ -1396,15 +1396,15 @@ async function cargarMantenimientosBitacora() {
 
       return `
         <tr>
-          <td>${fechaStr}</td>
-          <td class="font-mono"><strong>${escapeHtml(m.medidorCodigo || "--")}</strong></td>
-          <td>${escapeHtml(m.instalacionNombre || "--")}</td>
-          <td>${badgeTipo}</td>
-          <td>${escapeHtml(m.tecnicoResponsable)}</td>
-          <td class="font-mono">${escapeHtml(m.numeroPrecintoAnterior || "--")}</td>
-          <td class="font-mono"><strong style="color: var(--accent-primary);">${escapeHtml(m.numeroPrecintoNuevo || "--")}</strong></td>
-          <td>${proxCalibStr}</td>
-          <td style="font-size: 0.85rem;">
+          <td data-label="Fecha">${fechaStr}</td>
+          <td data-label="Medidor" class="font-mono"><strong>${escapeHtml(m.medidorCodigo || "--")}</strong></td>
+          <td data-label="Sede">${escapeHtml(m.instalacionNombre || "--")}</td>
+          <td data-label="Tipo Intervención">${badgeTipo}</td>
+          <td data-label="Técnico">${escapeHtml(m.tecnicoResponsable)}</td>
+          <td data-label="Precinto Ant." class="font-mono">${escapeHtml(m.numeroPrecintoAnterior || "--")}</td>
+          <td data-label="Precinto Nuevo" class="font-mono"><strong style="color: var(--accent-primary);">${escapeHtml(m.numeroPrecintoNuevo || "--")}</strong></td>
+          <td data-label="Próx. Calibración">${proxCalibStr}</td>
+          <td data-label="Detalles" style="font-size: 0.85rem;">
             ${m.certificadoCalibracion ? `Cert: <strong>${escapeHtml(m.certificadoCalibracion)}</strong><br>` : ""}
             ${m.nuevoMedidorCodigo ? `Reemplazo por: <strong>${escapeHtml(m.nuevoMedidorCodigo)}</strong><br>` : ""}
             ${escapeHtml(m.observaciones || "")}
@@ -1487,12 +1487,12 @@ async function consultarFichaMedidor() {
           <tbody>
             ${ficha.historial.length === 0 ? `<tr><td colspan="6" class="empty-state">No registra intervenciones en bitácora.</td></tr>` : ficha.historial.map((h) => `
               <tr>
-                <td>${new Date(h.fechaMantenimiento).toLocaleDateString("es-CL")}</td>
-                <td><span class="badge badge-muted">${escapeHtml(h.tipo)}</span></td>
-                <td>${escapeHtml(h.tecnicoResponsable)}</td>
-                <td class="font-mono">${escapeHtml(h.numeroPrecintoAnterior || "--")}</td>
-                <td class="font-mono">${escapeHtml(h.numeroPrecintoNuevo || "--")}</td>
-                <td style="font-size: 0.85rem;">${escapeHtml(h.observaciones || "--")}</td>
+                <td data-label="Fecha">${new Date(h.fechaMantenimiento).toLocaleDateString("es-CL")}</td>
+                <td data-label="Tipo"><span class="badge badge-muted">${escapeHtml(h.tipo)}</span></td>
+                <td data-label="Técnico">${escapeHtml(h.tecnicoResponsable)}</td>
+                <td data-label="Precinto Ant." class="font-mono">${escapeHtml(h.numeroPrecintoAnterior || "--")}</td>
+                <td data-label="Precinto Nuevo" class="font-mono">${escapeHtml(h.numeroPrecintoNuevo || "--")}</td>
+                <td data-label="Observaciones" style="font-size: 0.85rem;">${escapeHtml(h.observaciones || "--")}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -1593,12 +1593,12 @@ async function cargarEventosAuditoria() {
 
         return `
           <tr>
-            <td style="white-space: nowrap; font-size: 0.8rem; font-family: var(--font-mono);">${fecha} UTC</td>
-            <td>${badge}</td>
-            <td><span class="badge badge-muted">${escapeHtml(e.entidad)}</span></td>
-            <td class="font-mono" style="font-size: 0.85rem; color: var(--text-primary);">${escapeHtml(e.entidadId)}</td>
-            <td>${detallesHtml}</td>
-            <td style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">${escapeHtml(e.ip || "127.0.0.1")}</td>
+            <td data-label="Fecha / Hora" style="white-space: nowrap; font-size: 0.8rem; font-family: var(--font-mono);">${fecha} UTC</td>
+            <td data-label="Acción">${badge}</td>
+            <td data-label="Entidad"><span class="badge badge-muted">${escapeHtml(e.entidad)}</span></td>
+            <td data-label="ID Referencia" class="font-mono" style="font-size: 0.85rem; color: var(--text-primary);">${escapeHtml(e.entidadId)}</td>
+            <td data-label="Detalles">${detallesHtml}</td>
+            <td data-label="IP Origen" style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">${escapeHtml(e.ip || "127.0.0.1")}</td>
           </tr>
         `;
       })
@@ -1672,16 +1672,16 @@ async function cargarWebhooks() {
 
         return `
           <tr>
-            <td>
+            <td data-label="Descripción">
               <strong style="color: var(--text-primary); font-size: 0.9rem;">${escapeHtml(w.descripcion)}</strong>
             </td>
-            <td style="font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all; max-width: 260px;">
+            <td data-label="URL Endpoint" style="font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all; max-width: 260px;">
               ${escapeHtml(w.url)}
             </td>
-            <td>${eventosBadges}</td>
-            <td>${secretBadge}</td>
-            <td>${estadoBadge}</td>
-            <td style="text-align: right; white-space: nowrap;">
+            <td data-label="Eventos">${eventosBadges}</td>
+            <td data-label="Secreto">${secretBadge}</td>
+            <td data-label="Estado">${estadoBadge}</td>
+            <td data-label="Acciones" class="table-actions" style="text-align: right; white-space: nowrap;">
               <button class="btn btn-sm btn-outline" onclick="probarWebhook('${w.id}')" title="Enviar Ping de prueba">
                 ⚡ Test
               </button>
@@ -1791,12 +1791,12 @@ async function verEntregasWebhook(id) {
 
         return `
           <tr>
-            <td style="white-space: nowrap; font-size: 0.8rem; font-family: var(--font-mono);">${fecha}</td>
-            <td><span class="badge badge-muted" style="font-size: 0.75rem;">${escapeHtml(e.evento)}</span></td>
-            <td>${statusBadge}</td>
-            <td class="font-mono" style="font-size: 0.85rem;">${codeText}</td>
-            <td class="font-mono" style="font-size: 0.85rem;">${duracionText}</td>
-            <td style="max-width: 250px; word-break: break-word;">${errorText}</td>
+            <td data-label="Fecha" style="white-space: nowrap; font-size: 0.8rem; font-family: var(--font-mono);">${fecha}</td>
+            <td data-label="Evento"><span class="badge badge-muted" style="font-size: 0.75rem;">${escapeHtml(e.evento)}</span></td>
+            <td data-label="Estado">${statusBadge}</td>
+            <td data-label="Código HTTP" class="font-mono" style="font-size: 0.85rem;">${codeText}</td>
+            <td data-label="Duración" class="font-mono" style="font-size: 0.85rem;">${duracionText}</td>
+            <td data-label="Resultado" style="max-width: 250px; word-break: break-word;">${errorText}</td>
           </tr>
         `;
       })
@@ -2032,14 +2032,14 @@ async function cargarHistorialNotificaciones() {
 
         return `
           <tr>
-            <td>${canalBadge}</td>
-            <td><code>${item.evento}</code></td>
-            <td><small>${item.destinatario}</small></td>
-            <td>${severidadBadge}</td>
-            <td><strong>${item.titulo}</strong></td>
-            <td>${estadoBadge}</td>
-            <td>${item.duracionMs !== null ? item.duracionMs + ' ms' : '-'}</td>
-            <td><small class="text-secondary">${fechaFormateada}</small></td>
+            <td data-label="Canal">${canalBadge}</td>
+            <td data-label="Evento"><code>${item.evento}</code></td>
+            <td data-label="Destinatario"><small>${item.destinatario}</small></td>
+            <td data-label="Severidad">${severidadBadge}</td>
+            <td data-label="Título"><strong>${item.titulo}</strong></td>
+            <td data-label="Estado">${estadoBadge}</td>
+            <td data-label="Latencia">${item.duracionMs !== null ? item.duracionMs + ' ms' : '-'}</td>
+            <td data-label="Fecha y Hora"><small class="text-secondary">${fechaFormateada}</small></td>
           </tr>
         `;
       })

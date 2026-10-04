@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 13 - Adaptabilidad Responsiva Mobile-First y Usabilidad en Terreno (Completado con Éxito)
+## 🧭 Fase Actual: Hito 13.1 - Fichas Adaptativas Móviles en Listados (Completado con Éxito)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Hito 13 completado bajo metodología Agentic TDD y Quality Gate determinista. Escala completa de breakpoints (320px, 375px, 425px, 768px, 1024px+) implementada con navegación por Drawer móvil accesible, zero horizontal overflow y touch-target ergonomics.
+- **Estado:** Hito 13.1 completado bajo metodología Agentic TDD y Quality Gate determinista. Fichas táctiles apiladas implementadas en todas las tablas (`.data-table`) con atributos `data-label`, botones ergonómicos >= 44px y cero desborde horizontal.
 - **Acción requerida para comenzar:** Seleccionar siguiente hito del backlog (Hito 14: Rutas de Inspección y Órdenes de Trabajo en Campo).
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (206/206 tests en Vitest + 24/24 tests en Playwright E2E pasando, 100%).
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (206/206 tests en Vitest + 29/29 tests en Playwright E2E pasando, 100%).
 
 ---
 
@@ -141,6 +141,16 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Suite de pruebas E2E móvil en Playwright (`e2e/responsive-mobile.spec.ts`) con 5 escenarios en múltiples viewports.
   - Quality Gate verificado con código de salida 0 (206/206 tests Vitest + 24/24 tests Playwright E2E pasando, 100%).
 
+- [x] **Hito 13.1: Fichas Adaptativas Móviles (Stacked Cards) para Listados de Datos (Completado: 2026-10-04)**
+  - Formalización inmutable de ADR 0011 (`docs/adr/0011-fichas-moviles-tablas-responsive.md`).
+  - Especificación `specs/feat-017-fichas-moviles-tablas-responsive.md` implementada bajo Agentic TDD.
+  - Transformación pura en CSS (`@media (max-width: 768px)`) de todas las tablas (`.data-table`) en fichas verticales táctiles (cards) sin scroll horizontal.
+  - Inyección de atributos semánticos `data-label` en celdas de las 8 tablas del sistema.
+  - Celdas de acciones ergonómicas con botones a ancho completo y altura mínima >= 44px.
+  - Preservación íntegra de la estructura tabular clásica en escritorio (`> 768px`).
+  - Suite de pruebas Playwright (`e2e/responsive-mobile-cards.spec.ts`) con 4/4 tests pasando.
+  - Quality Gate verificado con código de salida 0 (206/206 Vitest + 29/29 Playwright E2E pasando, 100%).
+
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
@@ -155,7 +165,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** Ninguno (Hito 13 finalizado con éxito)
+- **Archivo:** Ninguno (Hito 13.1 finalizado con éxito)
 - **Módulo objetivo:** Pendiente de selección para Hito 14.
 
 ---
@@ -199,4 +209,6 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Implementación de `feat-016-adaptabilidad-movil-responsive` | Breakpoints 320px a 1024px+, Drawer móvil, zero overflow y suite Playwright móvil (24/24 E2E + 206/206 Vitest) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Regla 18 en AGENTS.md) | Formalización de arquitectura responsiva mobile-first, ergonomía táctil y visibility en drawers off-canvas para Playwright |
 | 2026-10-04 | Antigravity | Corrección de selectores y filtros en listas móviles | Contención de .form-select (max-width, ellipsis), flex-wrap en card-header, reports-filter-grid y test Playwright (25/25 E2E + 206/206 Vitest) |
+| 2026-10-04 | Antigravity | Formalización de ADR 0011 y SDD `feat-017` (Hito 13.1) | Fichas Adaptativas Móviles (Stacked Cards) para todas las tablas (`.data-table`) sin scroll horizontal |
+| 2026-10-04 | Antigravity | Implementación de `feat-017-fichas-moviles-tablas-responsive` | CSS `@media (max-width: 768px)`, inyección `data-label`, botones >= 44px, E2E (29/29 Playwright + 206/206 Vitest) |
 
