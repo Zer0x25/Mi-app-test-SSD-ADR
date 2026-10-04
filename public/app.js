@@ -98,6 +98,11 @@ function mostrarPantallaLogin() {
 }
 
 function mostrarAppPrincipal() {
+  if (!currentUser) {
+    mostrarPantallaLogin();
+    return;
+  }
+
   document.body.classList.remove("not-authenticated");
 
   const viewLogin = document.getElementById("viewLogin");
@@ -425,6 +430,11 @@ function aplicarPermisosUI() {
 async function switchRole(role) {
   if (sessionSyncPromise) {
     await sessionSyncPromise;
+  }
+
+  if (!currentUser) {
+    mostrarPantallaLogin();
+    return;
   }
 
   if (role !== "operador" && currentUser?.rol === "OPERADOR") {

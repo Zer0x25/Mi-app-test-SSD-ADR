@@ -40,8 +40,9 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
     await expect(passwordInput).toBeVisible();
     await expect(passwordInput).toHaveAttribute("autocomplete", "current-password");
 
-    // Validar que la navegación y controles principales queden ocultos
-    await expect(page.locator(".main-nav")).toBeHidden();
+    // Validar que la barra superior, la navegación y controles principales queden completamente ocultos
+    await expect(page.locator("#mainNavbar")).toBeHidden();
+    await expect(page.locator("#roleSwitcher")).toBeHidden();
     await expect(page.locator("#btnLogout")).toBeHidden();
   });
 
@@ -137,10 +138,34 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
 
     // En staging sin token, debe mostrar Login forzoso sin auto-login
     await expect(page.locator("#viewLogin")).toBeVisible();
-    await expect(page.locator(".main-nav")).toBeHidden();
+    await expect(page.locator("#mainNavbar")).toBeHidden();
+    await expect(page.locator("#roleSwitcher")).toBeHidden();
 
     // La barra de simulación debe estar oculta
     await expect(page.locator("#roleSimulatorBar")).toBeHidden();
     await expect(page.locator("#loginDevQuickAccess")).toBeHidden();
+  });
+
+  test("sin autenticación, no permite moverse entre paneles ni acceder a vistas de datos", async ({ page }) => {
+    await irAPantallaLogin(page);
+
+    // Intentar invocar navegación hacia paneles de datos
+    await page.evaluate(() => {
+      interface AppWindow extends Window {
+        switchRole?: (role: string) => Promise<void>;
+      }
+      const win = window as unknown as AppWindow;
+      if (typeof win.switchRole === "function") {
+        void win.switchRole("admin");
+      }
+    });
+
+    // Ninguna vista de datos debe ser visible; solo debe permanecer la pantalla de login
+    await expect(page.locator("#viewLogin")).toBeVisible();
+    await expect(page.locator("#viewAdmin")).toBeHidden();
+    await expect(page.locator("#viewReportes")).toBeHidden();
+    await expect(page.locator("#viewAlertas")).toBeHidden();
+    await expect(page.locator("#viewMantenimiento")).toBeHidden();
+    await expect(page.locator("#mainNavbar")).toBeHidden();
   });
 });

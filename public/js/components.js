@@ -383,6 +383,7 @@ class MobileMenuManager {
   }
 
   toggle() {
+    if (document.body.classList.contains("not-authenticated")) return;
     const drawer = document.getElementById("mobileMenuDrawer");
     if (drawer && drawer.classList.contains("open")) {
       this.close();
@@ -392,6 +393,7 @@ class MobileMenuManager {
   }
 
   open() {
+    if (document.body.classList.contains("not-authenticated")) return;
     const drawer = document.getElementById("mobileMenuDrawer");
     const backdrop = document.getElementById("mobileDrawerBackdrop");
     const toggleBtn = document.getElementById("btnMobileMenuToggle");

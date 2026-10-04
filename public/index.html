@@ -31,7 +31,7 @@
   
   <link rel="stylesheet" href="/app.css">
 </head>
-<body>
+<body class="not-authenticated">
   <!-- Header & Barra de Navegación Principal -->
   <header class="navbar" id="mainNavbar">
     <div class="navbar-container">
@@ -322,8 +322,28 @@
     <!-- ============================================================== -->
     <!-- VISTA 0: INICIO DE SESIÓN FORMAL (ADR 0012 / Spec feat-018)    -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewLogin" aria-labelledby="headingLogin">
+    <section class="view-panel active" id="viewLogin" aria-labelledby="headingLogin">
       <div class="login-wrapper">
+        <!-- Botón flotante para alternar tema en pantalla de login -->
+        <button class="theme-toggle-btn login-theme-toggle" id="loginThemeToggleBtn" onclick="window.Theme.toggle()" aria-label="Cambiar tema" title="Alternar modo Claro / Oscuro">
+          <!-- Sol (se muestra en modo oscuro) -->
+          <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="12" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- Luna (se muestra en modo claro) -->
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+
         <div class="login-card">
           <div class="login-header">
             <div class="login-logo-icon">
@@ -413,7 +433,7 @@
     <!-- ============================================================== -->
     <!-- VISTA 1: DASHBOARD ADMINISTRADOR -->
     <!-- ============================================================== -->
-    <section class="view-panel active" id="viewAdmin" aria-labelledby="headingAdmin">
+    <section class="view-panel" id="viewAdmin" aria-labelledby="headingAdmin">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingAdmin">Tablero Ejecutivo de Medición</h1>
