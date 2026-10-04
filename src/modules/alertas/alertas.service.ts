@@ -75,10 +75,22 @@ export interface IAlertaWebhookDispatcher {
   }): Promise<unknown>;
 }
 
+export interface IAlertaNotificacionesDispatcher {
+  despacharNotificacion(mensaje: {
+    evento: "alerta.incidente_detectado" | "alerta.incidente_resuelto" | "sistema.error_critico" | "notificacion.test";
+    severidad: "INFO" | "WARNING" | "CRITICAL";
+    titulo: string;
+    mensaje: string;
+    datos?: Record<string, unknown>;
+    url?: string;
+  }): Promise<unknown>;
+}
+
 export class AlertasService {
   constructor(
     private readonly repository: IAlertasRepository,
-    private readonly webhookDispatcher?: IAlertaWebhookDispatcher
+    private readonly webhookDispatcher?: IAlertaWebhookDispatcher,
+    private readonly notificacionesDispatcher?: IAlertaNotificacionesDispatcher
   ) {}
 
   async evaluarReglas(ahora: Date = new Date()): Promise<IncidenteAlertaResponse[]> {
@@ -230,6 +242,26 @@ export class AlertasService {
       }
     }
 
+    if (this.notificacionesDispatcher && nuevosIncidentes.length > 0) {
+      for (const inc of nuevosIncidentes) {
+        await this.notificacionesDispatcher.despacharNotificacion({
+          evento: "alerta.incidente_detectado",
+          severidad: inc.severidad,
+          titulo: `Alerta: ${inc.tipo} en ${inc.medidorCodigo}`,
+          mensaje: inc.mensaje,
+          datos: {
+            medidor: inc.medidorCodigo,
+            instalacion: inc.instalacionNombre,
+            tipo: inc.tipo,
+            severidad: inc.severidad,
+            valorDetectado: inc.valorDetectado,
+          },
+        }).catch(() => {
+          // Fail-safe
+        });
+      }
+    }
+
     return nuevosIncidentes;
   }
 
@@ -265,6 +297,22 @@ export class AlertasService {
           medidorCodigo: result.medidorCodigo,
           estado: result.estado,
           fechaResolucion: result.fechaResolucion,
+        },
+      }).catch(() => {
+        // Fail-safe
+      });
+    }
+
+    if (this.notificacionesDispatcher) {
+      await this.notificacionesDispatcher.despacharNotificacion({
+        evento: "alerta.incidente_resuelto",
+        severidad: "INFO",
+        titulo: `Incidente resuelto: ${result.tipo} en ${result.medidorCodigo}`,
+        mensaje: `El incidente ha sido marcado como ${result.estado}. Notas: ${result.notasResolucion ?? "Sin notas"}`,
+        datos: {
+          incidenteId: result.id,
+          medidor: result.medidorCodigo,
+          estado: result.estado,
         },
       }).catch(() => {
         // Fail-safe

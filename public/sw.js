@@ -84,3 +84,52 @@ self.addEventListener("fetch", (event) => {
       })
   );
 });
+
+// 4. Recepción de Notificaciones Web Push (W3C Push API)
+self.addEventListener("push", (event) => {
+  let data = {
+    title: "Alerta del Sistema Medidores",
+    body: "Nueva notificación recibida",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
+    data: "/",
+  };
+
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    } catch {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || "/icon.svg",
+    badge: data.badge || "/icon.svg",
+    vibrate: [200, 100, 200],
+    data: data.data || "/",
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// 5. Interacción con la notificación (apertura / enfoque de ventana)
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data || "/";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});

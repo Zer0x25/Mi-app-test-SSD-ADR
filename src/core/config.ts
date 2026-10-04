@@ -21,6 +21,11 @@ export const envSchema = z.object({
     .default("info"),
   WEBHOOK_DEFAULT_URL: z.string().url().optional(),
   WEBHOOK_DEFAULT_SECRET: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_CHAT_ID: z.string().optional(),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:admin@medidores.local"),
 });
 
 export type Config = z.infer<typeof envSchema>;

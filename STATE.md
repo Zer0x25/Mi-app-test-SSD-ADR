@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 10 Concluido (Suite de Pruebas E2E Automatizadas con Playwright)
+## 🧭 Fase Actual: Hito 11 Concluido (Notificaciones Push & Alertas por Telegram)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Suites sintéticas de navegador completas y verificadas con Playwright en modo headless (Login & RBAC, Captura de Lecturas en Terreno, Detección/Resolución de Alertas, Administración y Diagnóstico de Webhooks).
-- **Acción requerida para comenzar:** Elegir el siguiente hito de la hoja de ruta (Hito 11: Escalabilidad y Persistencia Multi-Contenedor con PostgreSQL).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 174/174 unit/integration en Vitest + 6/6 E2E en Playwright, código de salida 0).
+- **Estado:** Módulo de Notificaciones Multicanal para humanos implementado y verificado (Web Push W3C VAPID con soporte en Service Worker de la PWA + Despachador nativo de Telegram Bot + Bitácora inmutable de entregas).
+- **Acción requerida para comenzar:** Seleccionar siguiente hito de la hoja de ruta (ej. Hito 12: Evidencia Fotográfica y Geolocalización GPS en Terreno).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 187/187 unit/integration en Vitest + 7/7 E2E en Playwright, código de salida 0).
 
 ---
 
@@ -110,20 +110,35 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Aislamiento respecto a Vitest en `vitest.config.ts`.
   - Pipeline de CI en `.github/workflows/verify.yml` actualizado con paso Playwright.
   - Quality Gate verificado: 174/174 tests Vitest pasando + 6/6 tests E2E Playwright pasando (100%).
+- [x] **Hito 11: Notificaciones Push (Web Push API) y Alertas por Telegram (Completado: 2026-10-03)**
+  - ADR 0008 compilado (`docs/adr/0008-notificaciones-push-y-alertas-multicanal.md`).
+  - Spec cerrado `specs/feat-014-notificaciones-push-y-telegram.md`.
+  - Despachador de Telegram Bot 100% nativo con formato HTML enriquecido, severidad y emojis semánticos.
+  - Despachador de Web Push (W3C Push API / RFC 8292 VAPID) con integración en Service Worker (`public/sw.js`).
+  - Modelos `SuscripcionPush` y `NotificacionHistorial` en Prisma con bitácora inmutable.
+  - Despacho fail-safe asíncrono (`Promise.allSettled`, timeout 5000 ms) en detección de incidentes y errores 5xx.
+  - Interfaz de usuario con activación de push en un clic, pruebas sintéticas y bitácora de entregas.
+  - Quality Gate verificado: 187/187 tests Vitest pasando + 7/7 tests E2E Playwright pasando (100%).
 
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 11: Escalabilidad y Persistencia Multi-Contenedor (PostgreSQL)**
-  - Nuevo ADR para soporte dual SQLite (desarrollo local ágil) y PostgreSQL (producción distribuida con réplicas).
-  - Migración con Prisma hacia motor de base de datos cliente-servidor con pooling.
+- [ ] **Hito 12: Evidencia Fotográfica y Geolocalización GPS en Terreno**
+  - Captura y compresión de fotos del dial del medidor en la PWA (WebP/JPEG).
+  - Geolocalización satelital (`navigator.geolocation`) para auditoría anti-fraude y verificación física de lecturas.
+- [ ] **Hito 13: Rutas de Inspección y Órdenes de Trabajo para Mantenimiento en Campo**
+  - Planificador de rutas óptimas para operadores por sede/edificio.
+  - Checklist metrológico y firma digital del técnico al cerrar órdenes de trabajo.
+- [ ] **Hito 14: Sub-Facturación y Liquidación de Consumos (Medidores Remarcadores)**
+  - Cálculo de prorrateo por m³/kWh según tarifas escalonadas y cargos fijos.
+  - Generación de comprobantes y recibos de cobro por local o departamento.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 10 concluido (`specs/test-001-e2e-playwright.md`).*
-- **Módulo objetivo:** Pruebas E2E Automatizadas con Playwright (Login RBAC, Lecturas en Terreno, Alertas, Webhooks).
+- **Archivo:** *Hito 11 concluido (`specs/feat-014-notificaciones-push-y-telegram.md`).*
+- **Módulo objetivo:** Notificaciones Multicanal (Telegram Bot y Web Push API).
 
 ---
 
@@ -153,6 +168,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Ejecución `/learn` (Reglas 13 y 14 en AGENTS.md) | Formalización de webhooks salientes y observabilidad crítica en AGENTS.md y UI |
 | 2026-10-03 | Antigravity | Implementación de `test-001-e2e-playwright` (Hito 10) | ADR 0007, Playwright en modo headless, suites E2E completas y CI (6/6 tests) |
 | 2026-10-03 | Antigravity | Ejecución `/learn` (Reglas 11 y 15 en AGENTS.md) | Formalización de exención segura E2E y desacoplamiento de runners (Vitest vs Playwright) |
+| 2026-10-03 | Antigravity | Implementación de `feat-014-notificaciones-push-y-telegram` (Hito 11) | ADR 0008, Web Push (VAPID/SW), Telegram Bot nativo, bitácora inmutable y E2E (7/7 tests) |
 
 
 

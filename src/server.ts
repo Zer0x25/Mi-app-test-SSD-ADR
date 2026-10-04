@@ -50,6 +50,9 @@ import {
   createWebhooksController,
   ICalibracionesChecker,
 } from "./modules/webhooks/webhooks.controller.js";
+import { createNotificacionesController } from "./modules/notificaciones/notificaciones.controller.js";
+import { NotificacionesService } from "./modules/notificaciones/notificaciones.service.js";
+import { PrismaNotificacionesRepository } from "./modules/notificaciones/notificaciones.repository.js";
 import { hashPassword } from "./modules/usuarios/auth.utils.js";
 
 // Errores
@@ -66,6 +69,7 @@ export interface BuildServerOptions {
   serveStatic?: boolean;
   logger?: boolean | Record<string, unknown>;
   webhooksService?: WebhookDispatcherService;
+  notificacionesService?: NotificacionesService;
 }
 
 export async function buildServer(options: BuildServerOptions = {}): Promise<FastifyInstance> {
@@ -231,6 +235,26 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         return reply.status(403).send({
           error: "ACCESO_DENEGADO",
           message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para gestionar webhooks.`,
+        });
+      }
+    }
+
+    // Regla RBAC 6: Pruebas e historial de Notificaciones restringido a ADMIN y SUPERVISOR
+    if (
+      request.url.startsWith("/api/notificaciones/telegram/test") ||
+      request.url.startsWith("/api/notificaciones/push/test") ||
+      request.url.startsWith("/api/notificaciones/historial")
+    ) {
+      if (!user) {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Cabecera Authorization con formato Bearer <token> requerida.",
+        });
+      }
+      if (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR") {
+        return reply.status(403).send({
+          error: "ACCESO_DENEGADO",
+          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para realizar pruebas o consultar historial de notificaciones.`,
         });
       }
     }
@@ -575,8 +599,19 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   const webhooksRepo = new PrismaWebhooksRepository(prisma);
   const webhooksService = options.webhooksService ?? new WebhookDispatcherService(webhooksRepo);
 
+  const notificacionesRepo = new PrismaNotificacionesRepository(prisma);
+  const notificacionesService =
+    options.notificacionesService ??
+    new NotificacionesService(notificacionesRepo, {
+      telegramBotToken: config.TELEGRAM_BOT_TOKEN,
+      telegramChatId: config.TELEGRAM_CHAT_ID,
+      vapidPublicKey: config.VAPID_PUBLIC_KEY,
+      vapidPrivateKey: config.VAPID_PRIVATE_KEY,
+      vapidSubject: config.VAPID_SUBJECT,
+    });
+
   const alertasRepo = new PrismaAlertasRepository(prisma);
-  const alertasService = new AlertasService(alertasRepo, webhooksService);
+  const alertasService = new AlertasService(alertasRepo, webhooksService, notificacionesService);
 
   const mantenimientoRepo = new PrismaMantenimientoRepository(prisma);
   const mantenimientoService = new MantenimientoService(mantenimientoRepo, auditoriaService);
@@ -683,6 +718,19 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
             timestamp: new Date().toISOString(),
           },
         });
+
+        await notificacionesService.despacharNotificacion({
+          evento: "sistema.error_critico",
+          severidad: "CRITICAL",
+          titulo: `Error Crítico de Servidor en ${request.method} ${request.url}`,
+          mensaje: err.message || "Error interno del servidor",
+          datos: {
+            reqId: request.id,
+            method: request.method,
+            url: request.url,
+            statusCode,
+          },
+        });
       } catch {
         // Fail-safe: errores en el despacho saliente no interfieren con la respuesta HTTP
       }
@@ -713,6 +761,9 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await app.register(createAuditoriaController(auditoriaService), { prefix: "/api" });
   await app.register(createWebhooksController(webhooksService, calibracionesChecker), {
     prefix: "/api/webhooks",
+  });
+  await app.register(createNotificacionesController(notificacionesService), {
+    prefix: "/api/notificaciones",
   });
 
   // 6. Endpoints complementarios para Frontend & RBAC

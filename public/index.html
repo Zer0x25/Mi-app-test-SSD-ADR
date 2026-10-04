@@ -104,6 +104,13 @@
           </svg>
           Webhooks
         </button>
+        <button class="role-btn" id="tabNotificacionesBtn" onclick="switchRole('notificaciones')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Notificaciones
+        </button>
         <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -770,6 +777,94 @@
             <tbody id="tbodyWebhooks">
               <tr>
                 <td colspan="6" class="empty-state">Cargando endpoints de webhook...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 9: NOTIFICACIONES MULTICANAL (FEAT-014 / HITO 11) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewNotificaciones" aria-labelledby="headingNotificaciones">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingNotificaciones">Notificaciones Push &amp; Alertas por Telegram</h1>
+          <p class="view-desc">Canales en tiempo real para humanos: notificaciones emergentes en navegador (PWA / Web Push) y despacho directo a chats o grupos de Telegram.</p>
+        </div>
+      </div>
+
+      <!-- Configuración y Diagnóstico de Canales -->
+      <div class="grid grid-2 mt-6" style="gap: 1.5rem;">
+        <!-- Canal 1: Web Push API (PWA) -->
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="card-title">📱 Notificaciones Web Push (Navegador)</h2>
+            <span class="badge badge-gray" id="badgePushStatus">Verificando...</span>
+          </div>
+          <p class="text-secondary text-sm mb-4">
+            Recibe alertas emergentes directamente en tu teléfono móvil o computador portátil mediante el Service Worker de la PWA, incluso si la pestaña está cerrada o en segundo plano.
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="btnTogglePush" onclick="toggleWebPushSubscription()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span id="txtBtnTogglePush">Activar Notificaciones Web Push</span>
+            </button>
+            <button class="btn btn-secondary" id="btnTestPush" onclick="probarWebPush()">
+              Probar Envío Push
+            </button>
+          </div>
+        </div>
+
+        <!-- Canal 2: Telegram Bot -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">✈️ Canal Telegram Bot</h2>
+          </div>
+          <p class="text-secondary text-sm mb-4">
+            Despacho inmediato a grupos o canales de supervisión técnica cuando se detecta probabilidad de fuga, salto anómalo o caídas de servidor.
+          </p>
+          <div class="form-group mb-4">
+            <label class="form-label" for="inputTelegramMsg">Mensaje de diagnóstico personalizado</label>
+            <input type="text" class="form-input" id="inputTelegramMsg" placeholder="Prueba de alerta desde panel Medidores" value="Prueba de conectividad del Bot de Telegram">
+          </div>
+          <button class="btn btn-secondary" onclick="probarTelegram()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Enviar Prueba a Telegram
+          </button>
+        </div>
+      </div>
+
+      <!-- Bitácora de Envíos Recientes -->
+      <div class="card mt-6">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <h2 class="card-title">📋 Bitácora de Entregas Multicanal</h2>
+          <button class="btn btn-sm btn-secondary" onclick="cargarHistorialNotificaciones()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaHistorialNotificaciones">
+            <thead>
+              <tr>
+                <th>Canal</th>
+                <th>Evento</th>
+                <th>Destinatario</th>
+                <th>Severidad</th>
+                <th>Título</th>
+                <th>Estado</th>
+                <th>Latencia</th>
+                <th>Fecha y Hora</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyHistorialNotificaciones">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando bitácora de notificaciones...</td>
               </tr>
             </tbody>
           </table>

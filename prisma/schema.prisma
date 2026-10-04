@@ -17,6 +17,7 @@ model Usuario {
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
   asignaciones AsignacionOperador[]
+  suscripciones SuscripcionPush[]
 
   @@map("usuarios")
 }
@@ -221,4 +222,37 @@ model WebhookEntrega {
 
   @@index([webhookId, createdAt(sort: Desc)])
   @@map("webhook_entregas")
+}
+
+model SuscripcionPush {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@map("suscripciones_push")
+}
+
+model NotificacionHistorial {
+  id           String   @id @default(uuid())
+  canal        String   // TELEGRAM, WEB_PUSH
+  destinatario String   // chatId o endpoint abreviado
+  evento       String
+  severidad    String   // INFO, WARNING, CRITICAL
+  titulo       String
+  exitoso      Boolean
+  statusCode   Int?
+  error        String?
+  duracionMs   Int?
+  createdAt    DateTime @default(now())
+
+  @@index([canal, createdAt(sort: Desc)])
+  @@index([evento])
+  @@map("notificaciones_historial")
 }

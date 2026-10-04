@@ -303,6 +303,33 @@ class ApiClient {
         body: JSON.stringify({}),
       }),
   };
+
+  // --- Dominio: Notificaciones Multicanal (feat-014) ---
+  notificaciones = {
+    getVapidPublicKey: () => this.request("/api/notificaciones/vapid-public-key"),
+    subscribePush: (subscription) =>
+      this.request("/api/notificaciones/push/subscribe", {
+        method: "POST",
+        body: JSON.stringify(subscription),
+      }),
+    unsubscribePush: (endpoint) =>
+      this.request("/api/notificaciones/push/unsubscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint }),
+      }),
+    testTelegram: (mensaje, chatId) =>
+      this.request("/api/notificaciones/telegram/test", {
+        method: "POST",
+        body: JSON.stringify({ mensaje, chatId }),
+      }),
+    testPush: (titulo, mensaje) =>
+      this.request("/api/notificaciones/push/test", {
+        method: "POST",
+        body: JSON.stringify({ titulo, mensaje }),
+      }),
+    getHistorial: (limit = 50) =>
+      this.request(`/api/notificaciones/historial?limit=${limit}`),
+  };
 }
 
 // Instancia global unificada

@@ -154,6 +154,7 @@ function aplicarPermisosUI() {
   const tabUsuariosBtn = document.getElementById("tabUsuariosBtn");
   const tabAuditoriaBtn = document.getElementById("tabAuditoriaBtn");
   const tabWebhooksBtn = document.getElementById("tabWebhooksBtn");
+  const tabNotificacionesBtn = document.getElementById("tabNotificacionesBtn");
   const tabOperadorBtn = document.getElementById("tabOperadorBtn");
 
   if (btnNuevaInstalacion) {
@@ -176,6 +177,7 @@ function aplicarPermisosUI() {
   if (tabUsuariosBtn) tabUsuariosBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   if (tabAuditoriaBtn) tabAuditoriaBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
   if (tabWebhooksBtn) tabWebhooksBtn.style.display = currentUser.rol === "ADMIN" ? "inline-flex" : "none";
+  if (tabNotificacionesBtn) tabNotificacionesBtn.style.display = (currentUser.rol === "ADMIN" || currentUser.rol === "SUPERVISOR") ? "inline-flex" : "none";
   if (tabOperadorBtn) tabOperadorBtn.style.display = "inline-flex";
 
   actualizarResumenAlertas();
@@ -205,6 +207,11 @@ function switchRole(role) {
     return;
   }
 
+  if (role === "notificaciones" && currentUser?.rol !== "ADMIN" && currentUser?.rol !== "SUPERVISOR") {
+    window.Toast.warning("La gestión de notificaciones está reservada para Administradores y Supervisores.", "Permisos");
+    return;
+  }
+
   currentRoleTab = role;
   const tabs = [
     document.getElementById("tabAdminBtn"),
@@ -214,6 +221,7 @@ function switchRole(role) {
     document.getElementById("tabUsuariosBtn"),
     document.getElementById("tabAuditoriaBtn"),
     document.getElementById("tabWebhooksBtn"),
+    document.getElementById("tabNotificacionesBtn"),
     document.getElementById("tabOperadorBtn"),
   ];
   const views = [
@@ -224,6 +232,7 @@ function switchRole(role) {
     document.getElementById("viewUsuarios"),
     document.getElementById("viewAuditoria"),
     document.getElementById("viewWebhooks"),
+    document.getElementById("viewNotificaciones"),
     document.getElementById("viewOperador"),
   ];
 
@@ -263,6 +272,10 @@ function switchRole(role) {
     document.getElementById("tabWebhooksBtn")?.classList.add("active");
     document.getElementById("viewWebhooks")?.classList.add("active");
     cargarWebhooks();
+  } else if (role === "notificaciones") {
+    document.getElementById("tabNotificacionesBtn")?.classList.add("active");
+    document.getElementById("viewNotificaciones")?.classList.add("active");
+    inicializarVistaNotificaciones();
   } else {
     document.getElementById("tabOperadorBtn")?.classList.add("active");
     document.getElementById("viewOperador")?.classList.add("active");
@@ -1739,5 +1752,211 @@ window.verEntregasWebhook = verEntregasWebhook;
 window.toggleActivoWebhook = toggleActivoWebhook;
 window.eliminarWebhook = eliminarWebhook;
 window.evaluarCalibracionesWebhooks = evaluarCalibracionesWebhooks;
+
+// ==============================================================================
+// 12. NOTIFICACIONES MULTICANAL (TELEGRAM & WEB PUSH) (FEAT-014 / HITO 11)
+// ==============================================================================
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+let pushSubscriptionActive = null;
+
+async function inicializarVistaNotificaciones() {
+  await actualizarEstadoWebPush();
+  await cargarHistorialNotificaciones();
+}
+
+async function actualizarEstadoWebPush() {
+  const badge = document.getElementById("badgePushStatus");
+  const btnToggle = document.getElementById("btnTogglePush");
+  const txtBtn = document.getElementById("txtBtnTogglePush");
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    if (badge) {
+      badge.textContent = "No compatible";
+      badge.className = "badge badge-gray";
+    }
+    if (btnToggle) btnToggle.disabled = true;
+    if (txtBtn) txtBtn.textContent = "Web Push no soportado en este navegador";
+    return;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    pushSubscriptionActive = sub;
+
+    if (sub) {
+      if (badge) {
+        badge.textContent = "Activo en este equipo";
+        badge.className = "badge badge-green";
+      }
+      if (btnToggle) {
+        btnToggle.disabled = false;
+        btnToggle.className = "btn btn-outline";
+      }
+      if (txtBtn) txtBtn.textContent = "Desactivar Notificaciones Push";
+    } else {
+      if (badge) {
+        badge.textContent = "Inactivo";
+        badge.className = "badge badge-amber";
+      }
+      if (btnToggle) {
+        btnToggle.disabled = false;
+        btnToggle.className = "btn btn-primary";
+      }
+      if (txtBtn) txtBtn.textContent = "Activar Notificaciones Web Push";
+    }
+  } catch (err) {
+    console.error("Error verificando suscripción Web Push:", err);
+  }
+}
+
+async function toggleWebPushSubscription() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    window.Toast.error("Este navegador no soporta la API de Web Push.", "Incompatible");
+    return;
+  }
+
+  const btnToggle = document.getElementById("btnTogglePush");
+  if (btnToggle) btnToggle.disabled = true;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const subActual = await reg.pushManager.getSubscription();
+
+    if (subActual) {
+      // Desuscribir
+      const endpoint = subActual.endpoint;
+      await subActual.unsubscribe();
+      await window.api.notificaciones.unsubscribePush(endpoint);
+      pushSubscriptionActive = null;
+      window.Toast.info("Notificaciones Web Push desactivadas para este navegador.", "Web Push");
+    } else {
+      // Solicitar permisos al usuario
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        window.Toast.warning("Se denegó el permiso para mostrar notificaciones.", "Permiso Requerido");
+        if (btnToggle) btnToggle.disabled = false;
+        return;
+      }
+
+      // Obtener clave pública VAPID
+      const { publicKey } = await window.api.notificaciones.getVapidPublicKey();
+      const applicationServerKey = urlBase64ToUint8Array(publicKey);
+
+      // Crear suscripción W3C
+      const nuevaSub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+
+      // Registrar suscripción en el backend
+      await window.api.notificaciones.subscribePush(nuevaSub.toJSON());
+      pushSubscriptionActive = nuevaSub;
+      window.Toast.success("¡Notificaciones Push activadas exitosamente!", "Web Push");
+    }
+
+    await actualizarEstadoWebPush();
+  } catch (err) {
+    window.Toast.error(err.message, "Error en Notificaciones Push");
+  } finally {
+    if (btnToggle) btnToggle.disabled = false;
+  }
+}
+
+async function probarWebPush() {
+  try {
+    window.Toast.info("Despachando notificación Push sintética...", "Prueba Push");
+    const res = await window.api.notificaciones.testPush("Alerta Sintética de Prueba", "El canal de Web Push de la PWA está operativo.");
+    window.Toast.success(`Envío procesado: ${res.total} entrega(s) despachada(s).`, "Web Push");
+    await cargarHistorialNotificaciones();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al probar Push");
+  }
+}
+
+async function probarTelegram() {
+  const inputMsg = document.getElementById("inputTelegramMsg");
+  const mensaje = inputMsg?.value?.trim() || "Prueba de conectividad del Bot de Telegram";
+
+  try {
+    window.Toast.info("Enviando mensaje de prueba a Telegram...", "Telegram Bot");
+    const res = await window.api.notificaciones.testTelegram(mensaje);
+    if (res.exitoso) {
+      window.Toast.success("Mensaje entregado exitosamente al chat de Telegram.", "Telegram Bot");
+    } else {
+      window.Toast.warning(`Telegram no entregado: ${res.error || 'Código HTTP ' + res.statusCode}`, "Telegram Bot");
+    }
+    await cargarHistorialNotificaciones();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al conectar con Telegram");
+  }
+}
+
+async function cargarHistorialNotificaciones() {
+  const tbody = document.getElementById("tbodyHistorialNotificaciones");
+  if (!tbody) return;
+
+  try {
+    const items = await window.api.notificaciones.getHistorial(50);
+    if (items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No hay registros de notificaciones emitidas aún.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = items
+      .map((item) => {
+        const canalBadge =
+          item.canal === "TELEGRAM"
+            ? `<span class="badge" style="background: rgba(0, 136, 204, 0.15); color: #0088cc; font-weight: 600;">✈️ Telegram</span>`
+            : `<span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #9333ea; font-weight: 600;">📱 Web Push</span>`;
+
+        const severidadBadge =
+          item.severidad === "CRITICAL"
+            ? `<span class="badge badge-red">CRITICAL</span>`
+            : item.severidad === "WARNING"
+            ? `<span class="badge badge-amber">WARNING</span>`
+            : `<span class="badge badge-gray">${item.severidad}</span>`;
+
+        const estadoBadge = item.exitoso
+          ? `<span class="badge badge-green">EXITOSO (${item.statusCode || 200})</span>`
+          : `<span class="badge badge-red" title="${item.error || ''}">FALLIDO (${item.statusCode || 'ERR'})</span>`;
+
+        const fechaFormateada = new Date(item.createdAt).toLocaleString("es-CL");
+
+        return `
+          <tr>
+            <td>${canalBadge}</td>
+            <td><code>${item.evento}</code></td>
+            <td><small>${item.destinatario}</small></td>
+            <td>${severidadBadge}</td>
+            <td><strong>${item.titulo}</strong></td>
+            <td>${estadoBadge}</td>
+            <td>${item.duracionMs !== null ? item.duracionMs + ' ms' : '-'}</td>
+            <td><small class="text-secondary">${fechaFormateada}</small></td>
+          </tr>
+        `;
+      })
+      .join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state text-danger">Error cargando historial: ${err.message}</td></tr>`;
+  }
+}
+
+window.inicializarVistaNotificaciones = inicializarVistaNotificaciones;
+window.toggleWebPushSubscription = toggleWebPushSubscription;
+window.probarWebPush = probarWebPush;
+window.probarTelegram = probarTelegram;
+window.cargarHistorialNotificaciones = cargarHistorialNotificaciones;
 
 
