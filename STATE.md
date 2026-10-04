@@ -181,6 +181,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Implementación de `feat-014-notificaciones-push-y-telegram` (Hito 11) | ADR 0008, Web Push (VAPID/SW), Telegram Bot nativo, bitácora inmutable y E2E (7/7 tests) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 13 y 15 en AGENTS.md) | Formalización de auto-purga 410 en Web Push y DOM scoping obligatorio en Playwright |
 | 2026-10-04 | Antigravity | Implementación de `feat-015-endurecimiento-y-resiliencia` (Hito 12) | ADR 0009, SQLite WAL, Hot Backup, Graceful Shutdown, Helmet CSP, Backoff PWA y Quality Gate 0 (196 tests Vitest + 7 tests E2E) |
+| 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 16 y 17 en AGENTS.md) | Formalización de concurrencia SQLite, raw PRAGMAs, hot backup y Helmet CSP scriptSrcAttr |
 
 
 
