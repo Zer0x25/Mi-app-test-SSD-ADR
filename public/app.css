@@ -356,9 +356,18 @@ body {
 
 .operator-facility-selector .form-group {
   margin-bottom: 0;
-  min-width: 280px;
+  min-width: 0;
+  width: 100%;
   flex: 1;
 }
+
+@media (min-width: 768px) {
+  .operator-facility-selector .form-group {
+    min-width: 280px;
+    width: auto;
+  }
+}
+
 
 /* Utilidades */
 .mt-4 { margin-top: 1rem; }

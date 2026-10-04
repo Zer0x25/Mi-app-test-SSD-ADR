@@ -140,4 +140,52 @@ test.describe("Módulo Responsive & Adaptabilidad Móvil (Hito 13 / feat-016)", 
     });
     expect(hasHorizontalOverflow).toBe(false);
   });
+
+  test("Viewport 320px y 375px: Filtros selectores en listas (Alertas, Mantenimiento, Auditoría, Reportes, Terreno) contenidos sin desbordamiento", async ({ page }) => {
+    const roles = ["alertas", "mantenimiento", "auditoria", "reportes", "operador"];
+
+    for (const width of [320, 375]) {
+      await page.setViewportSize({ width, height: 700 });
+      await page.waitForTimeout(200);
+
+      for (const role of roles) {
+        await page.evaluate((r) => {
+          interface AppWindow extends Window {
+            switchRole?: (r: string) => void;
+          }
+          const appWin = window as unknown as AppWindow;
+          if (appWin.switchRole) appWin.switchRole(r);
+        }, role);
+        await page.waitForTimeout(150);
+
+        // Verificar que ningún select ni card-header desborde el ancho de la tarjeta o del viewport
+        const overflowFound = await page.evaluate((): boolean => {
+          const activeView = document.querySelector(".view-panel.active");
+          if (!activeView) return false;
+
+          const selects = Array.from(activeView.querySelectorAll("select"));
+          for (const s of selects) {
+            const r = s.getBoundingClientRect();
+            const card = s.closest(".card") || activeView;
+            const cRect = card.getBoundingClientRect();
+            if (r.right > cRect.right + 2 || r.right > window.innerWidth + 2) {
+              return true;
+            }
+          }
+
+          const cardHeaders = Array.from(activeView.querySelectorAll(".card-header"));
+          for (const ch of cardHeaders) {
+            if (ch.scrollWidth > ch.clientWidth + 2) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+
+        expect(overflowFound).toBe(false);
+      }
+    }
+  });
 });
+

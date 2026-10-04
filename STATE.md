@@ -198,4 +198,5 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Formalización de ADR 0010 y SDD `feat-016` (Hito 13) | Estrategia Mobile-First (320px -> 375px -> 425px+), Drawer accesible, touch targets y E2E móvil |
 | 2026-10-04 | Antigravity | Implementación de `feat-016-adaptabilidad-movil-responsive` | Breakpoints 320px a 1024px+, Drawer móvil, zero overflow y suite Playwright móvil (24/24 E2E + 206/206 Vitest) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Regla 18 en AGENTS.md) | Formalización de arquitectura responsiva mobile-first, ergonomía táctil y visibility en drawers off-canvas para Playwright |
+| 2026-10-04 | Antigravity | Corrección de selectores y filtros en listas móviles | Contención de .form-select (max-width, ellipsis), flex-wrap en card-header, reports-filter-grid y test Playwright (25/25 E2E + 206/206 Vitest) |
 
