@@ -58,6 +58,24 @@ class ApiClient {
       const data = isJson ? await response.json() : await response.text();
 
       if (!response.ok) {
+        if (response.status === 401 && !endpoint.includes("/auth/login")) {
+          this.clearToken();
+          window.dispatchEvent(
+            new CustomEvent("medidores:session-expired", {
+              detail: { endpoint, status: 401 },
+            })
+          );
+          if (window.Toast && !options.skipAuthToast) {
+            window.Toast.warning(
+              "Su sesión ha expirado o el token es inválido. Por favor vuelva a iniciar sesión.",
+              "Sesión Expirada"
+            );
+          }
+          if (window.ModalManager && typeof window.ModalManager.open === "function") {
+            window.ModalManager.open("modalLogin");
+          }
+        }
+
         const errorMessage = (typeof data === "object" && data.message) ? data.message : `Error HTTP ${response.status}`;
         const errorCode = (typeof data === "object" && data.code) ? data.code : `HTTP_${response.status}`;
         throw new ApiError(response.status, errorMessage, errorCode, data);

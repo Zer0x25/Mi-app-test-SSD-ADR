@@ -4,8 +4,15 @@ import Fastify, { FastifyInstance, FastifyRequest, FastifyError } from "fastify"
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import rateLimit from "@fastify/rate-limit";
+import helmet from "@fastify/helmet";
 import { PrismaClient } from "@prisma/client";
+import { z } from "zod";
 import { config } from "./core/config.js";
+import {
+  configurePrismaSQLite,
+  createHotBackup,
+  BackupRequestSchema,
+} from "./core/database.js";
 
 // Repositorios
 import { PrismaInstalacionesRepository } from "./modules/instalaciones/instalaciones.repository.js";
@@ -95,8 +102,25 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   );
 
   const prisma: PrismaClient = options.prisma ?? new PrismaClient();
+  await configurePrismaSQLite(prisma);
 
   // 1. Plugins de transporte y seguridad
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  });
+
   await app.register(cors, {
     origin: true,
   });
@@ -255,6 +279,22 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         return reply.status(403).send({
           error: "ACCESO_DENEGADO",
           message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para realizar pruebas o consultar historial de notificaciones.`,
+        });
+      }
+    }
+
+    // Regla RBAC 7: Respaldo de Base de Datos exclusivo para ADMIN
+    if (request.url.startsWith("/api/admin/backup")) {
+      if (!user) {
+        return reply.status(401).send({
+          error: "UNAUTHORIZED",
+          message: "Cabecera Authorization con formato Bearer <token> requerida.",
+        });
+      }
+      if (user.rol !== "ADMIN") {
+        return reply.status(403).send({
+          error: "ACCESO_DENEGADO",
+          message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para generar respaldos de base de datos.`,
         });
       }
     }
@@ -783,9 +823,59 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     return asignaciones.map((a) => a.instalacion).filter((i) => i.activa);
   });
 
-  app.get("/api/lecturas/recientes", async (req: FastifyRequest<{ Querystring: { limit?: string } }>) => {
-    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;
-    return await dashboardService.obtenerActividadReciente(limit);
+  const LecturasRecientesQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(100).default(10),
+  });
+
+  app.get("/api/lecturas/recientes", async (req: FastifyRequest<{ Querystring: { limit?: string } }>, reply) => {
+    const parsed = LecturasRecientesQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: "VALIDATION_ERROR",
+        message: "Parámetro limit inválido (debe ser un número entero entre 1 y 100)",
+        details: parsed.error.format(),
+      });
+    }
+    return await dashboardService.obtenerActividadReciente(parsed.data.limit);
+  });
+
+  app.post("/api/admin/backup", async (request, reply) => {
+    const user = (request as unknown as { user?: { rol: string; userId: string } }).user;
+    if (!user || user.rol !== "ADMIN") {
+      return reply.status(403).send({
+        error: "ACCESO_DENEGADO",
+        message: "Acceso denegado: solo administradores pueden generar respaldos de base de datos.",
+      });
+    }
+
+    const parsed = BackupRequestSchema.safeParse(request.body || {});
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: "VALIDATION_ERROR",
+        message: "Datos de solicitud inválidos",
+        details: parsed.error.format(),
+      });
+    }
+
+    const backupResult = await createHotBackup(prisma, {
+      customFilename: parsed.data.nombreArchivo,
+    });
+
+    // Registrar en pista inmutable de auditoría (Regla 10)
+    await auditoriaService.registrarEvento({
+      usuarioId: user.userId,
+      accion: "BACKUP_SISTEMA",
+      entidad: "SISTEMA",
+      entidadId: backupResult.archivo,
+      detalles: {
+        archivo: backupResult.archivo,
+        rutaAbsoluta: backupResult.rutaAbsoluta,
+        tamanoBytes: backupResult.tamanoBytes,
+      },
+      ip: request.ip,
+    });
+
+    return reply.status(200).send(backupResult);
   });
 
   return app;

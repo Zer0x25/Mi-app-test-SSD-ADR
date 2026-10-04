@@ -1,18 +1,25 @@
 /**
  * SyncManager - Gestor de Sincronización Resiliente Fuera de Línea (PWA / Offline-First)
  * Permite capturar lecturas en terreno sin cobertura, almacenarlas localmente y
- * sincronizarlas en lote con el backend al recuperar conectividad.
+ * sincronizarlas en lote con el backend al recuperar conectividad con retroceso exponencial.
+ * ADR 0009 / Hito 12: Production Hardening
  */
 class SyncManager {
   constructor() {
     this.storageKey = "medidores_offline_queue";
     this.isSyncing = false;
     this.onSyncCompleteCallbacks = [];
+    this.reintentosFallidos = 0;
+    this.baseDelayMs = 2000;
+    this.maxDelayMs = 60000;
+    this.retryTimeoutId = null;
+    this.proximoReintentoTimestamp = null;
   }
 
   init() {
     // Registrar listeners de red
     window.addEventListener("online", () => {
+      this.cancelarReintentos();
       this.actualizarUI();
       if (window.Toast) {
         window.Toast.info("Conexión a internet restablecida. Iniciando sincronización...", "Conectado");
@@ -21,6 +28,7 @@ class SyncManager {
     });
 
     window.addEventListener("offline", () => {
+      this.cancelarReintentos();
       this.actualizarUI();
       if (window.Toast) {
         window.Toast.warning("Sin conexión de red. Las lecturas se guardarán localmente.", "Modo Desconectado");
@@ -105,6 +113,42 @@ class SyncManager {
     return nuevoItem;
   }
 
+  programarReintentoExponencial() {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+      this.retryTimeoutId = null;
+    }
+    if (!this.isOnline() || this.contarPendientes() === 0) return;
+
+    // Backoff exponencial con jitter: Math.min(60s, base * 2^intentos) * (1 ± 0.15)
+    const exponente = Math.min(this.reintentosFallidos, 5);
+    const delayBase = Math.min(this.maxDelayMs, this.baseDelayMs * Math.pow(2, exponente));
+    const jitter = 1 + (Math.random() * 0.3 - 0.15);
+    const delay = Math.round(delayBase * jitter);
+
+    console.log(`[SyncManager] Programando reintento en ${Math.round(delay / 1000)}s (intento #${this.reintentosFallidos})`);
+
+    this.proximoReintentoTimestamp = Date.now() + delay;
+    this.actualizarUI();
+
+    this.retryTimeoutId = setTimeout(() => {
+      this.retryTimeoutId = null;
+      this.proximoReintentoTimestamp = null;
+      if (this.isOnline() && this.contarPendientes() > 0) {
+        this.sincronizar();
+      }
+    }, delay);
+  }
+
+  cancelarReintentos() {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId);
+      this.retryTimeoutId = null;
+    }
+    this.proximoReintentoTimestamp = null;
+    this.reintentosFallidos = 0;
+  }
+
   async sincronizar() {
     if (this.isSyncing) return;
     if (!this.isOnline()) {
@@ -117,6 +161,7 @@ class SyncManager {
     let cola = this.obtenerCola();
     const pendientes = cola.filter((item) => item.status !== "SYNCED");
     if (pendientes.length === 0) {
+      this.cancelarReintentos();
       return;
     }
 
@@ -136,6 +181,10 @@ class SyncManager {
       };
 
       const res = await window.api.lecturas.sincronizarLote(payloadBatch);
+
+      // Éxito en transporte: resetear backoff
+      this.reintentosFallidos = 0;
+      this.cancelarReintentos();
 
       // Procesar resultados del lote
       const mapResultados = new Map(res.results.map((r) => [r.localId, r]));
@@ -175,9 +224,11 @@ class SyncManager {
         }
       });
     } catch (err) {
-      console.warn("[SyncManager] Error de red al sincronizar lote:", err);
+      console.warn("[SyncManager] Error de red o servidor al sincronizar lote:", err);
+      this.reintentosFallidos = (this.reintentosFallidos || 0) + 1;
+      this.programarReintentoExponencial();
       if (window.Toast) {
-        window.Toast.error("Fallo temporal de conexión al sincronizar lote.");
+        window.Toast.error("Fallo temporal de conexión al sincronizar lote. Reintento automático programado.");
       }
     } finally {
       this.isSyncing = false;
@@ -224,6 +275,12 @@ class SyncManager {
         } else {
           btnSync.classList.remove("loading");
           btnSync.removeAttribute("disabled");
+          if (this.proximoReintentoTimestamp) {
+            const segundos = Math.max(1, Math.round((this.proximoReintentoTimestamp - Date.now()) / 1000));
+            btnSync.title = `Reintentando en ${segundos}s... Haz clic para forzar sincronización ahora.`;
+          } else {
+            btnSync.title = "Sincronizar lecturas pendientes con el servidor";
+          }
         }
       } else {
         btnSync.style.display = "none";

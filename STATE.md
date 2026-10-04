@@ -4,12 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Hito 11 Concluido (Notificaciones Push & Alertas por Telegram)
+## 🧭 Fase Actual: Hito 12 Concluido (Endurecimiento Operacional, Concurrencia y Resiliencia)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Módulo de Notificaciones Multicanal para humanos implementado y verificado (Web Push W3C VAPID con soporte en Service Worker de la PWA + Despachador nativo de Telegram Bot + Bitácora inmutable de entregas).
-- **Acción requerida para comenzar:** Seleccionar siguiente hito de la hoja de ruta (ej. Hito 12: Evidencia Fotográfica y Geolocalización GPS en Terreno).
-- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 187/187 unit/integration en Vitest + 7/7 E2E en Playwright, código de salida 0).
+- **Estado:** Hito 12 implementado y certificado al 100% bajo SDD / ADR 0009 (SQLite WAL, Hot Backup con auditoría, Graceful Shutdown, Fastify Helmet CSP, Backoff Exponencial en PWA, Intercepción 401 y Concurrencia masiva).
+- **Acción requerida para comenzar:** Seleccionar siguiente hito de la hoja de ruta (ej. Hito 13: Evidencia Fotográfica y Geolocalización GPS en Terreno).
+- **Última verificación de Quality Gate:** Superada (100% pruebas pasando, 196/196 unit/integration en Vitest + 7/7 E2E en Playwright, código de salida 0).
 
 ---
 
@@ -119,26 +119,36 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
   - Despacho fail-safe asíncrono (`Promise.allSettled`, timeout 5000 ms) en detección de incidentes y errores 5xx.
   - Interfaz de usuario con activación de push en un clic, pruebas sintéticas y bitácora de entregas.
   - Quality Gate verificado: 187/187 tests Vitest pasando + 7/7 tests E2E Playwright pasando (100%).
+- [x] **Hito 12: Endurecimiento Operacional, Concurrencia y Resiliencia de Producción (Completado: 2026-10-04)**
+  - Formalización inmutable de `docs/adr/0009-endurecimiento-operacional-concurrencia-y-resiliencia.md`.
+  - Especificación `specs/feat-015-endurecimiento-y-resiliencia-produccion.md` implementada bajo Agentic TDD.
+  - SQLite WAL mode, busy timeout (5000ms), integridad referencial forzada (`PRAGMA foreign_keys = ON;`) y `synchronous = NORMAL`.
+  - Endpoint seguro de hot backup (`POST /api/admin/backup`) mediante `VACUUM INTO` con registro de auditoría (`AuditoriaEvento`, acción `BACKUP_SISTEMA`).
+  - Parada ordenada (Graceful Shutdown) ante `SIGTERM`/`SIGINT` con drenaje de peticiones y desconexión segura de Prisma.
+  - Cabeceras de seguridad HTTP con `@fastify/helmet` y CSP adaptada para la PWA (`scriptSrcAttr: ["'unsafe-inline'"]`).
+  - Validación Zod estricta en query parameters (`/api/lecturas/recientes`).
+  - Frontend resiliente: retroceso exponencial con jitter aleatorio (±15%) en `SyncManager`, captura global de expiración de sesión (401) en `ApiClient` con evento `medidores:session-expired`, y estados de error con recuperación interactiva (`renderErrorState`).
+  - Suite de pruebas de concurrencia y validación completa del Quality Gate (196/196 Vitest pasando + 7/7 E2E Playwright pasando, 100%).
 
 ---
 
 ## 🗺️ Hoja de Ruta / Roadmap de Hitos Futuros (Backlog TO-DO)
 
-- [ ] **Hito 12: Evidencia Fotográfica y Geolocalización GPS en Terreno**
+- [ ] **Hito 13: Evidencia Fotográfica y Geolocalización GPS en Terreno**
   - Captura y compresión de fotos del dial del medidor en la PWA (WebP/JPEG).
   - Geolocalización satelital (`navigator.geolocation`) para auditoría anti-fraude y verificación física de lecturas.
-- [ ] **Hito 13: Rutas de Inspección y Órdenes de Trabajo para Mantenimiento en Campo**
+- [ ] **Hito 14: Rutas de Inspección y Órdenes de Trabajo para Mantenimiento en Campo**
   - Planificador de rutas óptimas para operadores por sede/edificio.
   - Checklist metrológico y firma digital del técnico al cerrar órdenes de trabajo.
-- [ ] **Hito 14: Sub-Facturación y Liquidación de Consumos (Medidores Remarcadores)**
+- [ ] **Hito 15: Sub-Facturación y Liquidación de Consumos (Medidores Remarcadores)**
   - Cálculo de prorrateo por m³/kWh según tarifas escalonadas y cargos fijos.
   - Generación de comprobantes y recibos de cobro por local o departamento.
 
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** *Hito 11 concluido (`specs/feat-014-notificaciones-push-y-telegram.md`).*
-- **Módulo objetivo:** Notificaciones Multicanal (Telegram Bot y Web Push API).
+- **Archivo:** *Hito 12 concluido (`specs/feat-015-endurecimiento-y-resiliencia-produccion.md`).*
+- **Módulo objetivo:** Endurecimiento Operacional, Concurrencia y Resiliencia (Fases 1, 2, 3 y 4).
 
 ---
 
@@ -170,6 +180,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-03 | Antigravity | Ejecución `/learn` (Reglas 11 y 15 en AGENTS.md) | Formalización de exención segura E2E y desacoplamiento de runners (Vitest vs Playwright) |
 | 2026-10-03 | Antigravity | Implementación de `feat-014-notificaciones-push-y-telegram` (Hito 11) | ADR 0008, Web Push (VAPID/SW), Telegram Bot nativo, bitácora inmutable y E2E (7/7 tests) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 13 y 15 en AGENTS.md) | Formalización de auto-purga 410 en Web Push y DOM scoping obligatorio en Playwright |
+| 2026-10-04 | Antigravity | Implementación de `feat-015-endurecimiento-y-resiliencia` (Hito 12) | ADR 0009, SQLite WAL, Hot Backup, Graceful Shutdown, Helmet CSP, Backoff PWA y Quality Gate 0 (196 tests Vitest + 7 tests E2E) |
 
 
 

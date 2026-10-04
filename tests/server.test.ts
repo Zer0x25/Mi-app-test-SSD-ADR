@@ -311,6 +311,38 @@ describe("Fastify Server E2E Health Check & Security", () => {
 
       await failSafeApp.close();
     });
+
+    it("debe incluir cabeceras HTTP de seguridad estrictas (Helmet & CSP)", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/healthz",
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.headers["x-content-type-options"]).toBe("nosniff");
+      expect(res.headers["content-security-policy"]).toBeDefined();
+    });
+
+    it("GET /api/lecturas/recientes debe validar parámetros con Zod (rechazar limit inválido con 400)", async () => {
+      const resInvalido = await app.inject({
+        method: "GET",
+        url: "/api/lecturas/recientes?limit=no-es-numero",
+      });
+      expect(resInvalido.statusCode).toBe(400);
+
+      const resExcedido = await app.inject({
+        method: "GET",
+        url: "/api/lecturas/recientes?limit=999",
+      });
+      expect(resExcedido.statusCode).toBe(400);
+
+      const resValido = await app.inject({
+        method: "GET",
+        url: "/api/lecturas/recientes?limit=5",
+      });
+      expect(resValido.statusCode).toBe(200);
+      expect(Array.isArray(resValido.json())).toBe(true);
+    });
   });
 });
 

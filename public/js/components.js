@@ -305,6 +305,63 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
+/**
+ * Crea el HTML para un estado visual de error recuperable (ADR 0009)
+ */
+function createErrorState(message, onRetryFnName = "") {
+  return `
+    <div class="empty-state error-recovery-state" style="text-align: center; padding: 2.5rem 1.5rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--color-danger, #ef4444);">
+        ⚠️
+      </div>
+      <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--text-main);">Error al cargar los datos</h4>
+      <p style="margin: 0 0 1.25rem 0; font-size: 0.9rem; color: var(--text-muted); max-width: 400px; margin-inline: auto;">
+        ${escapeHtml(message || "No se pudo establecer comunicación con el servidor. Verifique su red.")}
+      </p>
+      ${
+        onRetryFnName
+          ? `<button class="btn btn-secondary" onclick="${escapeHtml(onRetryFnName)}()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+              </svg>
+              Reintentar
+            </button>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderErrorState(container, message, onRetryCallback) {
+  if (!container) return;
+  const retryId = `retry-btn-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  container.innerHTML = `
+    <div class="empty-state error-recovery-state" style="text-align: center; padding: 2.5rem 1.5rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--color-danger, #ef4444);">
+        ⚠️
+      </div>
+      <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--text-main);">Error al cargar los datos</h4>
+      <p style="margin: 0 0 1.25rem 0; font-size: 0.9rem; color: var(--text-muted); max-width: 400px; margin-inline: auto;">
+        ${escapeHtml(message || "No se pudo establecer comunicación con el servidor. Verifique su red.")}
+      </p>
+      ${
+        onRetryCallback
+          ? `<button id="${retryId}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+              </svg>
+              Reintentar
+            </button>`
+          : ""
+      }
+    </div>
+  `;
+  if (onRetryCallback) {
+    const btn = document.getElementById(retryId);
+    if (btn) btn.addEventListener("click", onRetryCallback);
+  }
+}
+
 // Exportar funciones a la ventana global
 window.Components = {
   getResourceMeta,
@@ -313,4 +370,6 @@ window.Components = {
   createDesatendidoItem,
   createConsumoCard,
   createActivityItem,
+  createErrorState,
+  renderErrorState,
 };

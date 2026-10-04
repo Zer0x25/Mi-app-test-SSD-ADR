@@ -29,6 +29,12 @@ async function inicializarApp() {
     });
   }
 
+  // Manejo Global de Expiración de Sesión (ADR 0009 / Hito 12)
+  window.addEventListener("medidores:session-expired", () => {
+    currentUser = null;
+    aplicarPermisosUI();
+  });
+
   await sincronizarSesionUsuario();
   await cargarSelectsGlobales();
   if (currentUser?.rol === "OPERADOR") {
@@ -337,6 +343,14 @@ async function cargarDashboard() {
   } catch (err) {
     console.error("Error al cargar dashboard:", err);
     window.Toast.error(err.message, "Fallo al sincronizar Dashboard");
+    const container = document.getElementById("listaActividadReciente");
+    if (container && window.Components && typeof window.Components.renderErrorState === "function") {
+      window.Components.renderErrorState(
+        container,
+        "No se pudo sincronizar el panel de telemetría con el servidor. Compruebe la conectividad.",
+        () => cargarDashboard()
+      );
+    }
   }
 }
 

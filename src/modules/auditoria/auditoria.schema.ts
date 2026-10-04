@@ -7,6 +7,7 @@ export const TipoAccionAuditoriaEnum = z.enum([
   "BAJA_MEDIDOR",
   "CAMBIO_PRECINTO",
   "LOGIN_FALLIDO",
+  "BACKUP_SISTEMA",
 ]);
 
 export type TipoAccionAuditoria = z.infer<typeof TipoAccionAuditoriaEnum>;
