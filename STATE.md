@@ -183,6 +183,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Implementación de `feat-015-endurecimiento-y-resiliencia` (Hito 12) | ADR 0009, SQLite WAL, Hot Backup, Graceful Shutdown, Helmet CSP, Backoff PWA y Quality Gate 0 (196 tests Vitest + 7 tests E2E) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 16 y 17 en AGENTS.md) | Formalización de concurrencia SQLite, raw PRAGMAs, hot backup y Helmet CSP scriptSrcAttr |
 | 2026-10-04 | Antigravity | Rebuild de Staging en Docker y `test-002-cobertura-antirregresion-y-e2e` | Lockfile resincronizado, Staging certificado (3001), 206/206 tests Vitest y 19/19 tests Playwright E2E pasando (Quality Gate 0) |
+| 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 8 y 15 en AGENTS.md) | Sincronización de lockfile para Docker, tipado estricto en page.evaluate y desacoplamiento de invariantes acumulativas |
 
 
 
