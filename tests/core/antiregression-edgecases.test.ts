@@ -396,6 +396,7 @@ describe("Suite Anti-Regresión y Edge Cases (test-002)", () => {
       const csp = headers["content-security-policy"] as string;
       expect(csp).toBeDefined();
       expect(csp).toContain("script-src-attr 'unsafe-inline'");
+      expect(csp).toContain("connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com");
     });
   });
 });

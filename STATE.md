@@ -185,7 +185,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Rebuild de Staging en Docker y `test-002-cobertura-antirregresion-y-e2e` | Lockfile resincronizado, Staging certificado (3001), 206/206 tests Vitest y 19/19 tests Playwright E2E pasando (Quality Gate 0) |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 8 y 15 en AGENTS.md) | Sincronización de lockfile para Docker, tipado estricto en page.evaluate y desacoplamiento de invariantes acumulativas |
 | 2026-10-04 | Antigravity | Optimización y Modularización de Pipeline CI | Separación en 3 jobs paralelos (Quality Gate, Playwright E2E y Docker Builds), fix regex unidad M3 y GitHub Actions 100% verde |
-
-
-
-
+| 2026-10-04 | Antigravity | Corrección CSP connect-src, Service Worker y Autocomplete | Dominios Google Fonts en CSP connect-src, exclusión de orígenes externos en sw.js fetch y atributos autocomplete en inputs de contraseña |

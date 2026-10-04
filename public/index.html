@@ -1077,11 +1077,11 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="inputPasswordActual" class="form-label">Contraseña Actual *</label>
-            <input type="password" id="inputPasswordActual" class="form-input" placeholder="Tu contraseña vigente" required>
+            <input type="password" id="inputPasswordActual" class="form-input" placeholder="Tu contraseña vigente" autocomplete="current-password" required>
           </div>
           <div class="form-group">
             <label for="inputPasswordNueva" class="form-label">Nueva Contraseña *</label>
-            <input type="password" id="inputPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" required>
+            <input type="password" id="inputPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
             <span class="form-hint">Debe contener al menos 8 caracteres para asegurar la cuenta.</span>
           </div>
         </div>
@@ -1106,15 +1106,15 @@
         <div class="modal-body">
           <div class="form-group">
             <label for="inputNuevoUsuarioNombre" class="form-label">Nombre Completo *</label>
-            <input type="text" id="inputNuevoUsuarioNombre" class="form-input" placeholder="Ej. Camila Morales" required>
+            <input type="text" id="inputNuevoUsuarioNombre" class="form-input" placeholder="Ej. Camila Morales" autocomplete="name" required>
           </div>
           <div class="form-group">
             <label for="inputNuevoUsuarioEmail" class="form-label">Correo Electrónico Corporativo *</label>
-            <input type="email" id="inputNuevoUsuarioEmail" class="form-input font-mono" placeholder="usuario@planta.cl" required>
+            <input type="email" id="inputNuevoUsuarioEmail" class="form-input font-mono" placeholder="usuario@planta.cl" autocomplete="email" required>
           </div>
           <div class="form-group">
             <label for="inputNuevoUsuarioPassword" class="form-label">Contraseña Temporal *</label>
-            <input type="password" id="inputNuevoUsuarioPassword" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" required>
+            <input type="password" id="inputNuevoUsuarioPassword" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
           </div>
           <div class="form-group">
             <label for="selectNuevoUsuarioRol" class="form-label">Rol y Permisos *</label>
@@ -1199,7 +1199,7 @@
           </p>
           <div class="form-group">
             <label for="resetPasswordNueva" class="form-label">Nueva Contraseña *</label>
-            <input type="password" id="resetPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" required>
+            <input type="password" id="resetPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
           </div>
         </div>
         <div class="modal-footer">

@@ -1,4 +1,4 @@
-const CACHE_NAME = "medidores-shell-v1";
+const CACHE_NAME = "medidores-shell-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -48,7 +48,12 @@ self.addEventListener("fetch", (event) => {
     return; // Dejar pasar directo a la red (la capa SyncManager gestiona el offline de lecturas)
   }
 
-  // 2. Solo interceptar peticiones GET
+  // 2. Solo interceptar recursos del mismo origen (App Shell y Assets locales)
+  if (url.origin !== self.location.origin) {
+    return; // Dejar pasar recursos externos (Google Fonts, etc.) para gestión nativa del navegador según CSP
+  }
+
+  // 3. Solo interceptar peticiones GET
   if (request.method !== "GET") {
     return;
   }

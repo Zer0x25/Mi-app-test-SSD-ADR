@@ -114,7 +114,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
         frameAncestors: ["'none'"],
       },
     },
