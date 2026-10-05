@@ -34,3 +34,6 @@ tests/
 .vscode/
 .idea/
 .DS_Store
+
+# Subproyecto Cloudflare Workers (desacoplado)
+deploy-cloudflare/

@@ -49,3 +49,6 @@ Thumbs.db
 *.db
 *.db-journal
 prisma/prisma/
+
+# Carpeta de migración a Cloudflare (subproyecto desacoplado)
+deploy-cloudflare/
