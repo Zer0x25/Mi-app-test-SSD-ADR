@@ -194,3 +194,13 @@ Al incorporar o migrar componentes hacia arquitecturas serverless o edge (como s
 - **Migraciones D1 Deterministas y No Interactivas:** Todo comando de migración de esquema en `package.json` para Cloudflare D1 ejecutado por agentes o runners de CI/CD debe soportar el flag `-y` (`wrangler d1 migrations apply <database> --local -y`) para evitar prompts interactivos que congelen la ejecución.
 - **Tipado Dual en tsconfig con nodejs_compat:** En Workers que utilicen la bandera `nodejs_compat`, la configuración de TypeScript (`tsconfig.json`) que declare la directiva `"types"` debe incluir explícitamente `"node"` junto a `"@cloudflare/workers-types"` (`"types": ["@cloudflare/workers-types", "node"]`) para asegurar la resolución de tipos de `Buffer`, `node:crypto` y `node:util`.
 - **Medición de Rendimiento y Server-Timing:** Los endpoints de borde deben instrumentarse con el middleware `timing()` (`Server-Timing`) y verificarse con el profiler de CPU de V8 (`wrangler dev --inspect`) para asegurar que el tiempo de CPU activa se mantenga estrictamente por debajo del umbral del plan gratuito (10 ms).
+
+### 22. Protocolo de Sincronización Multi-Repo (Upstream -> Edge)
+Al trabajar en un ecosistema donde coexisten el repositorio base (`Mi-app-test-SSD-ADR`) y el clon Edge serverless (`deploy-cloudflare`):
+- **Aislamiento Absoluto de Commits:** La carpeta `deploy-cloudflare/` debe permanecer estrictamente ignorada en el `.gitignore` del padre. Jamás se deben mezclar commits del padre con commits del hijo en una misma operación.
+- **Flujo "Upstream Milestone Sync" (Recomendado):**
+  1. *Fase 1 (Desarrollo en Padre):* Desarrolla, prueba y valida las nuevas funcionalidades o cambios de dominio en el repositorio principal bajo SDD + Quality Gate (`./scripts/verify.sh`).
+  2. *Fase 2 (Registro en Backlog):* Al finalizar y commitear un hito probado en el padre, documenta el cambio en `deploy-cloudflare/STATE.md` bajo `## 📥 Backlog de Sincronización desde Upstream`, especificando hito, tablas afectadas y nuevos contratos.
+  3. *Fase 3 (Sesión Dedicada en Hijo):* En una sesión de trabajo enfocada exclusivamente en `deploy-cloudflare/` (o con el agente posicionado allí), se toma el ítem del backlog, se implementa adaptado a las primitivas Edge (Hono, índices D1, KV, tests de contrato) y se supera el Quality Gate de Cloudflare (`deploy-cloudflare/scripts/verify.sh`).
+- **Soberanía del Repo Hijo:** Al clonar o copiar `deploy-cloudflare` a otra máquina, el proyecto pasa a ser 100% soberano y autónomo, continuando su propio ciclo sin dependencia obligatoria del repo padre.
+
