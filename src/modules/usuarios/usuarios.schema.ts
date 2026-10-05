@@ -24,6 +24,7 @@ export const RegistroUsuarioInputSchema = z.object({
     .trim()
     .min(2, "El nombre debe tener al menos 2 caracteres"),
   rol: RolUsuarioEnum.default("OPERADOR"),
+  instalacionesIds: z.array(z.string().min(1)).optional(),
 });
 export type RegistroUsuarioInput = z.infer<typeof RegistroUsuarioInputSchema>;
 
@@ -43,7 +44,7 @@ export type LoginInput = z.infer<typeof LoginInputSchema>;
 // ESQUEMAS DE SALIDA (OUTPUT DTO)
 // ==============================================================================
 export const UsuarioResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   email: z.string().email(),
   nombre: z.string(),
   rol: RolUsuarioEnum,
@@ -68,14 +69,14 @@ export const EditarUsuarioInputSchema = z.object({
   nombre: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres").optional(),
   rol: RolUsuarioEnum.optional(),
   activo: z.boolean().optional(),
-  instalacionesIds: z.array(z.string().uuid("ID de instalación inválido")).optional(),
+  instalacionesIds: z.array(z.string().min(1, "ID de instalación inválido")).optional(),
 });
 export type EditarUsuarioInput = z.infer<typeof EditarUsuarioInputSchema>;
 
 export const UsuarioConAsignacionesResponseSchema = UsuarioResponseSchema.extend({
   instalaciones: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.string().min(1),
       nombre: z.string(),
     })
   ),

@@ -87,11 +87,10 @@ test.describe("E2E: Seguridad, Autoservicio de Perfil y Edición de Usuarios", (
     const nuevoNombre = `Usuario Modificado ${timestamp}`;
     await page.locator("#editUsuarioNombre").fill(nuevoNombre);
 
-    // 5. Seleccionar un checkbox de instalación si está disponible
+    // 5. Seleccionar el checkbox de instalación y verificar que sea visible
     const checkboxInstalacion = page.locator("#editInstalacionesContainer input[type='checkbox']").first();
-    if (await checkboxInstalacion.isVisible()) {
-      await checkboxInstalacion.setChecked(true);
-    }
+    await expect(checkboxInstalacion).toBeVisible();
+    await checkboxInstalacion.setChecked(true);
 
     // 6. Guardar cambios
     await page.locator("#formEditarUsuario button[type='submit']").click();
@@ -102,5 +101,16 @@ test.describe("E2E: Seguridad, Autoservicio de Perfil y Edición de Usuarios", (
 
     // 7. Verificar que la tabla refleje el nombre modificado
     await expect(page.locator("#tbodyUsuarios")).toContainText(nuevoNombre);
+
+    // 8. Verificación de Persistencia Roundtrip (Read-After-Write):
+    // La fila del usuario debe reflejar la sede asignada (badge con icono 🏢) en lugar de "Sin sedes asignadas"
+    await expect(filaUsuario).toContainText("🏢");
+
+    // 9. Reabrir modal y verificar que la casilla de instalación se mantenga seleccionada
+    await btnEditar.click();
+    await expect(modal).toHaveClass(/open/);
+    await expect(page.locator("#editInstalacionesContainer input[type='checkbox']").first()).toBeChecked();
+    await page.locator("#modalEditarUsuario .btn-close").click();
+    await expect(modal).not.toHaveClass(/open/);
   });
 });

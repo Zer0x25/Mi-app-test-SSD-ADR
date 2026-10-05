@@ -99,6 +99,31 @@ export function createInstalacionesController(service: InstalacionesService): Fa
       }
     );
 
+    const handleDesasignar = async (
+      request: FastifyRequest<{ Params: { id: string; usuarioId: string } }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        await service.desasignarOperador(request.params.id, request.params.usuarioId);
+        return reply.status(200).send({ success: true, message: "Asignación removida" });
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        }
+        return reply.status(500).send({
+          error: "INTERNAL_SERVER_ERROR",
+          message: "Error interno del servidor",
+        });
+      }
+    };
+
+    fastify.delete("/instalaciones/:id/operadores/:usuarioId", handleDesasignar);
+    fastify.delete("/instalaciones/:id/remover-operador/:usuarioId", handleDesasignar);
+
     fastify.get(
       "/operadores/:usuarioId/instalaciones",
       async (request: FastifyRequest<{ Params: { usuarioId: string } }>, reply: FastifyReply) => {

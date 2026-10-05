@@ -69,6 +69,14 @@ class MockRepository implements IInstalacionesRepository {
     return item;
   }
 
+  async deleteAsignacion(instalacionId: string, usuarioId: string): Promise<boolean> {
+    const prev = this.asignaciones.length;
+    this.asignaciones = this.asignaciones.filter(
+      (a) => !(a.instalacionId === instalacionId && a.usuarioId === usuarioId)
+    );
+    return this.asignaciones.length < prev;
+  }
+
   async listInstalacionesByOperador(usuarioId: string): Promise<InstalacionEntity[]> {
     const ids = this.asignaciones
       .filter((a) => a.usuarioId === usuarioId)
@@ -209,5 +217,21 @@ describe("InstalacionesController HTTP Integration Suite", () => {
     const list = response.json();
     expect(list.length).toBe(1);
     expect(list[0].id).toBe(instalacionId);
+
+    // DELETE /api/instalaciones/:id/operadores/:usuarioId (desasignar operador)
+    const delRes = await app.inject({
+      method: "DELETE",
+      url: `/api/instalaciones/${instalacionId}/operadores/${usuarioId}`,
+    });
+    expect(delRes.statusCode).toBe(200);
+    expect(delRes.json().success).toBe(true);
+
+    // Read-After-Write verification: comprobar vía GET que ya no figura asignada
+    const verifyRes = await app.inject({
+      method: "GET",
+      url: `/api/operadores/${usuarioId}/instalaciones`,
+    });
+    expect(verifyRes.statusCode).toBe(200);
+    expect(verifyRes.json().length).toBe(0);
   });
 });

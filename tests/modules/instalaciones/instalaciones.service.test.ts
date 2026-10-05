@@ -72,6 +72,14 @@ class InMemoryInstalacionesRepository implements IInstalacionesRepository {
     return asignacion;
   }
 
+  async deleteAsignacion(instalacionId: string, usuarioId: string): Promise<boolean> {
+    const prev = this.asignaciones.length;
+    this.asignaciones = this.asignaciones.filter(
+      (a) => !(a.instalacionId === instalacionId && a.usuarioId === usuarioId)
+    );
+    return this.asignaciones.length < prev;
+  }
+
   async listInstalacionesByOperador(usuarioId: string): Promise<InstalacionEntity[]> {
     const asignadasIds = this.asignaciones
       .filter((a) => a.usuarioId === usuarioId)
@@ -246,6 +254,23 @@ describe("InstalacionesService Suite (Agentic TDD)", () => {
       expect(lista.map((i) => i.id)).toContain(inst1.id);
       expect(lista.map((i) => i.id)).toContain(inst2.id);
       expect(lista.map((i) => i.id)).not.toContain(inst3.id);
+    });
+
+    it("desasignarOperador debe remover la asignación y no figurar en listados posteriores", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede a Desasignar",
+        ubicacion: "Calle Test",
+      });
+      const operadorId = crypto.randomUUID();
+      await service.asignarOperador({ instalacionId: inst.id, usuarioId: operadorId });
+
+      let lista = await service.listarInstalacionesDeOperador(operadorId);
+      expect(lista).toHaveLength(1);
+
+      await service.desasignarOperador(inst.id, operadorId);
+
+      lista = await service.listarInstalacionesDeOperador(operadorId);
+      expect(lista).toHaveLength(0);
     });
   });
 });

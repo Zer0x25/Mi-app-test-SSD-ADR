@@ -108,6 +108,35 @@ describe("UsuariosController HTTP Integration Suite", () => {
     expect(body.passwordHash).toBeUndefined(); // No expone el hash
   });
 
+  it("POST /api/auth/register debe persistir instalacionesIds iniciales y reflejarlas en listAll", async () => {
+    const instId = crypto.randomUUID();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: {
+        email: "operador.instalaciones@planta.cl",
+        password: "password123",
+        nombre: "Operador Con Sede",
+        rol: "OPERADOR",
+        instalacionesIds: [instId],
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.id).toBeDefined();
+
+    // Verificamos que se haya persistido en las asignaciones del repo
+    const asignado = await repo.isUsuarioAssignedToInstalacion(body.id, instId);
+    expect(asignado).toBe(true);
+
+    // Verificamos vía servicio / listAll
+    const usuarios = await service.listarUsuarios();
+    const nuevo = usuarios.find((u) => u.id === body.id);
+    expect(nuevo).toBeDefined();
+    expect(nuevo?.instalaciones.some((i) => i.id === instId)).toBe(true);
+  });
+
   it("POST /api/auth/register debe retornar 409 si el email ya existe", async () => {
     await service.registrar({
       email: "existente@planta.cl",
@@ -367,6 +396,19 @@ describe("UsuariosController HTTP Integration Suite", () => {
       // Comprobar que en repo la asignación se sincronizó
       const asignado = await repo.isUsuarioAssignedToInstalacion(operadorId, instId);
       expect(asignado).toBe(true);
+
+      // Verificación Read-After-Write vía GET /api/usuarios HTTP endpoint
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/usuarios",
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+      expect(listRes.statusCode).toBe(200);
+      const list = listRes.json() as Array<{ id: string; instalaciones: Array<{ id: string; nombre: string }> }>;
+      const updatedUser = list.find((u) => u.id === operadorId);
+      expect(updatedUser).toBeDefined();
+      expect(Array.isArray(updatedUser?.instalaciones)).toBe(true);
+      expect(updatedUser?.instalaciones.some((i) => i.id === instId)).toBe(true);
     });
 
     it("PATCH /api/usuarios/:id debe rechazar a un no-admin con 403 Forbidden", async () => {

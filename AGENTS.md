@@ -204,3 +204,15 @@ Al trabajar en un ecosistema donde coexisten el repositorio base (`Mi-app-test-S
   3. *Fase 3 (Sesión Dedicada en Hijo):* En una sesión de trabajo enfocada exclusivamente en `deploy-cloudflare/` (o con el agente posicionado allí), se toma el ítem del backlog, se implementa adaptado a las primitivas Edge (Hono, índices D1, KV, tests de contrato) y se supera el Quality Gate de Cloudflare (`deploy-cloudflare/scripts/verify.sh`).
 - **Soberanía del Repo Hijo:** Al clonar o copiar `deploy-cloudflare` a otra máquina, el proyecto pasa a ser 100% soberano y autónomo, continuando su propio ciclo sin dependencia obligatoria del repo padre.
 
+### 23. Invariante Read-After-Write (Roundtrip Testing) y Prohibición de Falsos Positivos en Testing
+Para erradicar falsos verdes y asegurar que toda mutación persista efectivamente en base de datos:
+- **Verificación Obligatoria Read-After-Write (Roundtrip):** Queda estrictamente prohibido dar por válida una prueba de endpoint mutante (`POST`, `PUT`, `PATCH`, `DELETE`) basándose únicamente en el código de respuesta HTTP (`200 OK`, `201 Created`) o en la presencia de `{ success: true }`. Toda prueba de mutación DEBE ejecutar inmediatamente una consulta de lectura subsecuente (`GET`) para verificar que:
+  1. El estado o relación modificada persista efectivamente en la base de datos.
+  2. La respuesta del endpoint `GET` serialice y entregue la información de forma simétrica (ej. tras asignar `instalacionesIds: [id]`, `GET /api/usuarios` DEBE incluir `instalaciones: [{ id, nombre }]`).
+  3. Tras una eliminación o desasignación (`DELETE`), la entidad o relación ya no figure en el `GET` subsecuente.
+- **Prohibición de Condicionales Permisivos en Suites E2E (Playwright):** Queda terminantemente prohibido utilizar bloques condicionales del tipo `if (await elemento.isVisible())` para ejecutar acciones críticas de usuario (como marcar checkboxes, rellenar campos o pulsar botones de confirmación). Los localizadores deben ser estrictos y precedidos de aserciones deterministas (`await expect(elemento).toBeVisible()`). Si un elemento no aparece por desalineación de IDs o desfase en el DOM, la prueba DEBE fallar de inmediato para exponer el defecto.
+- **Verificación de Persistencia Visual en UI:** En pruebas de interfaz donde se altere una entidad (ej. asignar sedes a un usuario):
+  1. Debe validarse que la tabla o vista refleje la insignia/badge correspondiente.
+  2. Debe reabrirse el modal o formulario para certificar que los controles reflejen el estado persistido (ej. checkboxes marcados).
+- **Prohibición de Falsos 200 en Operaciones sobre Entidades Inexistentes:** Todo endpoint de mutación (`PATCH`, `POST /:id/accion`, `DELETE`) DEBE verificar la existencia previa de la entidad objetivo antes de ejecutar cambios. Si el identificador no existe en la base de datos, el endpoint DEBE responder con `HTTP 404 NOT_FOUND` y abstenerse de registrar eventos de auditoría espurios.
+

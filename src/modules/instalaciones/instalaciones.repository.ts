@@ -61,6 +61,16 @@ export class PrismaInstalacionesRepository implements IInstalacionesRepository {
     });
   }
 
+  async deleteAsignacion(instalacionId: string, usuarioId: string): Promise<boolean> {
+    const res = await this.prisma.asignacionOperador.deleteMany({
+      where: {
+        instalacionId,
+        usuarioId,
+      },
+    });
+    return res.count > 0;
+  }
+
   async listInstalacionesByOperador(usuarioId: string): Promise<InstalacionEntity[]> {
     const asignaciones = await this.prisma.asignacionOperador.findMany({
       where: { usuarioId },

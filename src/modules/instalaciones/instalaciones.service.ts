@@ -35,6 +35,7 @@ export interface IInstalacionesRepository {
   update(id: string, data: Partial<InstalacionEntity>): Promise<InstalacionEntity>;
   findAsignacion(instalacionId: string, usuarioId: string): Promise<AsignacionEntity | null>;
   createAsignacion(instalacionId: string, usuarioId: string): Promise<AsignacionEntity>;
+  deleteAsignacion(instalacionId: string, usuarioId: string): Promise<boolean>;
   listInstalacionesByOperador(usuarioId: string): Promise<InstalacionEntity[]>;
 }
 
@@ -103,6 +104,11 @@ export class InstalacionesService {
     }
 
     return await this.repository.createAsignacion(input.instalacionId, input.usuarioId);
+  }
+
+  async desasignarOperador(instalacionId: string, usuarioId: string): Promise<void> {
+    await this.obtenerPorId(instalacionId);
+    await this.repository.deleteAsignacion(instalacionId, usuarioId);
   }
 
   async listarInstalacionesDeOperador(usuarioId: string): Promise<InstalacionResponse[]> {

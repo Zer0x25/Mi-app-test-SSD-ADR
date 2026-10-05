@@ -96,6 +96,10 @@ export class UsuariosService {
       activo: true,
     });
 
+    if (input.instalacionesIds && input.instalacionesIds.length > 0) {
+      await this.repository.syncAsignaciones(usuario.id, input.instalacionesIds);
+    }
+
     return UsuarioResponseSchema.parse(usuario);
   }
 
