@@ -15,6 +15,7 @@ export interface InstalacionEntity {
   id: string;
   nombre: string;
   ubicacion: string;
+  direccion?: string;
   activa: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -48,13 +49,21 @@ export class InstalacionesService {
       throw new InstalacionNombreDuplicadoError(input.nombre);
     }
 
+    const ubic = (input.ubicacion || input.direccion || "").trim();
+    if (!ubic || ubic.length < 3) {
+      throw new Error("La ubicación o dirección debe tener al menos 3 caracteres");
+    }
+
     const instalacion = await this.repository.create({
       nombre: input.nombre.trim(),
-      ubicacion: input.ubicacion.trim(),
+      ubicacion: ubic,
       activa: true,
     });
 
-    return instalacion;
+    return {
+      ...instalacion,
+      direccion: instalacion.ubicacion,
+    };
   }
 
   async obtenerPorId(id: string): Promise<InstalacionResponse> {
@@ -62,12 +71,19 @@ export class InstalacionesService {
     if (!instalacion) {
       throw new InstalacionNotFoundError(id);
     }
-    return instalacion;
+    return {
+      ...instalacion,
+      direccion: instalacion.ubicacion,
+    };
   }
 
   async desactivarInstalacion(id: string): Promise<InstalacionResponse> {
     await this.obtenerPorId(id);
-    return await this.repository.update(id, { activa: false });
+    const updated = await this.repository.update(id, { activa: false });
+    return {
+      ...updated,
+      direccion: updated.ubicacion,
+    };
   }
 
   async asignarOperador(rawInput: AsignarOperadorInput): Promise<AsignacionResponse> {
@@ -90,6 +106,10 @@ export class InstalacionesService {
   }
 
   async listarInstalacionesDeOperador(usuarioId: string): Promise<InstalacionResponse[]> {
-    return await this.repository.listInstalacionesByOperador(usuarioId);
+    const list = await this.repository.listInstalacionesByOperador(usuarioId);
+    return list.map((i) => ({
+      ...i,
+      direccion: i.ubicacion,
+    }));
   }
 }

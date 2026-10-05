@@ -15,7 +15,14 @@ export const CrearInstalacionInputSchema = z.object({
     .string()
     .trim()
     .min(3, "La ubicación debe tener al menos 3 caracteres")
-    .max(200, "La ubicación no puede exceder 200 caracteres"),
+    .max(200, "La ubicación no puede exceder 200 caracteres")
+    .optional(),
+  direccion: z
+    .string()
+    .trim()
+    .min(3, "La dirección debe tener al menos 3 caracteres")
+    .max(200, "La dirección no puede exceder 200 caracteres")
+    .optional(),
 });
 
 export type CrearInstalacionInput = z.infer<typeof CrearInstalacionInputSchema>;
@@ -24,6 +31,7 @@ export const InstalacionResponseSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string(),
   ubicacion: z.string(),
+  direccion: z.string().optional(),
   activa: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),

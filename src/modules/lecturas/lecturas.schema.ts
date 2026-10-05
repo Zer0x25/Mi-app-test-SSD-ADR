@@ -8,13 +8,20 @@ export { MedidorNotFoundError } from "../medidores/medidores.schema.js";
 
 export const RegistrarLecturaInputSchema = z.object({
   medidorId: z.string().uuid("Identificador de medidor inválido"),
-  operadorId: z.string().uuid("Identificador de operador inválido"),
+  operadorId: z.string().uuid("Identificador de operador inválido").optional(),
   valor: z.number().nonnegative("El valor de la medición no puede ser negativo"),
   fechaLectura: z.coerce.date().optional(),
+  timestamp: z.coerce.date().optional(),
+  fecha: z.coerce.date().optional(),
   notas: z
     .string()
     .trim()
     .max(255, "Las notas no pueden exceder 255 caracteres")
+    .optional(),
+  observaciones: z
+    .string()
+    .trim()
+    .max(255)
     .optional(),
 });
 
@@ -26,7 +33,10 @@ export const LecturaResponseSchema = z.object({
   operadorId: z.string().uuid(),
   valor: z.number(),
   fechaLectura: z.date(),
+  timestamp: z.date().optional(),
+  fecha: z.date().optional(),
   notas: z.string().nullable().optional(),
+  observaciones: z.string().nullable().optional(),
   createdAt: z.date(),
 });
 

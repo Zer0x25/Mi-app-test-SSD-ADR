@@ -31,7 +31,7 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
     fastify.post("/medidores/tipos", handleCrearTipo);
 
 
-    fastify.get("/tipos-medidor", async (_request: FastifyRequest, reply: FastifyReply) => {
+    const handleListarTipos = async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = await service.listarTiposMedidor();
         return reply.status(200).send(result);
@@ -48,7 +48,10 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
           message: "Error interno del servidor",
         });
       }
-    });
+    };
+
+    fastify.get("/tipos-medidor", handleListarTipos);
+    fastify.get("/medidores/tipos", handleListarTipos);
 
     // --------------------------------------------------------------------------
     // Medidores Físicos

@@ -218,9 +218,9 @@ async function handleLoginSubmit(e) {
     }
   } catch (err) {
     if (errAlert && errMsg) {
-      if (err.statusCode === 401) {
-        errMsg.textContent = "Credenciales incorrectas. Verifique correo o contraseña.";
-      } else if (err.statusCode === 429) {
+      if (err.status === 401 || err.statusCode === 401) {
+        errMsg.textContent = "Correo o contraseña incorrectos.";
+      } else if (err.status === 429 || err.statusCode === 429) {
         errMsg.textContent = err.message || "Demasiados intentos. Por favor espere unos momentos.";
       } else {
         errMsg.textContent = err.message || "No se pudo conectar con el servidor.";
@@ -559,14 +559,23 @@ async function cargarDashboard() {
   try {
     // 1. KPIs
     const kpis = await window.api.dashboard.getKpis();
-    document.getElementById("kpiTotalInstalaciones").innerText = kpis.totalInstalaciones;
-    document.getElementById("kpiTotalMedidores").innerText = kpis.totalMedidores;
-    document.getElementById("kpiTotalLecturas").innerText = kpis.totalLecturas;
+    if (document.getElementById("kpiTotalInstalaciones")) {
+      document.getElementById("kpiTotalInstalaciones").innerText = kpis.totalInstalaciones ?? 0;
+    }
+    if (document.getElementById("kpiTotalMedidores")) {
+      document.getElementById("kpiTotalMedidores").innerText = kpis.totalMedidores ?? 0;
+    }
+    if (document.getElementById("kpiTotalLecturas")) {
+      document.getElementById("kpiTotalLecturas").innerText = kpis.totalLecturas ?? 0;
+    }
 
     const pillsContainer = document.getElementById("kpiRecursosPills");
-    pillsContainer.innerHTML = Object.entries(kpis.medidoresPorRecurso)
-      .map(([rec, cant]) => `<span class="kpi-tag">${rec}: ${cant}</span>`)
-      .join("");
+    if (pillsContainer) {
+      const entries = kpis.medidoresPorRecurso ? Object.entries(kpis.medidoresPorRecurso) : [];
+      pillsContainer.innerHTML = entries
+        .map(([rec, cant]) => `<span class="kpi-tag">${rec}: ${cant}</span>`)
+        .join("");
+    }
 
     // 2. Medidores Desatendidos (+24h)
     const desatendidos = await window.api.dashboard.getDesatendidos(24);
@@ -639,7 +648,8 @@ async function cargarSelectorOperador() {
     instalaciones.forEach((inst) => {
       const opt = document.createElement("option");
       opt.value = inst.id;
-      opt.textContent = `${inst.nombre} (${inst.direccion})`;
+      const loc = inst.ubicacion || inst.direccion || "";
+      opt.textContent = loc ? `${inst.nombre} (${loc})` : inst.nombre;
       select.appendChild(opt);
     });
 
@@ -729,11 +739,21 @@ async function submitLectura(event) {
     return;
   }
 
+  let isoDate = new Date().toISOString();
+  if (fechaRaw) {
+    const d = new Date(fechaRaw);
+    if (!isNaN(d.getTime())) {
+      isoDate = d.toISOString();
+    }
+  }
+
   const payload = {
     medidorId,
-    operadorId: currentUser ? currentUser.id : "demo-operator",
+    operadorId: currentUser ? currentUser.id : "usr-oper-01",
     valor,
-    timestamp: new Date(fechaRaw).toISOString(),
+    fechaLectura: isoDate,
+    timestamp: isoDate,
+    notas: obs || undefined,
     observaciones: obs || undefined,
   };
 
@@ -802,7 +822,8 @@ async function cargarSelectsGlobales() {
     if (selTipo) {
       selTipo.innerHTML = '<option value="">Selecciona tipo...</option>';
       tiposMedidorCache.forEach((t) => {
-        selTipo.innerHTML += `<option value="${t.id}">${t.nombre} (${t.recurso} - ${t.unidadMedida})</option>`;
+        const u = t.unidadMedida || t.unidad || "";
+        selTipo.innerHTML += `<option value="${t.id}">${t.nombre} (${t.recurso}${u ? ' - ' + u : ''})</option>`;
       });
     }
   } catch (err) {
@@ -1240,8 +1261,8 @@ async function cargarFacturasReportes() {
         estadoBadge = `<span class="badge badge-rose">⚠ DISCREPANCIA (&gt; 5%)</span>`;
       }
 
-      const iniStr = new Date(f.periodoInicio).toLocaleDateString("es-CL");
-      const finStr = new Date(f.periodoFin).toLocaleDateString("es-CL");
+      const iniStr = window.Components.formatDate(f.periodoInicio, { day: "2-digit", month: "2-digit", year: "numeric" });
+      const finStr = window.Components.formatDate(f.periodoFin, { day: "2-digit", month: "2-digit", year: "numeric" });
 
       return `
         <tr>
@@ -1353,7 +1374,7 @@ async function cargarAlertasIncidentes() {
           ? `<span class="badge badge-amber">EN REVISIÓN</span>`
           : `<span class="badge badge-emerald">RESUELTO</span>`;
 
-      const fechaStr = new Date(i.fechaDeteccion).toLocaleString("es-CL", {
+      const fechaStr = window.Components.formatDate(i.fechaDeteccion, {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -1599,8 +1620,8 @@ async function cargarMantenimientosBitacora() {
     }
 
     tbody.innerHTML = list.map((m) => {
-      const fechaStr = new Date(m.fechaMantenimiento).toLocaleDateString("es-CL");
-      const proxCalibStr = m.proximaCalibracion ? new Date(m.proximaCalibracion).toLocaleDateString("es-CL") : "--";
+      const fechaStr = window.Components.formatDate(m.fechaMantenimiento, { day: "2-digit", month: "2-digit", year: "numeric" });
+      const proxCalibStr = m.proximaCalibracion ? window.Components.formatDate(m.proximaCalibracion, { day: "2-digit", month: "2-digit", year: "numeric" }) : "--";
 
       let badgeTipo = `<span class="badge badge-muted">${escapeHtml(m.tipo)}</span>`;
       if (m.tipo === "CALIBRACION") badgeTipo = `<span class="badge badge-blue">🔬 CALIBRACIÓN</span>`;
@@ -1647,10 +1668,10 @@ async function consultarFichaMedidor() {
     const ficha = await window.api.mantenimiento.getFichaMedidor(medidorId);
 
     const ultimaCalibStr = ficha.fechaUltimaCalibracion
-      ? new Date(ficha.fechaUltimaCalibracion).toLocaleDateString("es-CL")
+      ? window.Components.formatDate(ficha.fechaUltimaCalibracion, { day: "2-digit", month: "2-digit", year: "numeric" })
       : "No registra";
     const proxCalibStr = ficha.fechaProximaCalibracion
-      ? new Date(ficha.fechaProximaCalibracion).toLocaleDateString("es-CL")
+      ? window.Components.formatDate(ficha.fechaProximaCalibracion, { day: "2-digit", month: "2-digit", year: "numeric" })
       : "No programada";
 
     contenedor.innerHTML = `
@@ -1703,7 +1724,7 @@ async function consultarFichaMedidor() {
           <tbody>
             ${ficha.historial.length === 0 ? `<tr><td colspan="6" class="empty-state">No registra intervenciones en bitácora.</td></tr>` : ficha.historial.map((h) => `
               <tr>
-                <td data-label="Fecha">${new Date(h.fechaMantenimiento).toLocaleDateString("es-CL")}</td>
+                <td data-label="Fecha">${window.Components.formatDate(h.fechaMantenimiento, { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
                 <td data-label="Tipo"><span class="badge badge-muted">${escapeHtml(h.tipo)}</span></td>
                 <td data-label="Técnico">${escapeHtml(h.tecnicoResponsable)}</td>
                 <td data-label="Precinto Ant." class="font-mono">${escapeHtml(h.numeroPrecintoAnterior || "--")}</td>
@@ -1802,7 +1823,7 @@ async function cargarEventosAuditoria() {
 
     tbody.innerHTML = eventos
       .map((e) => {
-        const fecha = new Date(e.createdAt).toLocaleString("es-CL", { timeZone: "UTC" });
+        const fecha = window.Components.formatDate(e.createdAt, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         const badge = accionBadges[e.accion] || `<span class="badge badge-muted">${escapeHtml(e.accion)}</span>`;
         let detallesHtml = "-";
         if (e.detalles) {
@@ -2009,7 +2030,7 @@ async function verEntregasWebhook(id) {
 
     tbody.innerHTML = entregas
       .map((e) => {
-        const fecha = new Date(e.createdAt).toLocaleString("es-CL");
+        const fecha = window.Components.formatDate(e.createdAt, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         const statusBadge = e.exitoso
           ? '<span class="badge badge-success">OK</span>'
           : '<span class="badge badge-danger">FALLO</span>';
@@ -2256,7 +2277,7 @@ async function cargarHistorialNotificaciones() {
           ? `<span class="badge badge-green">EXITOSO (${item.statusCode || 200})</span>`
           : `<span class="badge badge-red" title="${item.error || ''}">FALLIDO (${item.statusCode || 'ERR'})</span>`;
 
-        const fechaFormateada = new Date(item.createdAt).toLocaleString("es-CL");
+        const fechaFormateada = window.Components.formatDate(item.createdAt, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
         return `
           <tr>

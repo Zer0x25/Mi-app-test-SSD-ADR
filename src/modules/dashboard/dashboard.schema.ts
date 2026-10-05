@@ -43,10 +43,14 @@ export const ActividadRecienteLecturaSchema = z.object({
   instalacionNombre: z.string(),
   recurso: z.string(),
   unidad: z.string(),
+  unidadMedida: z.string().optional(),
   valor: z.number(),
   fechaLectura: z.date(),
+  timestamp: z.date().optional(),
+  fecha: z.date().optional(),
   operadorId: z.string().uuid(),
   notas: z.string().nullable().optional(),
+  observaciones: z.string().nullable().optional(),
 });
 
 export type ActividadRecienteLectura = z.infer<typeof ActividadRecienteLecturaSchema>;

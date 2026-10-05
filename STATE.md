@@ -4,18 +4,25 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Sistema Blindado - Perímetro Zero-Trust y Matriz RBAC Certificados
+## 🧭 Fase Actual: Sistema Blindado - Simetría de Contrato y Prevención de Leaks UI Certificadas
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, seguro y validado en Dev y Staging.
-- **Spec Completado:** [`specs/feat-019-blindaje-perimetral-api-zero-trust-y-rbac.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/specs/feat-019-blindaje-perimetral-api-zero-trust-y-rbac.md)
-- **ADR Asociado:** [`docs/adr/0013-blindaje-perimetral-api-zero-trust-y-matriz-rbac.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/docs/adr/0013-blindaje-perimetral-api-zero-trust-y-matriz-rbac.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (233/233 tests en Vitest + 44/44 tests en Playwright E2E pasando al 100%).
-- **Certificación Staging:** Contenedor Docker `sistema-medidores:staging` en ejecución, probado con `curl` (rechazo anónimo 401, preservación 404) y suite E2E de login real en Playwright superada.
+- **Estado:** Estable, seguro, validado en Dev, Staging y producción Edge (`metric.zer0x.org`).
+- **ADR Asociado:** [`docs/adr/0014-simetria-de-contrato-y-prevencion-de-leaks-ui.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/docs/adr/0014-simetria-de-contrato-y-prevencion-de-leaks-ui.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (234/234 tests en Vitest + Test de Simetría de Contrato pasando al 100%).
+- **Certificación Staging y Edge:** Despliegue productivo en Cloudflare Edge activo y sincronizado simétricamente con el backend principal Fastify/Prisma.
 
 ---
 
 ## 📋 Registro de Hitos
+
+- [x] **Hito 15.2: Simetría de Contrato y Prevención de Leaks UI (Completado: 2026-10-05)**
+  - ADR 0014 implementado en backend y frontend.
+  - Corrección de fugas visuales: erradicación de `(undefined)` y `Invalid Date` en selector de instalaciones, tarjetas de medidores y selects de tipos.
+  - Simetría bidireccional de alias en Fastify/Prisma (`ubicacion`/`direccion`, `unidad`/`unidadMedida`, `fechaLectura`/`timestamp`/`fecha`).
+  - Helper universal `parseSafeDate` en frontend para parsing tolerante ante timestamps SQLite y ISO con fallback defensivo.
+  - Script automatizado de verificación de contrato `scripts/test-contract-symmetry.mjs` y comando `npm run test:contract` con aserción estricta de cero leaks (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`).
+  - 234/234 pruebas en Vitest pasando exitosamente (100%).
 
 - [x] **Hito 15.1: Blindaje Perimetral API Zero-Trust y Matriz RBAC Fail-Closed (Completado: 2026-10-04)**
   - ADR 0013 y Spec `feat-019` implementados bajo Agentic TDD.

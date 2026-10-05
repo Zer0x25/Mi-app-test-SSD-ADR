@@ -20,6 +20,7 @@ export interface TipoMedidorEntity {
   nombre: string;
   recurso: RecursoMedidor;
   unidad: UnidadMedida;
+  unidadMedida?: string;
   tipoMedicion: TipoMedicion;
   activo: boolean;
   createdAt: Date;
@@ -40,6 +41,8 @@ export interface MedidorEntity {
   ultimaLectura?: {
     valor: number;
     timestamp: Date;
+    fechaLectura?: Date;
+    fecha?: Date;
   } | null;
 }
 
@@ -78,17 +81,31 @@ export class MedidoresService {
       throw new TipoMedidorNombreDuplicadoError(input.nombre);
     }
 
-    return await this.repository.createTipo({
+    const unidad = (input.unidad || input.unidadMedida) as UnidadMedida;
+    if (!unidad) {
+      throw new Error("Debe especificar la unidad de medida");
+    }
+
+    const tipo = await this.repository.createTipo({
       nombre: input.nombre.trim(),
       recurso: input.recurso,
-      unidad: input.unidad,
+      unidad,
       tipoMedicion: input.tipoMedicion,
       activo: true,
     });
+
+    return {
+      ...tipo,
+      unidadMedida: tipo.unidad,
+    };
   }
 
   async listarTiposMedidor(): Promise<TipoMedidorResponse[]> {
-    return await this.repository.listTiposActivos();
+    const list = await this.repository.listTiposActivos();
+    return list.map((tipo) => ({
+      ...tipo,
+      unidadMedida: tipo.unidad,
+    }));
   }
 
   async crearMedidor(rawInput: CrearMedidorInput): Promise<MedidorResponse> {
@@ -124,7 +141,10 @@ export class MedidoresService {
 
     return {
       ...creado,
-      tipoMedidor: tipo,
+      tipoMedidor: {
+        ...tipo,
+        unidadMedida: tipo.unidad,
+      },
     };
   }
 
@@ -137,8 +157,24 @@ export class MedidoresService {
     if (!medidor.tipoMedidor) {
       const tipo = await this.repository.findTipoById(medidor.tipoMedidorId);
       if (tipo) {
-        medidor.tipoMedidor = tipo;
+        medidor.tipoMedidor = {
+          ...tipo,
+          unidadMedida: tipo.unidad,
+        };
       }
+    } else {
+      medidor.tipoMedidor = {
+        ...medidor.tipoMedidor,
+        unidadMedida: medidor.tipoMedidor.unidad,
+      };
+    }
+
+    if (medidor.ultimaLectura) {
+      medidor.ultimaLectura = {
+        ...medidor.ultimaLectura,
+        fechaLectura: medidor.ultimaLectura.timestamp,
+        fecha: medidor.ultimaLectura.timestamp,
+      };
     }
 
     return medidor;
@@ -150,6 +186,22 @@ export class MedidoresService {
   }
 
   async listarMedidoresPorInstalacion(instalacionId: string): Promise<MedidorResponse[]> {
-    return await this.repository.listMedidoresByInstalacion(instalacionId);
+    const list = await this.repository.listMedidoresByInstalacion(instalacionId);
+    return list.map((m) => ({
+      ...m,
+      tipoMedidor: m.tipoMedidor
+        ? {
+            ...m.tipoMedidor,
+            unidadMedida: m.tipoMedidor.unidad,
+          }
+        : undefined,
+      ultimaLectura: m.ultimaLectura
+        ? {
+            ...m.ultimaLectura,
+            fechaLectura: m.ultimaLectura.timestamp,
+            fecha: m.ultimaLectura.timestamp,
+          }
+        : null,
+    }));
   }
 }

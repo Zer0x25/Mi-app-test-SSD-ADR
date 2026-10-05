@@ -16,6 +16,7 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       ...tipo,
       recurso: tipo.recurso as RecursoMedidor,
       unidad: tipo.unidad as UnidadMedida,
+      unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
     };
   }
@@ -27,6 +28,7 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       ...tipo,
       recurso: tipo.recurso as RecursoMedidor,
       unidad: tipo.unidad as UnidadMedida,
+      unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
     };
   }
@@ -34,11 +36,20 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
   async createTipo(
     data: Omit<TipoMedidorEntity, "id" | "createdAt" | "updatedAt">
   ): Promise<TipoMedidorEntity> {
-    const tipo = await this.prisma.tipoMedidor.create({ data });
+    const tipo = await this.prisma.tipoMedidor.create({
+      data: {
+        nombre: data.nombre,
+        recurso: data.recurso,
+        unidad: data.unidad,
+        tipoMedicion: data.tipoMedicion,
+        activo: data.activo,
+      },
+    });
     return {
       ...tipo,
       recurso: tipo.recurso as RecursoMedidor,
       unidad: tipo.unidad as UnidadMedida,
+      unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
     };
   }
@@ -49,6 +60,7 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       ...tipo,
       recurso: tipo.recurso as RecursoMedidor,
       unidad: tipo.unidad as UnidadMedida,
+      unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
     }));
   }
@@ -73,6 +85,7 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
             ...m.tipoMedidor,
             recurso: m.tipoMedidor.recurso as RecursoMedidor,
             unidad: m.tipoMedidor.unidad as UnidadMedida,
+            unidadMedida: m.tipoMedidor.unidad,
             tipoMedicion: m.tipoMedidor.tipoMedicion as TipoMedicion,
           }
         : undefined,
@@ -80,6 +93,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
         ? {
             valor: ult.valor,
             timestamp: ult.fechaLectura,
+            fechaLectura: ult.fechaLectura,
+            fecha: ult.fechaLectura,
           }
         : null,
     };
@@ -138,6 +153,7 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
               ...m.tipoMedidor,
               recurso: m.tipoMedidor.recurso as RecursoMedidor,
               unidad: m.tipoMedidor.unidad as UnidadMedida,
+              unidadMedida: m.tipoMedidor.unidad,
               tipoMedicion: m.tipoMedidor.tipoMedicion as TipoMedicion,
             }
           : undefined,
@@ -145,6 +161,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
           ? {
               valor: ult.valor,
               timestamp: ult.fechaLectura,
+              fechaLectura: ult.fechaLectura,
+              fecha: ult.fechaLectura,
             }
           : null,
       };

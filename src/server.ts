@@ -631,6 +631,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   const operadorAccessService: IOperadorAccessService = {
     async isOperadorAssigned(operadorId: string, instalacionId: string) {
+      const user = await prisma.usuario.findUnique({ where: { id: operadorId } });
+      if (user && (user.rol === "ADMIN" || user.rol === "SUPERVISOR")) {
+        return true;
+      }
       const asignacion = await prisma.asignacionOperador.findUnique({
         where: {
           instalacionId_usuarioId: {
@@ -834,19 +838,26 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   // 6. Endpoints complementarios para Frontend & RBAC
   app.get("/api/instalaciones", async () => {
-    return await prisma.instalacion.findMany({ where: { activa: true } });
+    const list = await prisma.instalacion.findMany({ where: { activa: true } });
+    return list.map((i) => ({
+      ...i,
+      direccion: i.ubicacion,
+    }));
   });
 
-  app.get("/api/medidores/tipos", async () => {
-    return await prisma.tipoMedidor.findMany({ where: { activo: true } });
-  });
 
   app.get("/api/instalaciones/operador/:usuarioId", async (req: FastifyRequest<{ Params: { usuarioId: string } }>) => {
     const asignaciones = await prisma.asignacionOperador.findMany({
       where: { usuarioId: req.params.usuarioId },
       include: { instalacion: true },
     });
-    return asignaciones.map((a) => a.instalacion).filter((i) => i.activa);
+    return asignaciones
+      .map((a) => a.instalacion)
+      .filter((i) => i.activa)
+      .map((i) => ({
+        ...i,
+        direccion: i.ubicacion,
+      }));
   });
 
   const LecturasRecientesQuerySchema = z.object({

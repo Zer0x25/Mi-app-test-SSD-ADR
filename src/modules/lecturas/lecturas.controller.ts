@@ -31,7 +31,12 @@ export function createLecturasController(service: LecturasService): FastifyPlugi
       "/lecturas",
       async (request: FastifyRequest<{ Body: RegistrarLecturaInput }>, reply: FastifyReply) => {
         try {
-          const result = await service.registrarLectura(request.body);
+          const user = (request as unknown as { user?: { userId: string } }).user;
+          const body = {
+            ...request.body,
+            operadorId: request.body?.operadorId || user?.userId,
+          };
+          const result = await service.registrarLectura(body);
           return reply.status(201).send(result);
         } catch (error) {
           if (isDomainError(error)) {

@@ -21,7 +21,10 @@ export interface LecturaEntity {
   operadorId: string;
   valor: number;
   fechaLectura: Date;
+  timestamp?: Date;
+  fecha?: Date;
   notas?: string | null;
+  observaciones?: string | null;
   createdAt: Date;
 }
 
@@ -54,7 +57,12 @@ export class LecturasService {
 
   async registrarLectura(rawInput: RegistrarLecturaInput): Promise<LecturaResponse> {
     const input = RegistrarLecturaInputSchema.parse(rawInput);
-    const fecha = input.fechaLectura ? new Date(input.fechaLectura) : new Date();
+    const rawDate = input.fechaLectura || input.timestamp || input.fecha;
+    const fecha = rawDate ? new Date(rawDate) : new Date();
+
+    if (!input.operadorId) {
+      throw new Error("Identificador de operador requerido");
+    }
 
     // 1. Invariante: No permitir fechas futuras (tolerancia de 5 segundos)
     if (fecha.getTime() > Date.now() + 5000) {
@@ -97,14 +105,23 @@ export class LecturasService {
       }
     }
 
+    const notas = (input.notas || input.observaciones || "").trim() || null;
+
     // 6. Persistencia inmutable
-    return await this.repository.create({
+    const creada = await this.repository.create({
       medidorId: input.medidorId,
       operadorId: input.operadorId,
       valor: input.valor,
       fechaLectura: fecha,
-      notas: input.notas ? input.notas.trim() : null,
+      notas,
     });
+
+    return {
+      ...creada,
+      timestamp: creada.fechaLectura,
+      fecha: creada.fechaLectura,
+      observaciones: creada.notas,
+    };
   }
 
   async listarLecturasPorMedidor(medidorId: string): Promise<LecturaResponse[]> {
@@ -112,7 +129,13 @@ export class LecturasService {
     if (!medidor) {
       throw new MedidorNotFoundError(medidorId);
     }
-    return await this.repository.listByMedidor(medidorId);
+    const list = await this.repository.listByMedidor(medidorId);
+    return list.map((l) => ({
+      ...l,
+      timestamp: l.fechaLectura,
+      fecha: l.fechaLectura,
+      observaciones: l.notas,
+    }));
   }
 
   async obtenerUltimaLectura(medidorId: string): Promise<LecturaResponse | null> {
@@ -120,7 +143,14 @@ export class LecturasService {
     if (!medidor) {
       throw new MedidorNotFoundError(medidorId);
     }
-    return await this.repository.findUltimaLectura(medidorId);
+    const ult = await this.repository.findUltimaLectura(medidorId);
+    if (!ult) return null;
+    return {
+      ...ult,
+      timestamp: ult.fechaLectura,
+      fecha: ult.fechaLectura,
+      observaciones: ult.notas,
+    };
   }
 
   async sincronizarLote(rawInput: BatchSyncLecturasInput): Promise<BatchSyncLecturasResponse> {

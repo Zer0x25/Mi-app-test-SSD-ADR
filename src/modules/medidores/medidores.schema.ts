@@ -29,7 +29,8 @@ export const CrearTipoMedidorInputSchema = z.object({
     .min(3, "El nombre debe tener al menos 3 caracteres")
     .max(100, "El nombre no puede exceder 100 caracteres"),
   recurso: RecursoMedidorEnum,
-  unidad: UnidadMedidaEnum,
+  unidad: UnidadMedidaEnum.optional(),
+  unidadMedida: UnidadMedidaEnum.optional(),
   tipoMedicion: TipoMedicionEnum,
 });
 
@@ -40,6 +41,7 @@ export const TipoMedidorResponseSchema = z.object({
   nombre: z.string(),
   recurso: RecursoMedidorEnum,
   unidad: UnidadMedidaEnum,
+  unidadMedida: z.string().optional(),
   tipoMedicion: TipoMedicionEnum,
   activo: z.boolean(),
   createdAt: z.date(),
@@ -85,6 +87,8 @@ export const MedidorResponseSchema = z.object({
     .object({
       valor: z.number(),
       timestamp: z.date(),
+      fechaLectura: z.date().optional(),
+      fecha: z.date().optional(),
     })
     .nullable()
     .optional(),

@@ -181,17 +181,22 @@ export class DashboardService {
 
     return seleccionadas.map((l) => {
       const medidor = medidoresMap.get(l.medidorId);
+      const unidad = medidor ? medidor.unidad : "OTRO";
       return {
         id: l.id,
         medidorId: l.medidorId,
         medidorCodigo: medidor ? medidor.codigo : "DESCONOCIDO",
         instalacionNombre: medidor ? medidor.instalacionNombre : "DESCONOCIDA",
         recurso: medidor ? medidor.recurso : "OTRO",
-        unidad: medidor ? medidor.unidad : "OTRO",
+        unidad,
+        unidadMedida: unidad,
         valor: l.valor,
         fechaLectura: l.fechaLectura,
+        timestamp: l.fechaLectura,
+        fecha: l.fechaLectura,
         operadorId: l.operadorId,
         notas: l.notas,
+        observaciones: l.notas,
       };
     });
   }
