@@ -8,19 +8,14 @@ test.describe("Flujo E2E: Pantalla de Login Formal y Sesión Multi-Entorno (feat
   });
 
   async function irAPantallaLogin(page: Page) {
-    await page.goto("/");
+    await page.goto("/#/login");
+    await page.waitForFunction(() => document.body.dataset.appReady === "true");
+
     const btnLogout = page.locator("#btnLogout");
-    const viewLogin = page.locator("#viewLogin");
-
-    // Esperar al primer elemento visible (o bien el botón de salir de dev o la vista de login de staging)
-    await Promise.race([
-      btnLogout.waitFor({ state: "visible" }),
-      viewLogin.waitFor({ state: "visible" }),
-    ]);
-
     if (await btnLogout.isVisible()) {
       await btnLogout.click();
     }
+    const viewLogin = page.locator("#viewLogin");
     await expect(viewLogin).toBeVisible();
   }
 

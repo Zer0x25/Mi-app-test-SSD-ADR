@@ -594,6 +594,14 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
           { email: "supervisor@medidores.cl", pass: "demo1234", rol: "SUPERVISOR", instalacion: "Planta Industrial Norte" },
           { email: "operador@medidores.cl", pass: "demo1234", rol: "OPERADOR", instalaciones: ["Planta Norte", "Corporativo"] },
         ],
+        seedData: {
+          instalaciones: [
+            { id: instNorte.id, nombre: instNorte.nombre },
+            { id: instCorp.id, nombre: instCorp.nombre },
+          ],
+          medidores: medidoresData.map((m) => m.codigo),
+          usuarios: ["admin@medidores.cl", "supervisor@medidores.cl", "operador@medidores.cl"],
+        },
       });
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);

@@ -4,17 +4,27 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Sistema Blindado - Simetría de Contrato y Prevención de Leaks UI Certificadas
+## 🧭 Fase Actual: Sistema Blindado - Explorabilidad de Rutas y Observabilidad para Agentes de Navegador
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, seguro, validado en Dev, Staging y producción Edge (`metric.zer0x.org`).
-- **ADR Asociado:** [`docs/adr/0014-simetria-de-contrato-y-prevencion-de-leaks-ui.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/docs/adr/0014-simetria-de-contrato-y-prevencion-de-leaks-ui.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (234/234 tests en Vitest + Test de Simetría de Contrato pasando al 100%).
-- **Certificación Staging y Edge:** Despliegue productivo en Cloudflare Edge activo y sincronizado simétricamente con el backend principal Fastify/Prisma.
+- **Estado:** Estable, observable, totalmente testeable por agentes de navegador en Dev, Staging y Cloudflare Edge.
+- **ADR Asociado:** [`docs/adr/0015-explorabilidad-rutas-y-testabilidad-para-agentes-de-navegador.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/docs/adr/0015-explorabilidad-rutas-y-testabilidad-para-agentes-de-navegador.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (263/263 tests en Vitest + 49/49 tests en Playwright E2E pasando al 100%).
+- **Certificación Staging y Edge:** Rutas estables por hash, modales con data-state sincrónico y bus window.__DIAGNOSTICS__ activos.
 
 ---
 
 ## 📋 Registro de Hitos
+
+- [x] **Hito 15.3: Explorabilidad de Rutas, Localización DOM y Observabilidad para Agentes de Navegador (Completado: 2026-10-05)**
+  - ADR 0015 formalizado e implementado en frontend, backend y suites de prueba.
+  - Hash Router cliente (`/#/[modulo]`) con sincronización bidireccional de historial (`window.location.hash`, `hashchange`), navegación adelante/atrás y persistencia determinista al recargar (`F5`).
+  - Redirección y persistencia de ruta objetivo post-autenticación (`redirectRoute` / `authRedirectHash`).
+  - Taxonomía estricta de localizadores: paneles con `data-testid="view-[modulo]"`, `role="region"`, `aria-label`; controles de navegación desktop y móvil con `data-testid="nav-[modulo]"` y `data-testid="mobile-nav-[modulo]"`; 14 modales instrumentados con ciclo de vida `data-state="open|closed"` y `aria-hidden`.
+  - Bus de observabilidad y diagnóstico global `window.__DIAGNOSTICS__` con buffer circular de errores (máx 50), enriquecido con `activeRoute`, `currentUser`, captura de errores no controlados (`window.onerror`, `unhandledrejection`) y logs estructurados `[API FAIL]` en `ApiClient.request`.
+  - Contrato de datos de prueba repetibles: `POST /api/demo/seed` entrega payload estructurado con `seedData` (instalaciones, medidores, usuarios) sin acumulación de estado.
+  - Suite E2E dedicada `e2e/explorabilidad-agentes.spec.ts` (5/5 tests pasando) y suite general E2E (49/49 tests pasando al 100%).
+  - Quality Gate `./scripts/verify.sh` superado con código de salida 0 (263/263 tests unitarios/integración en Vitest).
 
 - [x] **Hito 15.2: Simetría de Contrato y Prevención de Leaks UI (Completado: 2026-10-05)**
   - ADR 0014 implementado en backend y frontend.
@@ -261,6 +271,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Sincronización integral de `README.md` | Actualización de README con arquitectura actual, 11 ADRs, Staging Docker, PWA, Playwright E2E y comandos |
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 8 y 15 en AGENTS.md) | Formalización de certificación E2E en Staging y resolución de rutas con symlinks en CLIs de testing |
 | 2026-10-04 | Antigravity | Implementación de ADR 0012 y `feat-018` (Hito 15) | Login formal, logout, multi-entorno (dev vs staging/prod), 43/43 E2E Playwright y 207 tests Vitest (Quality Gate 0) |
+| 2026-10-05 | Antigravity | Formalización de ADR 0015 y SDD `feat-020` (Hito 15.3) | Hash Router cliente (`/#/[modulo]`), data-testids estables en vistas/modales, bus `window.__DIAGNOSTICS__`, seed determinista y suite E2E de explorabilidad (49/49 Playwright + 263/263 Vitest, Quality Gate 0) |
 
 
 
