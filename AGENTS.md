@@ -256,5 +256,28 @@ En sistemas con jerarquía multi-sede o asignación territorial por usuario (`As
 - **Enrutamiento Determinista y Ocultamiento de Vistas en UI:**
   - En el frontend, los roles con acceso restringido a operaciones de campo (`OPERADOR`) DEBEN conmutar de forma forzosa a su vista autorizada (`#/operador`), purgando rutas administrativas previas del almacenamiento (`sessionStorage.redirect_after_login`) y ocultando las pestañas de administración en la navegación para evitar desorientación o estados inválidos.
 
+### 26. Ciclo de Vida Metrológico: Edición Resistente, Soft Delete, Marcha Blanca (30 Días) y Sincronización de Auditoría
+En módulos que administran entidades maestras con historial o mediciones acumuladas (Instalaciones, Medidores):
+- **Separación de ID Surrogate Inmutable vs. Código Humano Corto:**
+  - Toda relación relacional foránea DEBE vincularse exclusivamente al UUID surrogate (`id`).
+  - Nombres y ubicaciones son libremente editables sin riesgo de romper integridad referencial o desasociar lecturas históricas.
+  - El campo `codigo` opera como identificador humano corto y único.
+- **Ventana de Gracia / Marcha Blanca de Comisionamiento (≤ 30 Días):**
+  - Durante los primeros 30 días posteriores al alta (`createdAt`), el rol `ADMIN` está facultado para corregir el `codigo` o ejecutar eliminación física (`DELETE`).
+  - La eliminación física queda estrictamente condicionada a la ausencia total de dependencias operativas: 0 lecturas para medidores (`MedidorConLecturasNoEliminableError: 422`) y 0 medidores para instalaciones (`InstalacionConMedidoresNoEliminableError: 422`).
+  - Toda eliminación física en periodo de gracia DEBE persistir un snapshot completo de la entidad en `AuditoriaEvento` antes de ejecutar el borrado físico (`deleteFisico`).
+- **Cristalización Metrológica e Invariante de Soft Delete (> 30 Días):**
+  - Vencidos los 30 días de antigüedad, el `codigo` queda sellado como 100% inmutable (`PeriodoGraciaExpiradoError: 422`) y la eliminación física queda permanentemente bloqueada (`EliminacionFisicaProhibidaError: 422`).
+  - El único mecanismo para retirar la entidad es el **Archivado (Soft Delete)** (`activa = false` / `activo = false`), preservando intacto todo su historial metrológico, facturas y alertas.
+  - Los medidores archivados DEBEN rechazar de forma determinista cualquier intento de ingreso de nuevas lecturas (`MedidorInactivoError: 422`).
+  - Las instalaciones con medidores activos impiden su archivado hasta que sus medidores sean archivados previamente (`InstalacionTieneMedidoresActivosError: 422`).
+- **Sincronización Tipada en Pistas de Auditoría:**
+  - Toda nueva acción del ciclo de vida (`INSTALACION_EDITADA`, `INSTALACION_ARCHIVADA`, `MEDIDOR_EDITADO`, etc.) DEBE registrarse primero en el enum central `TipoAccionAuditoriaEnum` en `auditoria.schema.ts`.
+  - Las interfaces de logger desacopladas en módulos cliente (`I[Modulo]AuditoriaLogger`) DEBEN tipar la propiedad `accion` con el tipo unión `TipoAccionAuditoria` (nunca `string` genérico), previniendo fallos de contravarianza en el sistema de tipos de TypeScript.
+- **Tipado Estricto de Cuerpos HTTP y Tests de Integración:**
+  - En controladores Fastify, queda terminantemente prohibido tipar `Body: any`; se debe utilizar el tipo Zod de entrada (`EditarInstalacionInput`, `EditarMedidorInput`).
+  - En pruebas de integración HTTP, las aserciones sobre arrays deserializados de `JSON.parse` deben tipar explícitamente sus elementos (`as Array<{ id: string }>`) para satisfacer la regla `@typescript-eslint/no-explicit-any` del Quality Gate.
+
+
 
 
