@@ -240,4 +240,21 @@ Para permitir que agentes autónomos de navegador, crawlers sintéticos y suites
   - Todo endpoint de inicialización de datos demo debe responder entregando una estructura normalizada `seedData` con las colecciones maestras creadas (instalaciones, medidores, usuarios con credenciales base).
   - Las pruebas no deben asumir IDs estáticos arbitrarios cuando interactúen con entidades creadas por el endpoint de semilla; deben consumir las claves entregadas por `seedData`.
 
+### 25. Aislamiento Territorial y Location Scoping Multi-Sede (Fail-Closed Multi-Sede RBAC)
+En sistemas con jerarquía multi-sede o asignación territorial por usuario (`AsignacionOperador` para roles `SUPERVISOR` y `OPERADOR`):
+- **Resolución Centralizada en PreHandler Hook (`allowedInstalacionIds`):**
+  - El hook de autenticación perimetral (`server.ts`) DEBE resolver las instalaciones activamente asignadas a todo usuario no-ADMIN y adjuntar la colección `allowedInstalacionIds: string[]` al objeto de contexto (`request.user`).
+  - Para usuarios con rol `ADMIN`, `allowedInstalacionIds` DEBE ser `undefined` para denotar visibilidad global no restringida.
+  - Queda prohibido obligar a cada servicio o controlador a re-consultar manualmente tablas de asignación o confiar en parámetros no validados del cliente.
+- **Filtrado Fail-Closed en Capas de Lectura y Agregación:**
+  - Toda consulta a repositorios de entidades dependientes de ubicación (Catálogo general de instalaciones y medidores, KPIs y gráficos de dashboard, consolidación de consumos y facturas en reportes, incidentes de alertas y bitácoras de mantenimiento) DEBE aplicar obligatoriamente el filtro territorial `{ instalacionId: { in: allowedInstalacionIds } }` cuando el usuario no sea `ADMIN`.
+  - Si un usuario no-ADMIN no tiene sedes asignadas (`allowedInstalacionIds = []`), el sistema DEBE retornar una colección vacía (`[]` o métricas en cero), garantizando que jamás caiga en un fallback de consulta global.
+- **Rechazo Semántico HTTP 403 ante Recursos Ajenos (Prohibición de Fuga Silenciosa):**
+  - Cuando un usuario no-ADMIN intente acceder a un recurso pasando explícitamente un identificador ajeno (`?instalacionId=ajena`, `GET /api/mantenimiento/medidor/:id`, `POST /api/alertas/incidentes/:id/resolver`), el servicio DEBE rechazar la petición con un `DomainError` tipado (`InstalacionNoAsignadaError`) traducido a `HTTP 403 Forbidden`. Queda prohibido enmascarar o entregar datos de sedes ajenas.
+- **Sincronización de Contratos en Mocks de Test Unitario:**
+  - Al extender las interfaces de repositorios (`IMedidoresRepository`, `IReportesRepository`, `IAlertasRepository`, `IMantenimientoRepository`) con parámetros opcionales de alcance territorial (`allowedInstalacionIds?: string[]`), toda clase mock o en memoria utilizada en pruebas unitarias (`MockRepo`, `InMemoryRepo`) DEBE actualizar su firma e implementación antes de ejecutar el Quality Gate para evitar fallos de compilación en `npm run typecheck`.
+- **Enrutamiento Determinista y Ocultamiento de Vistas en UI:**
+  - En el frontend, los roles con acceso restringido a operaciones de campo (`OPERADOR`) DEBEN conmutar de forma forzosa a su vista autorizada (`#/operador`), purgando rutas administrativas previas del almacenamiento (`sessionStorage.redirect_after_login`) y ocultando las pestañas de administración en la navegación para evitar desorientación o estados inválidos.
+
+
 

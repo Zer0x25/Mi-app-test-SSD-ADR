@@ -273,6 +273,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-05 | Antigravity | Formalización de ADR 0015 y SDD `feat-020` (Hito 15.3) | Hash Router cliente (`/#/[modulo]`), data-testids estables en vistas/modales, bus `window.__DIAGNOSTICS__`, seed determinista y suite E2E de explorabilidad (49/49 Playwright + 263/263 Vitest, Quality Gate 0) |
 | 2026-10-05 | Antigravity | Ejecución `/learn` (Regla 24 en AGENTS.md) | Formalización de explorabilidad, rutas hash persistentes, ciclo de vida de modales y observabilidad en cliente para agentes |
 | 2026-10-06 | Antigravity | Implementación de `feat-021-aislamiento-territorial-rbac-multi-sede` | Aislamiento territorial RBAC multisede en Catálogo, Dashboard, Reportes, Alertas, Mantenimiento y UI. Suite `tests/server.location-scoping.test.ts` (13/13 tests pasando), Quality Gate 0 (277 tests Vitest). |
+| 2026-10-06 | Antigravity | Ejecución `/learn` (Regla 25 en AGENTS.md) | Formalización de aislamiento territorial RBAC multi-sede, inyección preHandler allowedInstalacionIds, filtrado fail-closed y rechazo 403 |
 
 
 
