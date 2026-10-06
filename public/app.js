@@ -689,6 +689,11 @@ async function cargarDashboard() {
         .map((lec) => window.Components.createActivityItem(lec))
         .join("");
     }
+
+    // 5. Parque de Instalaciones y Medidores (ADMIN)
+    if (currentUser?.rol === "ADMIN") {
+      await cargarParqueAdmin();
+    }
   } catch (err) {
     console.error("Error al cargar dashboard:", err);
     window.Toast.error(err.message, "Fallo al sincronizar Dashboard");
@@ -947,11 +952,13 @@ async function submitNuevaInstalacion(event) {
   }
 
   const nombre = document.getElementById("inputInstalacionNombre").value.trim();
+  const codigo = document.getElementById("inputInstalacionCodigo")?.value?.trim() || undefined;
   const ubicacion = document.getElementById("inputInstalacionDireccion").value.trim();
 
   try {
     await window.api.instalaciones.create({
       nombre,
+      codigo: codigo || undefined,
       ubicacion,
     });
 
@@ -2465,5 +2472,306 @@ window.toggleWebPushSubscription = toggleWebPushSubscription;
 window.probarWebPush = probarWebPush;
 window.probarTelegram = probarTelegram;
 window.cargarHistorialNotificaciones = cargarHistorialNotificaciones;
+
+// ==============================================================================
+// GESTIÓN DEL PARQUE DE INSTALACIONES Y MEDIDORES (feat-022)
+// ==============================================================================
+let parqueVistaActual = "instalaciones";
+let parqueEstadoActual = "activas";
+let cacheInstalacionesParque = [];
+let cacheMedidoresParque = [];
+
+function setParqueTab(tab) {
+  parqueVistaActual = tab;
+  const btnInst = document.getElementById("btnParqueTabInstalaciones");
+  const btnMed = document.getElementById("btnParqueTabMedidores");
+  const contInst = document.getElementById("contenedorTablaInstalaciones");
+  const contMed = document.getElementById("contenedorTablaMedidores");
+
+  if (tab === "instalaciones") {
+    btnInst?.classList.add("active");
+    btnMed?.classList.remove("active");
+    if (contInst) contInst.style.display = "";
+    if (contMed) contMed.style.display = "none";
+  } else {
+    btnMed?.classList.add("active");
+    btnInst?.classList.remove("active");
+    if (contMed) contMed.style.display = "";
+    if (contInst) contInst.style.display = "none";
+  }
+}
+
+async function cambiarFiltroParqueEstado(estado) {
+  parqueEstadoActual = estado;
+  await cargarParqueAdmin();
+}
+
+async function cargarParqueAdmin() {
+  const tbodyInst = document.getElementById("tbodyGestionInstalaciones");
+  const tbodyMed = document.getElementById("tbodyGestionMedidores");
+
+  try {
+    if (tbodyInst) {
+      tbodyInst.innerHTML = '<tr><td colspan="6" class="empty-state">Cargando instalaciones...</td></tr>';
+    }
+    if (tbodyMed) {
+      tbodyMed.innerHTML = '<tr><td colspan="8" class="empty-state">Cargando medidores...</td></tr>';
+    }
+
+    const medEstado =
+      parqueEstadoActual === "activas"
+        ? "activos"
+        : parqueEstadoActual === "archivadas"
+        ? "archivados"
+        : "todos";
+
+    const [instalaciones, medidores] = await Promise.all([
+      window.api.instalaciones.getAll(parqueEstadoActual),
+      window.api.medidores.getAll(medEstado),
+    ]);
+
+    cacheInstalacionesParque = instalaciones;
+    cacheMedidoresParque = medidores;
+
+    // Renderizar Instalaciones
+    if (tbodyInst) {
+      if (instalaciones.length === 0) {
+        tbodyInst.innerHTML = '<tr><td colspan="6" class="empty-state">No hay instalaciones en este estado.</td></tr>';
+      } else {
+        tbodyInst.innerHTML = instalaciones.map((inst) => window.Components.createInstalacionRow(inst)).join("");
+      }
+    }
+
+    // Renderizar Medidores
+    if (tbodyMed) {
+      if (medidores.length === 0) {
+        tbodyMed.innerHTML = '<tr><td colspan="8" class="empty-state">No hay medidores en este estado.</td></tr>';
+      } else {
+        tbodyMed.innerHTML = medidores.map((med) => window.Components.createMedidorRow(med)).join("");
+      }
+    }
+  } catch (err) {
+    console.error("Error al cargar parque admin:", err);
+    if (tbodyInst) tbodyInst.innerHTML = `<tr><td colspan="6" class="empty-state text-danger">Error al cargar instalaciones: ${err.message}</td></tr>`;
+    if (tbodyMed) tbodyMed.innerHTML = `<tr><td colspan="8" class="empty-state text-danger">Error al cargar medidores: ${err.message}</td></tr>`;
+  }
+}
+
+async function abrirModalEditarInstalacion(id) {
+  let inst = cacheInstalacionesParque.find((i) => i.id === id);
+  if (!inst) {
+    try {
+      inst = await window.api.instalaciones.getById(id);
+    } catch (err) {
+      window.Toast.error(err.message, "Error al obtener instalación");
+      return;
+    }
+  }
+
+  document.getElementById("inputEditarInstalacionId").value = inst.id;
+  document.getElementById("inputEditarInstalacionNombre").value = inst.nombre || "";
+  document.getElementById("inputEditarInstalacionCodigo").value = inst.codigo || "";
+  document.getElementById("inputEditarInstalacionDireccion").value = inst.ubicacion || inst.direccion || "";
+
+  const badge = document.getElementById("badgeGraciaInstalacion");
+  const inputCodigo = document.getElementById("inputEditarInstalacionCodigo");
+  const hint = document.getElementById("hintGraciaInstalacion");
+
+  if (inst.enPeriodoGracia) {
+    if (badge) {
+      badge.className = "badge badge-blue";
+      badge.innerText = `⚡ En gracia (${inst.diasRestantesGracia ?? 30}d)`;
+    }
+    if (inputCodigo) inputCodigo.readOnly = false;
+    if (hint) hint.innerText = "El código es editable durante los primeros 30 días de marcha blanca.";
+  } else {
+    if (badge) {
+      badge.className = "badge badge-muted";
+      badge.innerText = "🔒 Cristalizado (> 30 días)";
+    }
+    if (inputCodigo) inputCodigo.readOnly = true;
+    if (hint) hint.innerText = "El código es inmutable tras superar los 30 días de antigüedad.";
+  }
+
+  window.Modal.open("modalEditarInstalacion");
+}
+
+async function submitEditarInstalacion(event) {
+  event.preventDefault();
+  const id = document.getElementById("inputEditarInstalacionId").value;
+  const nombre = document.getElementById("inputEditarInstalacionNombre").value.trim();
+  const inputCodigo = document.getElementById("inputEditarInstalacionCodigo");
+  const codigo = inputCodigo && !inputCodigo.readOnly ? inputCodigo.value.trim() : undefined;
+  const ubicacion = document.getElementById("inputEditarInstalacionDireccion").value.trim();
+
+  try {
+    await window.api.instalaciones.update(id, {
+      nombre,
+      ubicacion,
+      ...(codigo ? { codigo } : {}),
+    });
+    window.Modal.close("modalEditarInstalacion");
+    window.Toast.success("Instalación actualizada exitosamente.");
+    await cargarParqueAdmin();
+    await cargarSelectsGlobales();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al actualizar instalación");
+  }
+}
+
+async function archivarInstalacion(id) {
+  if (!confirm("¿Desea archivar esta instalación? Dejará de estar disponible para lecturas en terreno pero conservará su historial.")) {
+    return;
+  }
+  try {
+    await window.api.instalaciones.archivar(id);
+    window.Toast.success("Instalación archivada correctamente.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al archivar instalación");
+  }
+}
+
+async function restaurarInstalacion(id) {
+  try {
+    await window.api.instalaciones.restaurar(id);
+    window.Toast.success("Instalación restaurada correctamente.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al restaurar instalación");
+  }
+}
+
+async function eliminarInstalacionFisica(id) {
+  if (!confirm("⚠️ ¿Está seguro de eliminar definitivamente esta instalación? Esta acción solo es permitida durante los primeros 30 días de marcha blanca y si no tiene medidores asociados.")) {
+    return;
+  }
+  try {
+    await window.api.instalaciones.delete(id);
+    window.Toast.success("Instalación eliminada definitivamente.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+    await cargarSelectsGlobales();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al eliminar instalación");
+  }
+}
+
+async function abrirModalEditarMedidor(id) {
+  let medidor = cacheMedidoresParque.find((m) => m.id === id);
+  if (!medidor) {
+    try {
+      medidor = await window.api.medidores.getById(id);
+    } catch (err) {
+      window.Toast.error(err.message, "Error al obtener medidor");
+      return;
+    }
+  }
+
+  document.getElementById("inputEditarMedidorId").value = medidor.id;
+  document.getElementById("inputEditarMedidorCodigo").value = medidor.codigo || "";
+  document.getElementById("inputEditarMedidorSerie").value = medidor.numeroSerie || "";
+  document.getElementById("inputEditarMedidorUbicacion").value = medidor.ubicacionInterna || "";
+
+  const badge = document.getElementById("badgeGraciaMedidor");
+  const inputCodigo = document.getElementById("inputEditarMedidorCodigo");
+  const hint = document.getElementById("hintGraciaMedidor");
+
+  if (medidor.enPeriodoGracia) {
+    if (badge) {
+      badge.className = "badge badge-blue";
+      badge.innerText = `⚡ En gracia (${medidor.diasRestantesGracia ?? 30}d)`;
+    }
+    if (inputCodigo) inputCodigo.readOnly = false;
+    if (hint) hint.innerText = "El código es editable durante los primeros 30 días de marcha blanca.";
+  } else {
+    if (badge) {
+      badge.className = "badge badge-muted";
+      badge.innerText = "🔒 Cristalizado (> 30 días)";
+    }
+    if (inputCodigo) inputCodigo.readOnly = true;
+    if (hint) hint.innerText = "El código es inmutable tras superar los 30 días de antigüedad.";
+  }
+
+  window.Modal.open("modalEditarMedidor");
+}
+
+async function submitEditarMedidor(event) {
+  event.preventDefault();
+  const id = document.getElementById("inputEditarMedidorId").value;
+  const inputCodigo = document.getElementById("inputEditarMedidorCodigo");
+  const codigo = inputCodigo && !inputCodigo.readOnly ? inputCodigo.value.trim() : undefined;
+  const numeroSerie = document.getElementById("inputEditarMedidorSerie").value.trim();
+  const ubicacionInterna = document.getElementById("inputEditarMedidorUbicacion").value.trim();
+
+  try {
+    await window.api.medidores.update(id, {
+      ubicacionInterna,
+      numeroSerie: numeroSerie || undefined,
+      ...(codigo ? { codigo } : {}),
+    });
+    window.Modal.close("modalEditarMedidor");
+    window.Toast.success("Medidor físico actualizado correctamente.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al actualizar medidor");
+  }
+}
+
+async function archivarMedidor(id) {
+  if (!confirm("¿Desea archivar este medidor físico? Dejará de recibir nuevas lecturas pero conservará intacto todo su historial metrológico.")) {
+    return;
+  }
+  try {
+    await window.api.medidores.archivar(id);
+    window.Toast.success("Medidor físico archivado correctamente.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al archivar medidor");
+  }
+}
+
+async function restaurarMedidor(id) {
+  try {
+    await window.api.medidores.restaurar(id);
+    window.Toast.success("Medidor físico restaurado.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al restaurar medidor");
+  }
+}
+
+async function eliminarMedidorFisico(id) {
+  if (!confirm("⚠️ ¿Está seguro de eliminar definitivamente este medidor físico? Solo es posible si fue dado de alta hace menos de 30 días y no registra lecturas.")) {
+    return;
+  }
+  try {
+    await window.api.medidores.delete(id);
+    window.Toast.success("Medidor físico eliminado definitivamente.");
+    await cargarParqueAdmin();
+    await cargarDashboard();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al eliminar medidor");
+  }
+}
+
+window.setParqueTab = setParqueTab;
+window.cambiarFiltroParqueEstado = cambiarFiltroParqueEstado;
+window.cargarParqueAdmin = cargarParqueAdmin;
+window.abrirModalEditarInstalacion = abrirModalEditarInstalacion;
+window.submitEditarInstalacion = submitEditarInstalacion;
+window.archivarInstalacion = archivarInstalacion;
+window.restaurarInstalacion = restaurarInstalacion;
+window.eliminarInstalacionFisica = eliminarInstalacionFisica;
+window.abrirModalEditarMedidor = abrirModalEditarMedidor;
+window.submitEditarMedidor = submitEditarMedidor;
+window.archivarMedidor = archivarMedidor;
+window.restaurarMedidor = restaurarMedidor;
+window.eliminarMedidorFisico = eliminarMedidorFisico;
 
 

@@ -548,6 +548,75 @@
         </div>
       </div>
 
+      <!-- Gestión del Parque: Instalaciones & Medidores (feat-022) -->
+      <div class="card mt-6" id="seccionGestionParque" data-testid="seccion-gestion-parque">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <h2 class="card-title">🏢 Parque de Sedes &amp; Medidores</h2>
+            <div class="btn-group" role="group" aria-label="Selector de entidad del parque">
+              <button type="button" class="btn btn-sm btn-outline active" id="btnParqueTabInstalaciones" data-testid="btn-parque-tab-instalaciones" onclick="setParqueTab('instalaciones')">
+                Sedes / Instalaciones
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="btnParqueTabMedidores" data-testid="btn-parque-tab-medidores" onclick="setParqueTab('medidores')">
+                Medidores Físicos
+              </button>
+            </div>
+          </div>
+          <div class="header-filters" style="display: flex; align-items: center; gap: 0.5rem;">
+            <select id="filtroParqueEstado" class="form-select filter-select" data-testid="filtro-parque-estado" onchange="cambiarFiltroParqueEstado(this.value)">
+              <option value="activas" selected>Solo Activas / Activos</option>
+              <option value="archivadas">Solo Archivadas / Archivados</option>
+              <option value="todas">Ver Todos los Registros</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" id="btnRefrescarParque" data-testid="btn-refrescar-parque" onclick="cargarParqueAdmin()">Refrescar</button>
+          </div>
+        </div>
+
+        <!-- Tabla de Instalaciones -->
+        <div id="contenedorTablaInstalaciones" class="table-responsive">
+          <table class="data-table" id="tablaGestionInstalaciones" data-testid="tabla-gestion-instalaciones">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre de Sede</th>
+                <th>Ubicación Física</th>
+                <th>Estado</th>
+                <th>Marcha Blanca</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGestionInstalaciones" data-testid="tbody-gestion-instalaciones">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando instalaciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tabla de Medidores -->
+        <div id="contenedorTablaMedidores" class="table-responsive" style="display: none;">
+          <table class="data-table" id="tablaGestionMedidores" data-testid="tabla-gestion-medidores">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Sede / Instalación</th>
+                <th>Recurso &amp; Tipo</th>
+                <th>Ubicación Interna</th>
+                <th>N° Serie</th>
+                <th>Estado</th>
+                <th>Marcha Blanca</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGestionMedidores" data-testid="tbody-gestion-medidores">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando medidores...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Feed de Actividad Reciente de Telemetría -->
       <div class="card mt-6">
         <div class="card-header">
@@ -1209,6 +1278,11 @@
             <input type="text" id="inputInstalacionNombre" data-testid="input-instalacion-nombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
           </div>
           <div class="form-group">
+            <label for="inputInstalacionCodigo" class="form-label">Código Identificador (Opcional)</label>
+            <input type="text" id="inputInstalacionCodigo" data-testid="input-instalacion-codigo" class="form-input font-mono" placeholder="Ej. INS-01, SEDE-NORTE">
+            <span class="form-hint">Si se omite, se generará automáticamente a partir del nombre.</span>
+          </div>
+          <div class="form-group">
             <label for="inputInstalacionDireccion" class="form-label">Dirección Física *</label>
             <input type="text" id="inputInstalacionDireccion" data-testid="input-instalacion-direccion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
           </div>
@@ -1320,6 +1394,80 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalMedidor')">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btnSubmitMedidor" data-testid="btn-submit-medidor">Registrar Medidor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR INSTALACIÓN / SEDE (feat-022)                    -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarInstalacion" data-testid="modal-editar-instalacion" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEditarInstalacionTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarInstalacionTitulo">✏️ Editar Instalación / Sede</h3>
+        <button class="btn-close" id="btnCloseModalEditarInstalacion" data-testid="btn-close-modal-editar-instalacion" onclick="closeModal('modalEditarInstalacion')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarInstalacion" data-testid="form-editar-instalacion" onsubmit="submitEditarInstalacion(event)">
+        <input type="hidden" id="inputEditarInstalacionId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputEditarInstalacionNombre" class="form-label">Nombre de la Sede *</label>
+            <input type="text" id="inputEditarInstalacionNombre" data-testid="input-editar-instalacion-nombre" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <label for="inputEditarInstalacionCodigo" class="form-label" style="margin-bottom: 0;">Código Identificador</label>
+              <span id="badgeGraciaInstalacion" class="badge"></span>
+            </div>
+            <input type="text" id="inputEditarInstalacionCodigo" data-testid="input-editar-instalacion-codigo" class="form-input font-mono">
+            <span class="form-hint" id="hintGraciaInstalacion">El código es editable durante los primeros 30 días de marcha blanca. Luego se cristaliza.</span>
+          </div>
+          <div class="form-group">
+            <label for="inputEditarInstalacionDireccion" class="form-label">Dirección Física / Ubicación *</label>
+            <input type="text" id="inputEditarInstalacionDireccion" data-testid="input-editar-instalacion-direccion" class="form-input" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarInstalacion')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitEditarInstalacion" data-testid="btn-submit-editar-instalacion">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR MEDIDOR FÍSICO (feat-022)                       -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarMedidor" data-testid="modal-editar-medidor" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEditarMedidorTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarMedidorTitulo">✏️ Editar Medidor Físico</h3>
+        <button class="btn-close" id="btnCloseModalEditarMedidor" data-testid="btn-close-modal-editar-medidor" onclick="closeModal('modalEditarMedidor')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarMedidor" data-testid="form-editar-medidor" onsubmit="submitEditarMedidor(event)">
+        <input type="hidden" id="inputEditarMedidorId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <label for="inputEditarMedidorCodigo" class="form-label" style="margin-bottom: 0;">Código Identificador *</label>
+              <span id="badgeGraciaMedidor" class="badge"></span>
+            </div>
+            <input type="text" id="inputEditarMedidorCodigo" data-testid="input-editar-medidor-codigo" class="form-input font-mono" required>
+            <span class="form-hint" id="hintGraciaMedidor">El código es editable durante los primeros 30 días de marcha blanca. Luego se cristaliza.</span>
+          </div>
+          <div class="form-group">
+            <label for="inputEditarMedidorSerie" class="form-label">N° de Serie Físico</label>
+            <input type="text" id="inputEditarMedidorSerie" data-testid="input-editar-medidor-serie" class="form-input font-mono">
+          </div>
+          <div class="form-group">
+            <label for="inputEditarMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
+            <input type="text" id="inputEditarMedidorUbicacion" data-testid="input-editar-medidor-ubicacion" class="form-input" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarMedidor')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitEditarMedidor" data-testid="btn-submit-editar-medidor">Guardar Cambios</button>
         </div>
       </form>
     </div>

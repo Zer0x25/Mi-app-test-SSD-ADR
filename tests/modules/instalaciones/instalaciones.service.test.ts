@@ -10,12 +10,17 @@ import {
   InstalacionNombreDuplicadoError,
   InstalacionInactivaError,
   AsignacionDuplicadaError,
+  PeriodoGraciaExpiradoError,
+  EliminacionFisicaProhibidaError,
+  InstalacionConMedidoresNoEliminableError,
+  InstalacionTieneMedidoresActivosError,
 } from "../../../src/modules/instalaciones/instalaciones.schema.js";
 
 // Mock Repository en memoria para pruebas deterministas
 class InMemoryInstalacionesRepository implements IInstalacionesRepository {
   public instalaciones: InstalacionEntity[] = [];
   public asignaciones: AsignacionEntity[] = [];
+  public medidoresCounts: Map<string, { total: number; activos: number }> = new Map();
 
   async findById(id: string): Promise<InstalacionEntity | null> {
     return this.instalaciones.find((i) => i.id === id) || null;
@@ -28,6 +33,42 @@ class InMemoryInstalacionesRepository implements IInstalacionesRepository {
         (i) => i.nombre.trim().toLowerCase() === normalized
       ) || null
     );
+  }
+
+  async findByCodigo(codigo: string): Promise<InstalacionEntity | null> {
+    const normalized = codigo.trim().toLowerCase();
+    return (
+      this.instalaciones.find(
+        (i) => (i.codigo || "").trim().toLowerCase() === normalized
+      ) || null
+    );
+  }
+
+  async countMedidores(instalacionId: string): Promise<number> {
+    return this.medidoresCounts.get(instalacionId)?.total || 0;
+  }
+
+  async countMedidoresActivos(instalacionId: string): Promise<number> {
+    return this.medidoresCounts.get(instalacionId)?.activos || 0;
+  }
+
+  async deleteFisico(id: string): Promise<boolean> {
+    const prev = this.instalaciones.length;
+    this.instalaciones = this.instalaciones.filter((i) => i.id !== id);
+    return this.instalaciones.length < prev;
+  }
+
+  async listAll(filtros?: { estado?: "activas" | "archivadas" | "todas"; allowedIds?: string[] }): Promise<InstalacionEntity[]> {
+    let result = [...this.instalaciones];
+    if (filtros?.allowedIds) {
+      result = result.filter((i) => filtros.allowedIds!.includes(i.id));
+    }
+    if (filtros?.estado === "activas") {
+      result = result.filter((i) => i.activa);
+    } else if (filtros?.estado === "archivadas") {
+      result = result.filter((i) => !i.activa);
+    }
+    return result;
   }
 
   async create(data: Omit<InstalacionEntity, "id" | "createdAt" | "updatedAt">): Promise<InstalacionEntity> {
@@ -271,6 +312,148 @@ describe("InstalacionesService Suite (Agentic TDD)", () => {
 
       lista = await service.listarInstalacionesDeOperador(operadorId);
       expect(lista).toHaveLength(0);
+    });
+  });
+
+  describe("Edición, Archivado y Periodo de Gracia (feat-022)", () => {
+    it("debe permitir editar nombre y ubicacion sin alterar el codigo", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Original",
+        codigo: "INS-ORIG",
+        ubicacion: "Av. Central 123",
+      });
+
+      const updated = await service.editarInstalacion(inst.id, {
+        nombre: "Sede Renovada",
+        ubicacion: "Av. Central 456",
+      });
+
+      expect(updated.nombre).toBe("Sede Renovada");
+      expect(updated.ubicacion).toBe("Av. Central 456");
+      expect(updated.codigo).toBe("INS-ORIG");
+    });
+
+    it("debe permitir corregir el codigo si la instalacion esta en periodo de gracia (<= 30 dias)", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Nueva",
+        codigo: "INS-TYPO",
+        ubicacion: "Calle 1",
+      });
+
+      const updated = await service.editarInstalacion(inst.id, {
+        codigo: "INS-CORREGIDO",
+      });
+
+      expect(updated.codigo).toBe("INS-CORREGIDO");
+    });
+
+    it("debe rechazar con PeriodoGraciaExpiradoError si la instalacion tiene > 30 dias y se intenta cambiar el codigo", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Antigua",
+        codigo: "INS-ANTIGUA",
+        ubicacion: "Calle Vieja",
+      });
+
+      // Simular antiguedad de 40 dias
+      const entidadEnRepo = await repository.findById(inst.id);
+      entidadEnRepo!.createdAt = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
+
+      await expect(
+        service.editarInstalacion(inst.id, {
+          codigo: "INS-MUTADA",
+        })
+      ).rejects.toThrow(PeriodoGraciaExpiradoError);
+    });
+
+    it("debe permitir editar nombre y ubicacion aunque la instalacion tenga > 30 dias de antiguedad", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Antigua 2",
+        codigo: "INS-FIJA",
+        ubicacion: "Calle 2",
+      });
+
+      const entidadEnRepo = await repository.findById(inst.id);
+      entidadEnRepo!.createdAt = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+
+      const updated = await service.editarInstalacion(inst.id, {
+        nombre: "Sede Antigua Renombrada",
+        ubicacion: "Nueva Calle 2",
+      });
+
+      expect(updated.nombre).toBe("Sede Antigua Renombrada");
+      expect(updated.codigo).toBe("INS-FIJA");
+    });
+
+    it("debe rechazar archivar instalacion si tiene medidores activos", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Con Medidores",
+        ubicacion: "Zona 1",
+      });
+
+      // Simular que tiene medidores activos
+      repository.medidoresCounts.set(inst.id, { total: 2, activos: 2 });
+
+      await expect(service.archivarInstalacion(inst.id)).rejects.toThrow(
+        InstalacionTieneMedidoresActivosError
+      );
+    });
+
+    it("debe archivar instalacion si no tiene medidores activos y restaurarla posteriormente", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Sin Medidores",
+        ubicacion: "Zona 2",
+      });
+
+      repository.medidoresCounts.set(inst.id, { total: 0, activos: 0 });
+
+      const archivada = await service.archivarInstalacion(inst.id);
+      expect(archivada.activa).toBe(false);
+
+      const restaurada = await service.restaurarInstalacion(inst.id);
+      expect(restaurada.activa).toBe(true);
+    });
+
+    it("debe rechazar eliminacion fisica con EliminacionFisicaProhibidaError si tiene > 30 dias", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Mas de 30 Dias",
+        ubicacion: "Zona 3",
+      });
+
+      const entidadEnRepo = await repository.findById(inst.id);
+      entidadEnRepo!.createdAt = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
+
+      await expect(service.eliminarInstalacionFisica(inst.id)).rejects.toThrow(
+        EliminacionFisicaProhibidaError
+      );
+    });
+
+    it("debe rechazar eliminacion fisica con InstalacionConMedidoresNoEliminableError si tiene medidores", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Con Medidor Inactivo",
+        ubicacion: "Zona 4",
+      });
+
+      // Tiene 1 medidor (aunque inactivo)
+      repository.medidoresCounts.set(inst.id, { total: 1, activos: 0 });
+
+      await expect(service.eliminarInstalacionFisica(inst.id)).rejects.toThrow(
+        InstalacionConMedidoresNoEliminableError
+      );
+    });
+
+    it("debe eliminar fisicamente la instalacion si tiene <= 30 dias y 0 medidores", async () => {
+      const inst = await service.crearInstalacion({
+        nombre: "Sede Errada Borrable",
+        ubicacion: "Zona 5",
+      });
+
+      repository.medidoresCounts.set(inst.id, { total: 0, activos: 0 });
+
+      const resultado = await service.eliminarInstalacionFisica(inst.id);
+      expect(resultado).toBe(true);
+
+      const buscada = await repository.findById(inst.id);
+      expect(buscada).toBeNull();
     });
   });
 });

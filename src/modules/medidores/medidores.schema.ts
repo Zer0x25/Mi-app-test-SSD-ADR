@@ -3,6 +3,8 @@ import { DomainError } from "../../core/errors.js";
 export {
   InstalacionNotFoundError,
   InstalacionInactivaError,
+  PeriodoGraciaExpiradoError,
+  EliminacionFisicaProhibidaError,
 } from "../instalaciones/instalaciones.schema.js";
 
 // ==============================================================================
@@ -72,6 +74,25 @@ export const CrearMedidorInputSchema = z.object({
 
 export type CrearMedidorInput = z.infer<typeof CrearMedidorInputSchema>;
 
+export const EditarMedidorInputSchema = z.object({
+  codigo: z
+    .string()
+    .trim()
+    .min(3, "El código debe tener al menos 3 caracteres")
+    .max(50, "El código no puede exceder 50 caracteres")
+    .optional(),
+  numeroSerie: z.string().trim().max(100).nullable().optional(),
+  ubicacionInterna: z
+    .string()
+    .trim()
+    .min(2, "La ubicación interna debe tener al menos 2 caracteres")
+    .max(200)
+    .optional(),
+  activo: z.boolean().optional(),
+});
+
+export type EditarMedidorInput = z.infer<typeof EditarMedidorInputSchema>;
+
 export const MedidorResponseSchema = z.object({
   id: z.string().uuid(),
   instalacionId: z.string().uuid(),
@@ -80,6 +101,8 @@ export const MedidorResponseSchema = z.object({
   numeroSerie: z.string().nullable().optional(),
   ubicacionInterna: z.string(),
   activo: z.boolean(),
+  enPeriodoGracia: z.boolean().optional(),
+  diasRestantesGracia: z.number().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   tipoMedidor: TipoMedidorResponseSchema.optional(),
@@ -105,7 +128,10 @@ export type MedidoresErrorCode =
   | "TIPO_MEDIDOR_NOMBRE_DUPLICADO"
   | "TIPO_MEDIDOR_INACTIVO"
   | "MEDIDOR_NOT_FOUND"
-  | "MEDIDOR_CODIGO_DUPLICADO";
+  | "MEDIDOR_CODIGO_DUPLICADO"
+  | "PERIODO_GRACIA_EXPIRADO"
+  | "ELIMINACION_FISICA_PROHIBIDA"
+  | "MEDIDOR_CON_LECTURAS_NO_ELIMINABLE";
 
 export class TipoMedidorNotFoundError extends DomainError {
   readonly code = "TIPO_MEDIDOR_NOT_FOUND";
@@ -144,5 +170,16 @@ export class MedidorCodigoDuplicadoError extends DomainError {
   readonly statusCode = 409;
   constructor(codigo: string) {
     super(`Ya existe un medidor con el código '${codigo}'.`, { codigo });
+  }
+}
+
+export class MedidorConLecturasNoEliminableError extends DomainError {
+  readonly code = "MEDIDOR_CON_LECTURAS_NO_ELIMINABLE";
+  readonly statusCode = 422;
+  constructor(id: string, count: number) {
+    super(
+      `No se puede eliminar el medidor '${id}' porque tiene ${count} lectura(s) registradas. Debe archivarse.`,
+      { id, count }
+    );
   }
 }

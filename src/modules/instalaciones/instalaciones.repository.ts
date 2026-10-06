@@ -20,6 +20,49 @@ export class PrismaInstalacionesRepository implements IInstalacionesRepository {
     });
   }
 
+  async findByCodigo(codigo: string): Promise<InstalacionEntity | null> {
+    return await this.prisma.instalacion.findUnique({
+      where: { codigo },
+    });
+  }
+
+  async countMedidores(instalacionId: string): Promise<number> {
+    return await this.prisma.medidor.count({
+      where: { instalacionId },
+    });
+  }
+
+  async countMedidoresActivos(instalacionId: string): Promise<number> {
+    return await this.prisma.medidor.count({
+      where: { instalacionId, activo: true },
+    });
+  }
+
+  async deleteFisico(id: string): Promise<boolean> {
+    const res = await this.prisma.instalacion.delete({
+      where: { id },
+    });
+    return !!res;
+  }
+
+  async listAll(
+    filtros?: { estado?: "activas" | "archivadas" | "todas"; allowedIds?: string[] }
+  ): Promise<InstalacionEntity[]> {
+    const where: { activa?: boolean; id?: { in: string[] } } = {};
+    if (filtros?.allowedIds !== undefined) {
+      where.id = { in: filtros.allowedIds };
+    }
+    if (filtros?.estado === "activas") {
+      where.activa = true;
+    } else if (filtros?.estado === "archivadas") {
+      where.activa = false;
+    }
+    return await this.prisma.instalacion.findMany({
+      where,
+      orderBy: { nombre: "asc" },
+    });
+  }
+
   async create(
     data: Omit<InstalacionEntity, "id" | "createdAt" | "updatedAt">
   ): Promise<InstalacionEntity> {

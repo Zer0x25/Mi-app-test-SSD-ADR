@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { MedidoresService } from "./medidores.service.js";
 import { isDomainError } from "../../core/errors.js";
-import { CrearTipoMedidorInput, CrearMedidorInput } from "./medidores.schema.js";
+import { CrearTipoMedidorInput, CrearMedidorInput, EditarMedidorInput } from "./medidores.schema.js";
 
 export function createMedidoresController(service: MedidoresService): FastifyPluginAsync {
   return async function (fastify: FastifyInstance) {
@@ -81,12 +81,13 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
     fastify.get(
       "/medidores",
       async (
-        request: FastifyRequest<{ Querystring: { instalacionId?: string } }>,
+        request: FastifyRequest<{ Querystring: { instalacionId?: string; estado?: "activos" | "archivados" | "todos" } }>,
         reply: FastifyReply
       ) => {
         try {
           const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
           const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+          const estado = user && user.rol === "ADMIN" ? request.query.estado : "activos";
 
           if (request.query.instalacionId) {
             if (allowedIds && !allowedIds.includes(request.query.instalacionId)) {
@@ -96,12 +97,13 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
               });
             }
             const result = await service.listarMedidoresPorInstalacion(
-              request.query.instalacionId
+              request.query.instalacionId,
+              estado
             );
             return reply.status(200).send(result);
           }
 
-          const result = await service.listarMedidores(allowedIds);
+          const result = await service.listarMedidores(allowedIds, estado);
           return reply.status(200).send(result);
         } catch (error) {
           if (isDomainError(error)) {
@@ -142,6 +144,113 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
     );
 
     fastify.patch(
+      "/medidores/:id",
+      async (
+        request: FastifyRequest<{ Params: { id: string }; Body: EditarMedidorInput }>,
+        reply: FastifyReply
+      ) => {
+        try {
+          const user = (request as unknown as { user?: { id?: string } }).user;
+          const result = await service.editarMedidor(request.params.id, request.body, {
+            usuarioId: user?.id,
+            ip: request.ip,
+          });
+          return reply.status(200).send(result);
+        } catch (error) {
+          if (isDomainError(error)) {
+            return reply.status(error.statusCode).send({
+              error: error.code,
+              message: error.message,
+              details: error.details,
+            });
+          }
+          return reply.status(500).send({
+            error: "INTERNAL_SERVER_ERROR",
+            message: "Error interno del servidor",
+          });
+        }
+      }
+    );
+
+    fastify.patch(
+      "/medidores/:id/archivar",
+      async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+        try {
+          const user = (request as unknown as { user?: { id?: string } }).user;
+          const result = await service.archivarMedidor(request.params.id, {
+            usuarioId: user?.id,
+            ip: request.ip,
+          });
+          return reply.status(200).send(result);
+        } catch (error) {
+          if (isDomainError(error)) {
+            return reply.status(error.statusCode).send({
+              error: error.code,
+              message: error.message,
+              details: error.details,
+            });
+          }
+          return reply.status(500).send({
+            error: "INTERNAL_SERVER_ERROR",
+            message: "Error interno del servidor",
+          });
+        }
+      }
+    );
+
+    fastify.patch(
+      "/medidores/:id/restaurar",
+      async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+        try {
+          const user = (request as unknown as { user?: { id?: string } }).user;
+          const result = await service.restaurarMedidor(request.params.id, {
+            usuarioId: user?.id,
+            ip: request.ip,
+          });
+          return reply.status(200).send(result);
+        } catch (error) {
+          if (isDomainError(error)) {
+            return reply.status(error.statusCode).send({
+              error: error.code,
+              message: error.message,
+              details: error.details,
+            });
+          }
+          return reply.status(500).send({
+            error: "INTERNAL_SERVER_ERROR",
+            message: "Error interno del servidor",
+          });
+        }
+      }
+    );
+
+    fastify.delete(
+      "/medidores/:id",
+      async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+        try {
+          const user = (request as unknown as { user?: { id?: string } }).user;
+          await service.eliminarMedidorFisico(request.params.id, {
+            usuarioId: user?.id,
+            ip: request.ip,
+          });
+          return reply.status(200).send({ success: true, message: "Medidor eliminado definitivamente" });
+        } catch (error) {
+          if (isDomainError(error)) {
+            return reply.status(error.statusCode).send({
+              error: error.code,
+              message: error.message,
+              details: error.details,
+            });
+          }
+          return reply.status(500).send({
+            error: "INTERNAL_SERVER_ERROR",
+            message: "Error interno del servidor",
+          });
+        }
+      }
+    );
+
+    fastify.patch(
       "/medidores/:id/desactivar",
       async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
         try {
@@ -165,10 +274,16 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
 
     fastify.get(
       "/instalaciones/:instalacionId/medidores",
-      async (request: FastifyRequest<{ Params: { instalacionId: string } }>, reply: FastifyReply) => {
+      async (
+        request: FastifyRequest<{ Params: { instalacionId: string }; Querystring: { estado?: "activos" | "archivados" | "todos" } }>,
+        reply: FastifyReply
+      ) => {
         try {
+          const user = (request as unknown as { user?: { rol: string } }).user;
+          const estado = user && user.rol === "ADMIN" ? request.query.estado : "activos";
           const result = await service.listarMedidoresPorInstalacion(
-            request.params.instalacionId
+            request.params.instalacionId,
+            estado
           );
           return reply.status(200).send(result);
         } catch (error) {

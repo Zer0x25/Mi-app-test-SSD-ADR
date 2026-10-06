@@ -8,6 +8,14 @@ export const TipoAccionAuditoriaEnum = z.enum([
   "CAMBIO_PRECINTO",
   "LOGIN_FALLIDO",
   "BACKUP_SISTEMA",
+  "INSTALACION_EDITADA",
+  "INSTALACION_ARCHIVADA",
+  "INSTALACION_RESTAURADA",
+  "INSTALACION_ELIMINADA_GRACIA",
+  "MEDIDOR_EDITADO",
+  "MEDIDOR_ARCHIVADO",
+  "MEDIDOR_RESTAURADO",
+  "MEDIDOR_ELIMINADO_GRACIA",
 ]);
 
 export type TipoAccionAuditoria = z.infer<typeof TipoAccionAuditoriaEnum>;

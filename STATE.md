@@ -4,16 +4,32 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Sistema Blindado - Aislamiento Territorial y Location Scoping Multi-Sede (feat-021)
+## 🧭 Fase Actual: Ciclo de Vida Metrológico, Archivado (Soft Delete), Edición Segura y Ventana de Gracia (feat-022)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, seguro y hermético. Aislamiento territorial RBAC multi-sede verificado en todos los módulos (Catálogo, Dashboard, Reportes, Alertas, Mantenimiento, Terreno) y en el frontend.
-- **Spec Activo:** [`specs/feat-021-aislamiento-territorial-rbac-multi-sede.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/specs/feat-021-aislamiento-territorial-rbac-multi-sede.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (277/277 tests en Vitest pasando al 100%, 35 archivos de prueba, Typecheck y Linter limpios).
+- **Estado:** Estable, seguro y hermético. Ciclo de vida completo para Instalaciones y Medidores: códigos humanos cortos, edición resistente con IDs surrogates inmutables, archivado no destructivo (soft delete) con bloqueo de lecturas en medidores archivados, ventana de gracia / marcha blanca (30 días) para ADMIN con snapshot en auditoría y sellado cristalizado (> 30 días).
+- **Spec Activo:** [`specs/feat-022-archivar-editar-comisionamiento.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/specs/feat-022-archivar-editar-comisionamiento.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (306/306 tests en Vitest pasando al 100%, 36 archivos de prueba, Typecheck y Linter limpios).
 
 ---
 
 ## 📋 Registro de Hitos
+
+- [x] **Hito 15.4: Ciclo de Vida Metrológico, Archivado (Soft Delete), Edición y Ventana de Gracia / Marcha Blanca 30 Días (Completado: 2026-10-06)**
+  - Spec `feat-022` implementado íntegramente bajo Agentic TDD y Architecture Governance.
+  - Base de Datos y Esquemas: campo `codigo` añadido a `Instalacion` en Prisma schema, DTOs de edición y respuesta Zod con cálculo dinámico de `enPeriodoGracia` y `diasRestantesGracia`.
+  - Dominio e Invariantes:
+    - Edición libre de nombres, descripciones y ubicaciones sin alterar relaciones relacionales fundamentadas en IDs UUID surrogates inmutables.
+    - Edición de `codigo` permitida exclusivamente durante los primeros 30 días (`enPeriodoGracia`); rechazo con `PeriodoGraciaExpiradoError` (HTTP 422) tras superar los 30 días.
+    - Soft delete (archivado/restauración) implementado para instalaciones y medidores. Medidores archivados (`activo = false`) rechazan automáticamente nuevas lecturas (`MedidorInactivoError: 422`). Instalaciones con medidores activos impiden su archivado (`InstalacionTieneMedidoresActivosError: 422`).
+    - Eliminación física (Hard Delete) permitida únicamente al rol `ADMIN` dentro de la ventana de gracia (≤ 30 días) y con 0 lecturas (para medidores) o 0 medidores (para instalaciones); bloqueada con `EliminacionFisicaProhibidaError: 422` tras 30 días.
+    - Registro inmutable y tipado en `AuditoriaEvento` de snapshots y acciones (`INSTALACION_EDITADA`, `INSTALACION_ARCHIVADA`, `INSTALACION_RESTAURADA`, `INSTALACION_ELIMINADA_GRACIA`, `MEDIDOR_EDITADO`, `MEDIDOR_ARCHIVADO`, `MEDIDOR_RESTAURADO`, `MEDIDOR_ELIMINADO_GRACIA`).
+  - Filtrado y Endpoints: parámetros `estado=activas|archivadas|todas` y `estado=activos|archivados|todos` en endpoints GET de instalaciones y medidores con permisos diferenciados por rol.
+  - Frontend Aurora UI:
+    - `public/js/api.js`: métodos `update`, `archivar`, `restaurar`, `delete` y soporte de `estado`.
+    - `public/index.html`: componente `seccionGestionParque` en Dashboard de Administrador con selector de entidad (Sedes vs Medidores), selector de estado (Activos / Archivados / Todos), modales dedicados `modalEditarInstalacion` y `modalEditarMedidor` con visualización dinámica de días restantes de gracia y bloqueo inmutable.
+    - `public/js/components.js` y `public/app.js`: filas de presentación `createInstalacionRow` y `createMedidorRow` con badges semánticos y handlers de confirmación.
+  - Quality Gate: `./scripts/verify.sh` superado con salida 0 (306/306 tests unitarios/integración en Vitest al 100%, 0 regresiones).
 
 - [x] **Hito 15.3: Explorabilidad de Rutas, Localización DOM y Observabilidad para Agentes de Navegador (Completado: 2026-10-05)**
   - ADR 0015 formalizado e implementado en frontend, backend y suites de prueba.

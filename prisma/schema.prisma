@@ -24,6 +24,7 @@ model Usuario {
 
 model Instalacion {
   id           String                   @id @default(uuid())
+  codigo       String?                  @unique
   nombre       String                   @unique
   ubicacion    String
   activa       Boolean                  @default(true)

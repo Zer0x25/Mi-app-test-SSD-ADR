@@ -133,9 +133,31 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
     });
   }
 
-  async listMedidoresByInstalacion(instalacionId: string): Promise<MedidorEntity[]> {
+  async countLecturas(medidorId: string): Promise<number> {
+    return await this.prisma.lectura.count({
+      where: { medidorId },
+    });
+  }
+
+  async deleteMedidorFisico(id: string): Promise<boolean> {
+    const res = await this.prisma.medidor.delete({
+      where: { id },
+    });
+    return !!res;
+  }
+
+  async listMedidoresByInstalacion(
+    instalacionId: string,
+    estado?: "activos" | "archivados" | "todos"
+  ): Promise<MedidorEntity[]> {
+    const where: { instalacionId: string; activo?: boolean } = { instalacionId };
+    if (estado === "activos" || !estado) {
+      where.activo = true;
+    } else if (estado === "archivados") {
+      where.activo = false;
+    }
     const list = await this.prisma.medidor.findMany({
-      where: { instalacionId, activo: true },
+      where,
       include: {
         tipoMedidor: true,
         lecturas: {
@@ -169,8 +191,16 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
     });
   }
 
-  async listMedidores(instalacionIds?: string[]): Promise<MedidorEntity[]> {
-    const where: { activo: boolean; instalacionId?: { in: string[] } } = { activo: true };
+  async listMedidores(
+    instalacionIds?: string[],
+    estado?: "activos" | "archivados" | "todos"
+  ): Promise<MedidorEntity[]> {
+    const where: { activo?: boolean; instalacionId?: { in: string[] } } = {};
+    if (estado === "activos" || !estado) {
+      where.activo = true;
+    } else if (estado === "archivados") {
+      where.activo = false;
+    }
     if (instalacionIds !== undefined) {
       where.instalacionId = { in: instalacionIds };
     }

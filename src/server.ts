@@ -26,7 +26,10 @@ import { PrismaAuditoriaRepository } from "./modules/auditoria/auditoria.reposit
 import { PrismaWebhooksRepository } from "./modules/webhooks/webhooks.repository.js";
 
 // Servicios y Controladores
-import { InstalacionesService } from "./modules/instalaciones/instalaciones.service.js";
+import {
+  InstalacionesService,
+  calcularPeriodoGracia,
+} from "./modules/instalaciones/instalaciones.service.js";
 import { createInstalacionesController } from "./modules/instalaciones/instalaciones.controller.js";
 import {
   MedidoresService,
@@ -245,6 +248,19 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
               message: `Operación denegada: el supervisor no tiene asignada la instalación «${body.instalacionId}».`,
             });
           }
+        }
+      }
+
+      // Regla RBAC 2.1: Modificar o Eliminar Medidor solo permitido para ADMIN
+      if (
+        (request.method === "PATCH" || request.method === "DELETE") &&
+        request.url.startsWith("/api/medidores")
+      ) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para editar, archivar o eliminar medidores.`,
+          });
         }
       }
 
@@ -667,10 +683,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   };
 
   const instalacionesRepo = new PrismaInstalacionesRepository(prisma);
-  const instalacionesService = new InstalacionesService(instalacionesRepo);
+  const instalacionesService = new InstalacionesService(instalacionesRepo, auditoriaService);
 
   const medidoresRepo = new PrismaMedidoresRepository(prisma);
-  const medidoresService = new MedidoresService(medidoresRepo, instalacionesVerifService);
+  const medidoresService = new MedidoresService(medidoresRepo, instalacionesVerifService, auditoriaService);
 
   const lecturasRepo = new PrismaLecturasRepository(prisma);
   const lecturasService = new LecturasService(
@@ -856,17 +872,30 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   // 6. Endpoints complementarios para Frontend & RBAC
-  app.get("/api/instalaciones", async (request) => {
+  app.get("/api/instalaciones", async (request: FastifyRequest<{ Querystring: { estado?: string } }>) => {
     const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
-    const where: { activa: boolean; id?: { in: string[] } } = { activa: true };
+    const where: { activa?: boolean; id?: { in: string[] } } = {};
     if (user && user.rol !== "ADMIN") {
       where.id = { in: user.allowedInstalacionIds || [] };
+      where.activa = true;
+    } else {
+      const estado = request.query?.estado || "activas";
+      if (estado === "activas") {
+        where.activa = true;
+      } else if (estado === "archivadas") {
+        where.activa = false;
+      }
     }
-    const list = await prisma.instalacion.findMany({ where });
-    return list.map((i) => ({
-      ...i,
-      direccion: i.ubicacion,
-    }));
+    const list = await prisma.instalacion.findMany({ where, orderBy: { nombre: "asc" } });
+    return list.map((i) => {
+      const { enPeriodoGracia, diasRestantesGracia } = calcularPeriodoGracia(i.createdAt);
+      return {
+        ...i,
+        direccion: i.ubicacion,
+        enPeriodoGracia,
+        diasRestantesGracia,
+      };
+    });
   });
 
   app.get("/api/instalaciones/operador/:usuarioId", async (req: FastifyRequest<{ Params: { usuarioId: string } }>) => {

@@ -4,16 +4,23 @@ import {
   TipoMedidorResponse,
   CrearMedidorInput,
   CrearMedidorInputSchema,
+  EditarMedidorInput,
+  EditarMedidorInputSchema,
   MedidorResponse,
   TipoMedidorNombreDuplicadoError,
   TipoMedidorNotFoundError,
   TipoMedidorInactivoError,
   MedidorNotFoundError,
   MedidorCodigoDuplicadoError,
+  PeriodoGraciaExpiradoError,
+  EliminacionFisicaProhibidaError,
+  MedidorConLecturasNoEliminableError,
   RecursoMedidor,
   UnidadMedida,
   TipoMedicion,
 } from "./medidores.schema.js";
+import { TipoAccionAuditoria } from "../auditoria/auditoria.schema.js";
+import { calcularPeriodoGracia } from "../instalaciones/instalaciones.service.js";
 
 export interface TipoMedidorEntity {
   id: string;
@@ -56,22 +63,36 @@ export interface IMedidoresRepository {
 
   findMedidorById(id: string): Promise<MedidorEntity | null>;
   findMedidorByCodigo(codigo: string): Promise<MedidorEntity | null>;
+  countLecturas?(medidorId: string): Promise<number>;
   createMedidor(
     data: Omit<MedidorEntity, "id" | "createdAt" | "updatedAt">
   ): Promise<MedidorEntity>;
   updateMedidor(id: string, data: Partial<MedidorEntity>): Promise<MedidorEntity>;
-  listMedidoresByInstalacion(instalacionId: string): Promise<MedidorEntity[]>;
-  listMedidores(instalacionIds?: string[]): Promise<MedidorEntity[]>;
+  deleteMedidorFisico?(id: string): Promise<boolean>;
+  listMedidoresByInstalacion(instalacionId: string, estado?: "activos" | "archivados" | "todos"): Promise<MedidorEntity[]>;
+  listMedidores(instalacionIds?: string[], estado?: "activos" | "archivados" | "todos"): Promise<MedidorEntity[]>;
 }
 
 export interface IInstalacionesVerificationService {
   verifyInstalacionActiva(id: string): Promise<void>;
 }
 
+export interface IMedidoresAuditoriaLogger {
+  registrarEvento(input: {
+    usuarioId?: string | null;
+    accion: TipoAccionAuditoria;
+    entidad: string;
+    entidadId: string;
+    detalles?: Record<string, unknown> | null;
+    ip?: string | null;
+  }): Promise<unknown>;
+}
+
 export class MedidoresService {
   constructor(
     private readonly repository: IMedidoresRepository,
-    private readonly instalacionesService: IInstalacionesVerificationService
+    private readonly instalacionesService: IInstalacionesVerificationService,
+    private readonly auditoriaLogger?: IMedidoresAuditoriaLogger
   ) {}
 
   async crearTipoMedidor(rawInput: CrearTipoMedidorInput): Promise<TipoMedidorResponse> {
@@ -140,12 +161,34 @@ export class MedidoresService {
       activo: true,
     });
 
-    return {
+    return this.mapResponse({
       ...creado,
       tipoMedidor: {
         ...tipo,
         unidadMedida: tipo.unidad,
       },
+    });
+  }
+
+  private mapResponse(m: MedidorEntity): MedidorResponse {
+    const { enPeriodoGracia, diasRestantesGracia } = calcularPeriodoGracia(m.createdAt);
+    return {
+      ...m,
+      enPeriodoGracia,
+      diasRestantesGracia,
+      tipoMedidor: m.tipoMedidor
+        ? {
+            ...m.tipoMedidor,
+            unidadMedida: m.tipoMedidor.unidad,
+          }
+        : undefined,
+      ultimaLectura: m.ultimaLectura
+        ? {
+            ...m.ultimaLectura,
+            fechaLectura: m.ultimaLectura.timestamp,
+            fecha: m.ultimaLectura.timestamp,
+          }
+        : null,
     };
   }
 
@@ -170,59 +213,182 @@ export class MedidoresService {
       };
     }
 
-    if (medidor.ultimaLectura) {
-      medidor.ultimaLectura = {
-        ...medidor.ultimaLectura,
-        fechaLectura: medidor.ultimaLectura.timestamp,
-        fecha: medidor.ultimaLectura.timestamp,
-      };
+    return this.mapResponse(medidor);
+  }
+
+  async editarMedidor(
+    id: string,
+    rawInput: EditarMedidorInput,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<MedidorResponse> {
+    const input = EditarMedidorInputSchema.parse(rawInput);
+    const actual = await this.repository.findMedidorById(id);
+    if (!actual) {
+      throw new MedidorNotFoundError(id);
     }
 
-    return medidor;
+    const { enPeriodoGracia } = calcularPeriodoGracia(actual.createdAt);
+
+    if (input.codigo !== undefined && input.codigo !== actual.codigo) {
+      if (!enPeriodoGracia) {
+        throw new PeriodoGraciaExpiradoError("medidor", id);
+      }
+      const dup = await this.repository.findMedidorByCodigo(input.codigo);
+      if (dup && dup.id !== id) {
+        throw new MedidorCodigoDuplicadoError(input.codigo);
+      }
+    }
+
+    const updated = await this.repository.updateMedidor(id, {
+      ...(input.codigo !== undefined && { codigo: input.codigo.trim() }),
+      ...(input.numeroSerie !== undefined && { numeroSerie: input.numeroSerie }),
+      ...(input.ubicacionInterna !== undefined && { ubicacionInterna: input.ubicacionInterna.trim() }),
+      ...(input.activo !== undefined && { activo: input.activo }),
+    });
+
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "MEDIDOR_EDITADO",
+        entidad: "Medidor",
+        entidadId: id,
+        detalles: {
+          antes: { codigo: actual.codigo, ubicacion: actual.ubicacionInterna, serie: actual.numeroSerie },
+          despues: { codigo: updated.codigo, ubicacion: updated.ubicacionInterna, serie: updated.numeroSerie },
+        },
+        ip: context?.ip,
+      });
+    }
+
+    return this.mapResponse({
+      ...updated,
+      tipoMedidor: actual.tipoMedidor,
+      ultimaLectura: actual.ultimaLectura,
+    });
+  }
+
+  async archivarMedidor(
+    id: string,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<MedidorResponse> {
+    const actual = await this.repository.findMedidorById(id);
+    if (!actual) {
+      throw new MedidorNotFoundError(id);
+    }
+
+    const updated = await this.repository.updateMedidor(id, { activo: false });
+
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "MEDIDOR_ARCHIVADO",
+        entidad: "Medidor",
+        entidadId: id,
+        detalles: { codigo: actual.codigo },
+        ip: context?.ip,
+      });
+    }
+
+    return this.mapResponse({
+      ...updated,
+      tipoMedidor: actual.tipoMedidor,
+      ultimaLectura: actual.ultimaLectura,
+    });
+  }
+
+  async restaurarMedidor(
+    id: string,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<MedidorResponse> {
+    const actual = await this.repository.findMedidorById(id);
+    if (!actual) {
+      throw new MedidorNotFoundError(id);
+    }
+
+    const updated = await this.repository.updateMedidor(id, { activo: true });
+
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "MEDIDOR_RESTAURADO",
+        entidad: "Medidor",
+        entidadId: id,
+        detalles: { codigo: actual.codigo },
+        ip: context?.ip,
+      });
+    }
+
+    return this.mapResponse({
+      ...updated,
+      tipoMedidor: actual.tipoMedidor,
+      ultimaLectura: actual.ultimaLectura,
+    });
   }
 
   async desactivarMedidor(id: string): Promise<MedidorResponse> {
-    await this.obtenerMedidorPorId(id);
-    return await this.repository.updateMedidor(id, { activo: false });
+    return this.archivarMedidor(id);
   }
 
-  async listarMedidoresPorInstalacion(instalacionId: string): Promise<MedidorResponse[]> {
-    const list = await this.repository.listMedidoresByInstalacion(instalacionId);
-    return list.map((m) => ({
-      ...m,
-      tipoMedidor: m.tipoMedidor
-        ? {
-            ...m.tipoMedidor,
-            unidadMedida: m.tipoMedidor.unidad,
-          }
-        : undefined,
-      ultimaLectura: m.ultimaLectura
-        ? {
-            ...m.ultimaLectura,
-            fechaLectura: m.ultimaLectura.timestamp,
-            fecha: m.ultimaLectura.timestamp,
-          }
-        : null,
-    }));
+  async eliminarMedidorFisico(
+    id: string,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<boolean> {
+    const actual = await this.repository.findMedidorById(id);
+    if (!actual) {
+      throw new MedidorNotFoundError(id);
+    }
+
+    const { enPeriodoGracia } = calcularPeriodoGracia(actual.createdAt);
+    if (!enPeriodoGracia) {
+      throw new EliminacionFisicaProhibidaError("medidor", id);
+    }
+
+    if (this.repository.countLecturas) {
+      const lecturasCount = await this.repository.countLecturas(id);
+      if (lecturasCount > 0) {
+        throw new MedidorConLecturasNoEliminableError(id, lecturasCount);
+      }
+    }
+
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "MEDIDOR_ELIMINADO_GRACIA",
+        entidad: "Medidor",
+        entidadId: id,
+        detalles: {
+          snapshot: {
+            id: actual.id,
+            codigo: actual.codigo,
+            numeroSerie: actual.numeroSerie,
+            ubicacionInterna: actual.ubicacionInterna,
+            instalacionId: actual.instalacionId,
+            createdAt: actual.createdAt,
+          },
+        },
+        ip: context?.ip,
+      });
+    }
+
+    if (this.repository.deleteMedidorFisico) {
+      return await this.repository.deleteMedidorFisico(id);
+    }
+    return true;
   }
 
-  async listarMedidores(instalacionIds?: string[]): Promise<MedidorResponse[]> {
-    const list = await this.repository.listMedidores(instalacionIds);
-    return list.map((m) => ({
-      ...m,
-      tipoMedidor: m.tipoMedidor
-        ? {
-            ...m.tipoMedidor,
-            unidadMedida: m.tipoMedidor.unidad,
-          }
-        : undefined,
-      ultimaLectura: m.ultimaLectura
-        ? {
-            ...m.ultimaLectura,
-            fechaLectura: m.ultimaLectura.timestamp,
-            fecha: m.ultimaLectura.timestamp,
-          }
-        : null,
-    }));
+  async listarMedidoresPorInstalacion(
+    instalacionId: string,
+    estado?: "activos" | "archivados" | "todos"
+  ): Promise<MedidorResponse[]> {
+    const list = await this.repository.listMedidoresByInstalacion(instalacionId, estado);
+    return list.map((m) => this.mapResponse(m));
+  }
+
+  async listarMedidores(
+    instalacionIds?: string[],
+    estado?: "activos" | "archivados" | "todos"
+  ): Promise<MedidorResponse[]> {
+    const list = await this.repository.listMedidores(instalacionIds, estado);
+    return list.map((m) => this.mapResponse(m));
   }
 }
