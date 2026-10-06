@@ -216,3 +216,28 @@ Para erradicar falsos verdes y asegurar que toda mutación persista efectivament
   2. Debe reabrirse el modal o formulario para certificar que los controles reflejen el estado persistido (ej. checkboxes marcados).
 - **Prohibición de Falsos 200 en Operaciones sobre Entidades Inexistentes:** Todo endpoint de mutación (`PATCH`, `POST /:id/accion`, `DELETE`) DEBE verificar la existencia previa de la entidad objetivo antes de ejecutar cambios. Si el identificador no existe en la base de datos, el endpoint DEBE responder con `HTTP 404 NOT_FOUND` y abstenerse de registrar eventos de auditoría espurios.
 
+### 24. Explorabilidad, Enrutamiento Persistente y Observabilidad para Agentes de Navegador
+Para permitir que agentes autónomos de navegador, crawlers sintéticos y suites E2E exploren, diagnostiquen y prueben la aplicación sin falsos positivos ni condiciones de carrera:
+- **Enrutamiento Persistente por Hash (Hash Router):**
+  - Toda arquitectura SPA servida como recurso estático DEBE implementar enrutamiento en cliente basado en Hash (`/#/[ruta]`) sincronizado bidireccionalmente con el historial del navegador (`window.location.hash`, evento `hashchange` y `history.pushState`).
+  - La aplicación debe garantizar persistencia determinista de la vista ante recargas del navegador (`F5`), navegación atrás/adelante (`page.goBack()`, `page.goForward()`), y redirección post-login preservando la ruta solicitada originalmente (`authRedirectHash`).
+- **Ciclo de Vida Sincrónico de Modales e Inspeccionabilidad DOM (`data-state` y `aria-hidden`):**
+  - Todo diálogo modal DEBE inicializarse en el DOM con `data-state="closed"` y `aria-hidden="true"`.
+  - Las funciones del controlador de modales (`ModalManager.open()` / `ModalManager.close()`) DEBEN alternar sincrónicamente dichos atributos a `data-state="open"` / `aria-hidden="false"` (y viceversa al cerrar).
+  - Queda prohibido validar la apertura o cierre de modales basándose exclusivamente en transiciones CSS o estilos computados; las aserciones de prueba deben evaluar declarativamente el atributo (`await expect(modal).toHaveAttribute("data-state", "open")`).
+  - Todo modal debe disponer de identificadores estables: `data-testid="modal-[nombre]"`, botón de cierre `data-testid="btn-close-modal-[nombre]"`, formulario `data-testid="form-[nombre]"` y botón de confirmación `data-testid="btn-submit-[nombre]"`.
+- **Capa Global de Diagnóstico y Observabilidad en Cliente (`window.__DIAGNOSTICS__`):**
+  - El cliente web DEBE exponer un bus global de diagnóstico `window.__DIAGNOSTICS__` que encapsule:
+    1. Buffer circular de los últimos errores de red o excepciones JavaScript (máximo 50 entradas) con métodos `getErrors()` y `clear()`.
+    2. Contexto de navegación y sesión activa (`getActiveRoute()`, `getCurrentUser()`).
+    3. Escuchadores automáticos para `window.onerror` y el evento `unhandledrejection`.
+    4. Telemetría de solicitudes HTTP: el cliente de API (`ApiClient.request`) debe registrar automáticamente los fallos en el buffer y emitir logs en consola con prefijo estructurado `[API FAIL]`.
+  - Las pruebas E2E y agentes de navegador deben inspeccionar este bus (`await page.evaluate(() => window.__DIAGNOSTICS__.getErrors())`) tras flujos críticos para diagnosticar anomalías sin depender de logs de consola no estructurados.
+- **Sincronización Determinista de Arranque (`document.body.dataset.appReady`):**
+  - En aplicaciones con auto-login o hidratación inicial asíncrona, el script cliente DEBE inyectar `document.body.dataset.appReady = "true"` al culminar la inicialización.
+  - Las suites de prueba deben aguardar esta señal antes de evaluar visibilidad de pantallas o forzar la navegación directa a `/#/login`, erradicando carreras entre el renderizado del HTML inicial y la resolución de red.
+- **Contrato de Semilla Determinista (`seedData` en `POST /api/demo/seed`):**
+  - Todo endpoint de inicialización de datos demo debe responder entregando una estructura normalizada `seedData` con las colecciones maestras creadas (instalaciones, medidores, usuarios con credenciales base).
+  - Las pruebas no deben asumir IDs estáticos arbitrarios cuando interactúen con entidades creadas por el endpoint de semilla; deben consumir las claves entregadas por `seedData`.
+
+

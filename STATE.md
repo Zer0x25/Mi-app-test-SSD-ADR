@@ -272,6 +272,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Ejecución `/learn` (Reglas 8 y 15 en AGENTS.md) | Formalización de certificación E2E en Staging y resolución de rutas con symlinks en CLIs de testing |
 | 2026-10-04 | Antigravity | Implementación de ADR 0012 y `feat-018` (Hito 15) | Login formal, logout, multi-entorno (dev vs staging/prod), 43/43 E2E Playwright y 207 tests Vitest (Quality Gate 0) |
 | 2026-10-05 | Antigravity | Formalización de ADR 0015 y SDD `feat-020` (Hito 15.3) | Hash Router cliente (`/#/[modulo]`), data-testids estables en vistas/modales, bus `window.__DIAGNOSTICS__`, seed determinista y suite E2E de explorabilidad (49/49 Playwright + 263/263 Vitest, Quality Gate 0) |
+| 2026-10-05 | Antigravity | Ejecución `/learn` (Regla 24 en AGENTS.md) | Formalización de explorabilidad, rutas hash persistentes, ciclo de vida de modales y observabilidad en cliente para agentes |
+
 
 
 
