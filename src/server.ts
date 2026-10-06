@@ -157,7 +157,18 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
       try {
         const token = authHeader.slice(7).trim();
         const payload = usuariosService.verificarToken(token);
-        (request as unknown as { user?: typeof payload }).user = payload;
+        if (payload.rol !== "ADMIN") {
+          const asignaciones = await prisma.asignacionOperador.findMany({
+            where: { usuarioId: payload.userId },
+            select: { instalacionId: true },
+          });
+          (request as unknown as { user?: typeof payload & { allowedInstalacionIds: string[] } }).user = {
+            ...payload,
+            allowedInstalacionIds: asignaciones.map((a) => a.instalacionId),
+          };
+        } else {
+          (request as unknown as { user?: typeof payload & { allowedInstalacionIds?: string[] } }).user = payload;
+        }
       } catch {
         return reply.status(401).send({
           error: "UNAUTHORIZED",
@@ -845,14 +856,18 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   // 6. Endpoints complementarios para Frontend & RBAC
-  app.get("/api/instalaciones", async () => {
-    const list = await prisma.instalacion.findMany({ where: { activa: true } });
+  app.get("/api/instalaciones", async (request) => {
+    const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+    const where: { activa: boolean; id?: { in: string[] } } = { activa: true };
+    if (user && user.rol !== "ADMIN") {
+      where.id = { in: user.allowedInstalacionIds || [] };
+    }
+    const list = await prisma.instalacion.findMany({ where });
     return list.map((i) => ({
       ...i,
       direccion: i.ubicacion,
     }));
   });
-
 
   app.get("/api/instalaciones/operador/:usuarioId", async (req: FastifyRequest<{ Params: { usuarioId: string } }>) => {
     const asignaciones = await prisma.asignacionOperador.findMany({
@@ -881,7 +896,8 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         details: parsed.error.format(),
       });
     }
-    return await dashboardService.obtenerActividadReciente(parsed.data.limit);
+    const user = (req as unknown as { user?: { allowedInstalacionIds?: string[] } }).user;
+    return await dashboardService.obtenerActividadReciente(parsed.data.limit, user?.allowedInstalacionIds);
   });
 
   app.post("/api/admin/backup", async (request, reply) => {

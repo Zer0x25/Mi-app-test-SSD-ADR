@@ -32,6 +32,17 @@ export class FacturaNotFoundError extends DomainError {
   }
 }
 
+export class InstalacionNoAsignadaError extends DomainError {
+  readonly code = "INSTALACION_NO_ASIGNADA";
+  readonly statusCode = 403;
+
+  constructor(instalacionId: string) {
+    super(`Acceso denegado: el usuario no tiene asignada la instalación «${instalacionId}».`, {
+      instalacionId,
+    });
+  }
+}
+
 // Filtro para consolidación y exportación
 export const FiltroReporteConsumoSchema = z.object({
   instalacionId: z.string().uuid().optional(),

@@ -4,9 +4,10 @@ import { isDomainError } from "../../core/errors.js";
 
 export function createDashboardController(service: DashboardService): FastifyPluginAsync {
   return async function (fastify: FastifyInstance) {
-    fastify.get("/dashboard/kpis", async (_request: FastifyRequest, reply: FastifyReply) => {
+    fastify.get("/dashboard/kpis", async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const result = await service.obtenerKpis();
+        const user = (request as unknown as { user?: { allowedInstalacionIds?: string[] } }).user;
+        const result = await service.obtenerKpis(user?.allowedInstalacionIds);
         return reply.status(200).send(result);
       } catch (error) {
         if (isDomainError(error)) {
@@ -30,8 +31,9 @@ export function createDashboardController(service: DashboardService): FastifyPlu
         reply: FastifyReply
       ) => {
         try {
+          const user = (request as unknown as { user?: { allowedInstalacionIds?: string[] } }).user;
           const horas = request.query.horas ? parseInt(request.query.horas, 10) : 24;
-          const result = await service.obtenerMedidoresDesatendidos(horas);
+          const result = await service.obtenerMedidoresDesatendidos(horas, user?.allowedInstalacionIds);
           return reply.status(200).send(result);
         } catch (error) {
           if (isDomainError(error)) {
@@ -49,9 +51,10 @@ export function createDashboardController(service: DashboardService): FastifyPlu
       }
     );
 
-    fastify.get("/dashboard/consumos", async (_request: FastifyRequest, reply: FastifyReply) => {
+    fastify.get("/dashboard/consumos", async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const result = await service.obtenerConsumoPorInstalacion();
+        const user = (request as unknown as { user?: { allowedInstalacionIds?: string[] } }).user;
+        const result = await service.obtenerConsumoPorInstalacion(user?.allowedInstalacionIds);
         return reply.status(200).send(result);
       } catch (error) {
         if (isDomainError(error)) {
@@ -75,8 +78,9 @@ export function createDashboardController(service: DashboardService): FastifyPlu
         reply: FastifyReply
       ) => {
         try {
+          const user = (request as unknown as { user?: { allowedInstalacionIds?: string[] } }).user;
           const limit = request.query.limit ? parseInt(request.query.limit, 10) : 10;
-          const result = await service.obtenerActividadReciente(limit);
+          const result = await service.obtenerActividadReciente(limit, user?.allowedInstalacionIds);
           return reply.status(200).send(result);
         } catch (error) {
           if (isDomainError(error)) {

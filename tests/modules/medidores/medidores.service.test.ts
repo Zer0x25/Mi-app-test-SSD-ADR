@@ -81,6 +81,13 @@ class InMemoryMedidoresRepository implements IMedidoresRepository {
       (m) => m.instalacionId === instalacionId && m.activo
     );
   }
+
+  async listMedidores(instalacionIds?: string[]): Promise<MedidorEntity[]> {
+    if (instalacionIds) {
+      return this.medidores.filter((m) => instalacionIds.includes(m.instalacionId) && m.activo);
+    }
+    return this.medidores.filter((m) => m.activo);
+  }
 }
 
 class MockInstalacionesVerificationService implements IInstalacionesVerificationService {

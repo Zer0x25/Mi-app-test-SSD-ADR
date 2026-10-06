@@ -181,15 +181,19 @@ export class PrismaAlertasRepository implements IAlertasRepository {
     };
   }
 
-  async listIncidentes(filtro?: FiltroIncidentes): Promise<IncidenteEntity[]> {
+  async listIncidentes(filtro?: FiltroIncidentes, allowedInstalacionIds?: string[]): Promise<IncidenteEntity[]> {
     const where: {
-      instalacionId?: string;
+      instalacionId?: string | { in: string[] };
       estado?: string;
       severidad?: string;
       tipo?: string;
     } = {};
 
-    if (filtro?.instalacionId) where.instalacionId = filtro.instalacionId;
+    if (filtro?.instalacionId) {
+      where.instalacionId = filtro.instalacionId;
+    } else if (allowedInstalacionIds) {
+      where.instalacionId = { in: allowedInstalacionIds };
+    }
     if (filtro?.estado) where.estado = filtro.estado;
     if (filtro?.severidad) where.severidad = filtro.severidad;
     if (filtro?.tipo) where.tipo = filtro.tipo;

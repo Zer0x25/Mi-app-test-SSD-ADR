@@ -85,13 +85,24 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
         reply: FastifyReply
       ) => {
         try {
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
           if (request.query.instalacionId) {
+            if (allowedIds && !allowedIds.includes(request.query.instalacionId)) {
+              return reply.status(403).send({
+                error: "INSTALACION_NO_ASIGNADA",
+                message: "Acceso denegado: el usuario no tiene asignada esta instalación.",
+              });
+            }
             const result = await service.listarMedidoresPorInstalacion(
               request.query.instalacionId
             );
             return reply.status(200).send(result);
           }
-          return reply.status(200).send([]);
+
+          const result = await service.listarMedidores(allowedIds);
+          return reply.status(200).send(result);
         } catch (error) {
           if (isDomainError(error)) {
             return reply.status(error.statusCode).send({

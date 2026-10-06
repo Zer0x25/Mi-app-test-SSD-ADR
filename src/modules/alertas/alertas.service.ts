@@ -8,6 +8,7 @@ import {
   ResumenAlertasResponse,
   IncidenteNotFoundError,
   IncidenteYaResueltoError,
+  InstalacionNoAsignadaError,
   TipoAlerta,
   SeveridadAlerta,
   EstadoIncidente,
@@ -60,7 +61,7 @@ export interface IAlertasRepository {
   createIncidente(data: Omit<IncidenteEntity, "id" | "createdAt" | "updatedAt">): Promise<IncidenteEntity>;
   findIncidenteById(id: string): Promise<IncidenteEntity | null>;
   updateIncidente(id: string, data: Partial<IncidenteEntity>): Promise<IncidenteEntity>;
-  listIncidentes(filtro?: FiltroIncidentes): Promise<IncidenteEntity[]>;
+  listIncidentes(filtro?: FiltroIncidentes, allowedInstalacionIds?: string[]): Promise<IncidenteEntity[]>;
   createRegla(data: Omit<ReglaEntity, "id" | "createdAt" | "updatedAt">): Promise<ReglaEntity>;
   listReglas(): Promise<ReglaEntity[]>;
 }
@@ -265,12 +266,20 @@ export class AlertasService {
     return nuevosIncidentes;
   }
 
-  async resolverIncidente(id: string, rawInput: ResolverIncidenteInput): Promise<IncidenteAlertaResponse> {
+  async resolverIncidente(
+    id: string,
+    rawInput: ResolverIncidenteInput,
+    allowedInstalacionIds?: string[]
+  ): Promise<IncidenteAlertaResponse> {
     const input = ResolverIncidenteInputSchema.parse(rawInput);
     const incidente = await this.repository.findIncidenteById(id);
 
     if (!incidente) {
       throw new IncidenteNotFoundError(id);
+    }
+
+    if (allowedInstalacionIds && !allowedInstalacionIds.includes(incidente.instalacionId)) {
+      throw new InstalacionNoAsignadaError(incidente.instalacionId);
     }
 
     if (incidente.estado === "RESUELTO") {
@@ -322,14 +331,21 @@ export class AlertasService {
     return result;
   }
 
-  async listarIncidentes(filtro?: FiltroIncidentes): Promise<IncidenteAlertaResponse[]> {
-    const list = await this.repository.listIncidentes(filtro);
+  async listarIncidentes(filtro?: FiltroIncidentes, allowedInstalacionIds?: string[]): Promise<IncidenteAlertaResponse[]> {
+    if (filtro?.instalacionId && allowedInstalacionIds && !allowedInstalacionIds.includes(filtro.instalacionId)) {
+      throw new InstalacionNoAsignadaError(filtro.instalacionId);
+    }
+    const list = await this.repository.listIncidentes(filtro, allowedInstalacionIds);
     return list.map((i) => this.mapIncidenteResponse(i));
   }
 
-  async obtenerResumen(instalacionId?: string): Promise<ResumenAlertasResponse> {
+  async obtenerResumen(instalacionId?: string, allowedInstalacionIds?: string[]): Promise<ResumenAlertasResponse> {
+    if (instalacionId && allowedInstalacionIds && !allowedInstalacionIds.includes(instalacionId)) {
+      throw new InstalacionNoAsignadaError(instalacionId);
+    }
     const list = await this.repository.listIncidentes(
-      instalacionId ? { instalacionId } : undefined
+      instalacionId ? { instalacionId } : undefined,
+      allowedInstalacionIds
     );
 
     const totalAbiertos = list.filter((i) => i.estado === "ABIERTO").length;

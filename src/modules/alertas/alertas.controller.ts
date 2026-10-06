@@ -37,7 +37,10 @@ export function createAlertasController(service: AlertasService): FastifyPluginA
             });
           }
 
-          const resultado = await service.listarIncidentes(parsed.data);
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
+          const resultado = await service.listarIncidentes(parsed.data, allowedIds);
           return reply.status(200).send(resultado);
         } catch (error: unknown) {
           if (error instanceof DomainError) {
@@ -70,7 +73,10 @@ export function createAlertasController(service: AlertasService): FastifyPluginA
             });
           }
 
-          const resultado = await service.resolverIncidente(request.params.id, parsed.data);
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
+          const resultado = await service.resolverIncidente(request.params.id, parsed.data, allowedIds);
           return reply.status(200).send(resultado);
         } catch (error: unknown) {
           if (error instanceof DomainError) {
@@ -116,7 +122,10 @@ export function createAlertasController(service: AlertasService): FastifyPluginA
         reply: FastifyReply
       ) => {
         try {
-          const resumen = await service.obtenerResumen(request.query.instalacionId);
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
+          const resumen = await service.obtenerResumen(request.query.instalacionId, allowedIds);
           return reply.status(200).send(resumen);
         } catch (error: unknown) {
           if (error instanceof DomainError) {

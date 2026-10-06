@@ -12,8 +12,20 @@ class InMemoryDashboardRepository implements IDashboardRepository {
     lecturas: [],
   };
 
-  async getDashboardData(): Promise<DashboardRawData> {
-    return this.data;
+  async getDashboardData(allowedInstalacionIds?: string[]): Promise<DashboardRawData> {
+    if (allowedInstalacionIds === undefined) {
+      return this.data;
+    }
+    const allowedSet = new Set(allowedInstalacionIds);
+    const instalaciones = this.data.instalaciones.filter((i) => allowedSet.has(i.id));
+    const medidores = this.data.medidores.filter((m) => allowedSet.has(m.instalacionId));
+    const medidoresIds = new Set(medidores.map((m) => m.id));
+    const lecturas = this.data.lecturas.filter((l) => medidoresIds.has(l.medidorId));
+    return {
+      instalaciones,
+      medidores,
+      lecturas,
+    };
   }
 }
 
@@ -179,6 +191,24 @@ describe("DashboardService Suite (Agentic TDD)", () => {
       expect(feed[0].medidorCodigo).toBe("MED-LUZ-01"); // La más reciente (hace 2h)
       expect(feed[0].recurso).toBe("LUZ");
       expect(feed[0].instalacionNombre).toBe("Planta Norte");
+    });
+  });
+
+  describe("Aislamiento Territorial (Location Scoping)", () => {
+    it("debe computar KPIs, consumos y desatendidos exclusivamente para instalaciones permitidas", async () => {
+      // Filtrar únicamente por inst1Id
+      const kpis = await service.obtenerKpis([inst1Id]);
+      expect(kpis.totalInstalaciones).toBe(1);
+      expect(kpis.totalMedidores).toBe(2); // medidor1Id y medidor2Id
+
+      const desatendidos = await service.obtenerMedidoresDesatendidos(24, [inst1Id]);
+      expect(desatendidos.every((d) => d.instalacionId === inst1Id)).toBe(true);
+
+      const consumos = await service.obtenerConsumoPorInstalacion([inst1Id]);
+      expect(consumos.every((c) => c.instalacionId === inst1Id)).toBe(true);
+
+      const actividad = await service.obtenerActividadReciente(10, [inst1Id]);
+      expect(actividad.every((a) => a.medidorId === medidor1Id || a.medidorId === medidor2Id)).toBe(true);
     });
   });
 });

@@ -168,4 +168,44 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       };
     });
   }
+
+  async listMedidores(instalacionIds?: string[]): Promise<MedidorEntity[]> {
+    const where: { activo: boolean; instalacionId?: { in: string[] } } = { activo: true };
+    if (instalacionIds !== undefined) {
+      where.instalacionId = { in: instalacionIds };
+    }
+    const list = await this.prisma.medidor.findMany({
+      where,
+      include: {
+        tipoMedidor: true,
+        lecturas: {
+          orderBy: { fechaLectura: "desc" },
+          take: 1,
+        },
+      },
+    });
+    return list.map((m) => {
+      const ult = m.lecturas?.[0];
+      return {
+        ...m,
+        tipoMedidor: m.tipoMedidor
+          ? {
+              ...m.tipoMedidor,
+              recurso: m.tipoMedidor.recurso as RecursoMedidor,
+              unidad: m.tipoMedidor.unidad as UnidadMedida,
+              unidadMedida: m.tipoMedidor.unidad,
+              tipoMedicion: m.tipoMedidor.tipoMedicion as TipoMedicion,
+            }
+          : undefined,
+        ultimaLectura: ult
+          ? {
+              valor: ult.valor,
+              timestamp: ult.fechaLectura,
+              fechaLectura: ult.fechaLectura,
+              fecha: ult.fechaLectura,
+            }
+          : null,
+      };
+    });
+  }
 }

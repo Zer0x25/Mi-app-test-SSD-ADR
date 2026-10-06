@@ -103,15 +103,19 @@ export class PrismaMantenimientoRepository implements IMantenimientoRepository {
     };
   }
 
-  async listRegistros(filtro?: FiltroMantenimientos): Promise<MantenimientoEntity[]> {
+  async listRegistros(filtro?: FiltroMantenimientos, allowedInstalacionIds?: string[]): Promise<MantenimientoEntity[]> {
     const where: {
       medidorId?: string;
-      medidor?: { instalacionId?: string };
+      medidor?: { instalacionId?: string | { in: string[] } };
       tipo?: string;
     } = {};
 
     if (filtro?.medidorId) where.medidorId = filtro.medidorId;
-    if (filtro?.instalacionId) where.medidor = { instalacionId: filtro.instalacionId };
+    if (filtro?.instalacionId) {
+      where.medidor = { instalacionId: filtro.instalacionId };
+    } else if (allowedInstalacionIds) {
+      where.medidor = { instalacionId: { in: allowedInstalacionIds } };
+    }
     if (filtro?.tipo) where.tipo = filtro.tipo;
 
     const list = await this.prisma.registroMantenimiento.findMany({

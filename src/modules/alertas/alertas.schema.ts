@@ -28,6 +28,17 @@ export class IncidenteYaResueltoError extends DomainError {
   }
 }
 
+export class InstalacionNoAsignadaError extends DomainError {
+  readonly code = "INSTALACION_NO_ASIGNADA";
+  readonly statusCode = 403;
+
+  constructor(instalacionId: string) {
+    super(`Acceso denegado: el usuario no tiene asignada la instalación «${instalacionId}».`, {
+      instalacionId,
+    });
+  }
+}
+
 export const TipoAlertaEnum = z.enum(["SALTO_CONSUMO", "FUGA_PROBABLE", "SIN_REPORTE"]);
 export type TipoAlerta = z.infer<typeof TipoAlertaEnum>;
 

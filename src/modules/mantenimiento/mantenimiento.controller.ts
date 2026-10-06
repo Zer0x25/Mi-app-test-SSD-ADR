@@ -24,7 +24,10 @@ export function createMantenimientoController(service: MantenimientoService): Fa
             });
           }
 
-          const resultado = await service.registrarMantenimiento(parsed.data);
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
+          const resultado = await service.registrarMantenimiento(parsed.data, allowedIds);
           return reply.status(201).send(resultado);
         } catch (error: unknown) {
           if (error instanceof DomainError) {
@@ -67,7 +70,10 @@ export function createMantenimientoController(service: MantenimientoService): Fa
             });
           }
 
-          const resultado = await service.listarMantenimientos(parsed.data);
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
+          const resultado = await service.listarMantenimientos(parsed.data, allowedIds);
           return reply.status(200).send(resultado);
         } catch (error: unknown) {
           if (error instanceof DomainError) {
@@ -89,7 +95,10 @@ export function createMantenimientoController(service: MantenimientoService): Fa
         reply: FastifyReply
       ) => {
         try {
-          const resultado = await service.obtenerFichaMedidor(request.params.id);
+          const user = (request as unknown as { user?: { rol: string; allowedInstalacionIds?: string[] } }).user;
+          const allowedIds = user && user.rol !== "ADMIN" ? (user.allowedInstalacionIds || []) : undefined;
+
+          const resultado = await service.obtenerFichaMedidor(request.params.id, allowedIds);
           return reply.status(200).send(resultado);
         } catch (error: unknown) {
           if (error instanceof DomainError) {

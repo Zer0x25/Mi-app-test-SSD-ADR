@@ -6,6 +6,7 @@ import {
   MedidorMantenimientoNotFoundError,
   LecturaRetiroInvalidaError,
   PrecintoNuevoRequeridoError,
+  InstalacionNoAsignadaError,
   TipoMantenimiento,
 } from "./mantenimiento.schema.js";
 
@@ -50,7 +51,7 @@ export interface IMantenimientoRepository {
   createRegistro(
     data: Omit<MantenimientoEntity, "id" | "createdAt">
   ): Promise<MantenimientoEntity>;
-  listRegistros(filtro?: FiltroMantenimientos): Promise<MantenimientoEntity[]>;
+  listRegistros(filtro?: FiltroMantenimientos, allowedInstalacionIds?: string[]): Promise<MantenimientoEntity[]>;
 }
 
 export interface IMantenimientoAuditoriaLogger {
@@ -71,13 +72,18 @@ export class MantenimientoService {
   ) {}
 
   async registrarMantenimiento(
-    rawInput: RegistrarMantenimientoInput
+    rawInput: RegistrarMantenimientoInput,
+    allowedInstalacionIds?: string[]
   ): Promise<MantenimientoResponse> {
     const input = RegistrarMantenimientoInputSchema.parse(rawInput);
     const medidor = await this.repository.findMedidorInfo(input.medidorId);
 
     if (!medidor) {
       throw new MedidorMantenimientoNotFoundError(input.medidorId);
+    }
+
+    if (allowedInstalacionIds && !allowedInstalacionIds.includes(medidor.instalacionId)) {
+      throw new InstalacionNoAsignadaError(medidor.instalacionId);
     }
 
     // Regla 1: CAMBIO_PRECINTO exige nuevo precinto
@@ -204,9 +210,13 @@ export class MantenimientoService {
   }
 
   async listarMantenimientos(
-    filtro?: FiltroMantenimientos
+    filtro?: FiltroMantenimientos,
+    allowedInstalacionIds?: string[]
   ): Promise<MantenimientoResponse[]> {
-    const list = await this.repository.listRegistros(filtro);
+    if (filtro?.instalacionId && allowedInstalacionIds && !allowedInstalacionIds.includes(filtro.instalacionId)) {
+      throw new InstalacionNoAsignadaError(filtro.instalacionId);
+    }
+    const list = await this.repository.listRegistros(filtro, allowedInstalacionIds);
     return list.map((registro) => ({
       id: registro.id,
       medidorId: registro.medidorId,
@@ -228,13 +238,17 @@ export class MantenimientoService {
   }
 
   async obtenerFichaMedidor(
-    medidorId: string
+    medidorId: string,
+    allowedInstalacionIds?: string[]
   ): Promise<MedidorMantenimientoInfo & { historial: MantenimientoResponse[] }> {
     const medidor = await this.repository.findMedidorInfo(medidorId);
     if (!medidor) {
       throw new MedidorMantenimientoNotFoundError(medidorId);
     }
-    const historial = await this.listarMantenimientos({ medidorId });
+    if (allowedInstalacionIds && !allowedInstalacionIds.includes(medidor.instalacionId)) {
+      throw new InstalacionNoAsignadaError(medidor.instalacionId);
+    }
+    const historial = await this.listarMantenimientos({ medidorId }, allowedInstalacionIds);
     return {
       ...medidor,
       historial,

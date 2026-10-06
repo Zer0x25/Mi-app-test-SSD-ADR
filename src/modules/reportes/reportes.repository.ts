@@ -9,9 +9,9 @@ import { FiltroReporteConsumo } from "./reportes.schema.js";
 export class PrismaReportesRepository implements IReportesRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async getReporteRawData(filtro: FiltroReporteConsumo): Promise<ReporteRawItem[]> {
+  async getReporteRawData(filtro: FiltroReporteConsumo, allowedInstalacionIds?: string[]): Promise<ReporteRawItem[]> {
     const whereMedidor: {
-      instalacionId?: string;
+      instalacionId?: string | { in: string[] };
       id?: string;
       tipoMedidor?: { recurso?: string };
       activo?: boolean;
@@ -21,6 +21,8 @@ export class PrismaReportesRepository implements IReportesRepository {
 
     if (filtro.instalacionId) {
       whereMedidor.instalacionId = filtro.instalacionId;
+    } else if (allowedInstalacionIds) {
+      whereMedidor.instalacionId = { in: allowedInstalacionIds };
     }
     if (filtro.medidorId) {
       whereMedidor.id = filtro.medidorId;
@@ -82,9 +84,15 @@ export class PrismaReportesRepository implements IReportesRepository {
     return created as FacturaEntity;
   }
 
-  async listFacturas(instalacionId?: string): Promise<FacturaEntity[]> {
+  async listFacturas(instalacionId?: string, allowedInstalacionIds?: string[]): Promise<FacturaEntity[]> {
+    let where: { instalacionId?: string | { in: string[] } } | undefined = undefined;
+    if (instalacionId) {
+      where = { instalacionId };
+    } else if (allowedInstalacionIds) {
+      where = { instalacionId: { in: allowedInstalacionIds } };
+    }
     const facturas = await this.prisma.facturaServicio.findMany({
-      where: instalacionId ? { instalacionId } : undefined,
+      where,
       orderBy: { createdAt: "desc" },
     });
     return facturas as FacturaEntity[];

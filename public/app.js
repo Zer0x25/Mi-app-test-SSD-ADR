@@ -72,10 +72,10 @@ async function inicializarApp() {
   if (currentUser) {
     await cargarSelectsGlobales();
     const hashRoute = parseRouteKeyFromHash(window.location.hash);
-    if (hashRoute && hashRoute !== "login") {
-      await switchRole(hashRoute, { updateHash: true });
-    } else if (currentUser.rol === "OPERADOR") {
+    if (currentUser.rol === "OPERADOR") {
       await switchRole("operador", { updateHash: true });
+    } else if (hashRoute && hashRoute !== "login") {
+      await switchRole(hashRoute, { updateHash: true });
     } else {
       await switchRole("admin", { updateHash: true });
     }
@@ -220,10 +220,10 @@ async function handleLoginSubmit(e) {
     const redirectTarget = sessionStorage.getItem("redirect_after_login");
     sessionStorage.removeItem("redirect_after_login");
     const targetRoute = redirectTarget ? parseRouteKeyFromHash(redirectTarget) : null;
-    if (targetRoute && targetRoute !== "login") {
-      await switchRole(targetRoute, { updateHash: true });
-    } else if (currentUser.rol === "OPERADOR") {
+    if (currentUser.rol === "OPERADOR") {
       await switchRole("operador", { updateHash: true });
+    } else if (targetRoute && targetRoute !== "login") {
+      await switchRole(targetRoute, { updateHash: true });
     } else {
       await switchRole("admin", { updateHash: true });
       await cargarDashboard();
@@ -493,27 +493,27 @@ async function switchRole(role, options = {}) {
 
   if (role !== "operador" && currentUser?.rol === "OPERADOR") {
     window.Toast.warning("El perfil OPERADOR solo tiene acceso al Modo Terreno.", "Permisos");
-    return;
+    role = "operador";
   }
 
   if (role === "usuarios" && currentUser?.rol !== "ADMIN") {
     window.Toast.warning("La gestión de usuarios está reservada para ADMIN.", "Permisos");
-    return;
+    role = "admin";
   }
 
   if (role === "auditoria" && currentUser?.rol !== "ADMIN") {
     window.Toast.warning("La pista de auditoría está reservada para ADMIN.", "Permisos");
-    return;
+    role = "admin";
   }
 
   if (role === "webhooks" && currentUser?.rol !== "ADMIN") {
     window.Toast.warning("La gestión de webhooks está reservada para ADMIN.", "Permisos");
-    return;
+    role = "admin";
   }
 
   if (role === "notificaciones" && currentUser?.rol !== "ADMIN" && currentUser?.rol !== "SUPERVISOR") {
     window.Toast.warning("La gestión de notificaciones está reservada para Administradores y Supervisores.", "Permisos");
-    return;
+    role = "admin";
   }
 
   currentRoleTab = role;
@@ -1307,7 +1307,8 @@ function inicializarFiltrosReporte() {
   const selectSede = document.getElementById("filtroReporteSede");
   const selectFacturaSede = document.getElementById("facturaInstalacionId");
   if (selectSede && instalacionesCache.length > 0) {
-    selectSede.innerHTML = `<option value="">Todas las sedes</option>` +
+    const defaultLabel = currentUser?.rol === "SUPERVISOR" ? "Todas mis sedes asignadas" : "Todas las sedes";
+    selectSede.innerHTML = `<option value="">${defaultLabel}</option>` +
       instalacionesCache.map((i) => `<option value="${i.id}">${escapeHtml(i.nombre)}</option>`).join("");
   }
   if (selectFacturaSede && instalacionesCache.length > 0) {

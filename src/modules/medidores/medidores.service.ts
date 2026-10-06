@@ -61,6 +61,7 @@ export interface IMedidoresRepository {
   ): Promise<MedidorEntity>;
   updateMedidor(id: string, data: Partial<MedidorEntity>): Promise<MedidorEntity>;
   listMedidoresByInstalacion(instalacionId: string): Promise<MedidorEntity[]>;
+  listMedidores(instalacionIds?: string[]): Promise<MedidorEntity[]>;
 }
 
 export interface IInstalacionesVerificationService {
@@ -187,6 +188,26 @@ export class MedidoresService {
 
   async listarMedidoresPorInstalacion(instalacionId: string): Promise<MedidorResponse[]> {
     const list = await this.repository.listMedidoresByInstalacion(instalacionId);
+    return list.map((m) => ({
+      ...m,
+      tipoMedidor: m.tipoMedidor
+        ? {
+            ...m.tipoMedidor,
+            unidadMedida: m.tipoMedidor.unidad,
+          }
+        : undefined,
+      ultimaLectura: m.ultimaLectura
+        ? {
+            ...m.ultimaLectura,
+            fechaLectura: m.ultimaLectura.timestamp,
+            fecha: m.ultimaLectura.timestamp,
+          }
+        : null,
+    }));
+  }
+
+  async listarMedidores(instalacionIds?: string[]): Promise<MedidorResponse[]> {
+    const list = await this.repository.listMedidores(instalacionIds);
     return list.map((m) => ({
       ...m,
       tipoMedidor: m.tipoMedidor

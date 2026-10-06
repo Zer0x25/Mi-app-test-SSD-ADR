@@ -31,6 +31,17 @@ export class PrecintoNuevoRequeridoError extends DomainError {
   }
 }
 
+export class InstalacionNoAsignadaError extends DomainError {
+  readonly code = "INSTALACION_NO_ASIGNADA";
+  readonly statusCode = 403;
+
+  constructor(instalacionId: string) {
+    super(`Acceso denegado: el usuario no tiene asignada la instalación «${instalacionId}».`, {
+      instalacionId,
+    });
+  }
+}
+
 export const TipoMantenimientoEnum = z.enum([
   "CALIBRACION",
   "CAMBIO_PRECINTO",

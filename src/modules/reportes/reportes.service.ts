@@ -6,6 +6,7 @@ import {
   RegistrarFacturaInputSchema,
   FacturaConciliadaResponse,
   RangoFechasInvalidoError,
+  InstalacionNoAsignadaError,
 } from "./reportes.schema.js";
 
 export interface ReporteLecturaRaw {
@@ -44,20 +45,28 @@ export interface FacturaEntity {
 }
 
 export interface IReportesRepository {
-  getReporteRawData(filtro: FiltroReporteConsumo): Promise<ReporteRawItem[]>;
+  getReporteRawData(filtro: FiltroReporteConsumo, allowedInstalacionIds?: string[]): Promise<ReporteRawItem[]>;
   createFactura(data: Omit<FacturaEntity, "id" | "createdAt" | "updatedAt">): Promise<FacturaEntity>;
-  listFacturas(instalacionId?: string): Promise<FacturaEntity[]>;
+  listFacturas(instalacionId?: string, allowedInstalacionIds?: string[]): Promise<FacturaEntity[]>;
 }
 
 export class ReportesService {
   constructor(private readonly repository: IReportesRepository) {}
 
-  async obtenerConsumoConsolidado(rawFiltro: FiltroReporteConsumo): Promise<ItemConsumoConsolidado[]> {
+  async obtenerConsumoConsolidado(
+    rawFiltro: FiltroReporteConsumo,
+    allowedInstalacionIds?: string[]
+  ): Promise<ItemConsumoConsolidado[]> {
     if (rawFiltro.fechaInicio > rawFiltro.fechaFin) {
       throw new RangoFechasInvalidoError(rawFiltro.fechaInicio, rawFiltro.fechaFin);
     }
     const filtro = FiltroReporteConsumoSchema.parse(rawFiltro);
-    const rawItems = await this.repository.getReporteRawData(filtro);
+
+    if (filtro.instalacionId && allowedInstalacionIds && !allowedInstalacionIds.includes(filtro.instalacionId)) {
+      throw new InstalacionNoAsignadaError(filtro.instalacionId);
+    }
+
+    const rawItems = await this.repository.getReporteRawData(filtro, allowedInstalacionIds);
 
     const resultado: ItemConsumoConsolidado[] = [];
 
@@ -101,8 +110,11 @@ export class ReportesService {
     return resultado;
   }
 
-  async exportarConsumoCSV(rawFiltro: FiltroReporteConsumo): Promise<string> {
-    const consolidado = await this.obtenerConsumoConsolidado(rawFiltro);
+  async exportarConsumoCSV(
+    rawFiltro: FiltroReporteConsumo,
+    allowedInstalacionIds?: string[]
+  ): Promise<string> {
+    const consolidado = await this.obtenerConsumoConsolidado(rawFiltro, allowedInstalacionIds);
 
     const cabeceras = [
       "Sede",
@@ -131,16 +143,26 @@ export class ReportesService {
     return [cabeceras.join(","), ...filas.map((f) => f.join(","))].join("\n");
   }
 
-  async registrarYConciliarFactura(rawInput: RegistrarFacturaInput): Promise<FacturaConciliadaResponse> {
+  async registrarYConciliarFactura(
+    rawInput: RegistrarFacturaInput,
+    allowedInstalacionIds?: string[]
+  ): Promise<FacturaConciliadaResponse> {
     const input = RegistrarFacturaInputSchema.parse(rawInput);
 
+    if (allowedInstalacionIds && !allowedInstalacionIds.includes(input.instalacionId)) {
+      throw new InstalacionNoAsignadaError(input.instalacionId);
+    }
+
     // Obtener consumo medido para la sede y recurso en el rango de fechas
-    const consolidado = await this.obtenerConsumoConsolidado({
-      instalacionId: input.instalacionId,
-      recurso: input.recurso,
-      fechaInicio: input.periodoInicio,
-      fechaFin: input.periodoFin,
-    });
+    const consolidado = await this.obtenerConsumoConsolidado(
+      {
+        instalacionId: input.instalacionId,
+        recurso: input.recurso,
+        fechaInicio: input.periodoInicio,
+        fechaFin: input.periodoFin,
+      },
+      allowedInstalacionIds
+    );
 
     let consumoMedido: number | null = null;
     let diferenciaConsumo: number | null = null;
@@ -203,8 +225,11 @@ export class ReportesService {
     };
   }
 
-  async listarFacturas(instalacionId?: string): Promise<FacturaConciliadaResponse[]> {
-    const list = await this.repository.listFacturas(instalacionId);
+  async listarFacturas(instalacionId?: string, allowedInstalacionIds?: string[]): Promise<FacturaConciliadaResponse[]> {
+    if (instalacionId && allowedInstalacionIds && !allowedInstalacionIds.includes(instalacionId)) {
+      throw new InstalacionNoAsignadaError(instalacionId);
+    }
+    const list = await this.repository.listFacturas(instalacionId, allowedInstalacionIds);
     return list.map((factura) => ({
       id: factura.id,
       instalacionId: factura.instalacionId,

@@ -4,13 +4,12 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Sistema Blindado - Explorabilidad de Rutas y Observabilidad para Agentes de Navegador
+## 🧭 Fase Actual: Sistema Blindado - Aislamiento Territorial y Location Scoping Multi-Sede (feat-021)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, observable, totalmente testeable por agentes de navegador en Dev, Staging y Cloudflare Edge.
-- **ADR Asociado:** [`docs/adr/0015-explorabilidad-rutas-y-testabilidad-para-agentes-de-navegador.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/docs/adr/0015-explorabilidad-rutas-y-testabilidad-para-agentes-de-navegador.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (263/263 tests en Vitest + 49/49 tests en Playwright E2E pasando al 100%).
-- **Certificación Staging y Edge:** Rutas estables por hash, modales con data-state sincrónico y bus window.__DIAGNOSTICS__ activos.
+- **Estado:** Estable, seguro y hermético. Aislamiento territorial RBAC multi-sede verificado en todos los módulos (Catálogo, Dashboard, Reportes, Alertas, Mantenimiento, Terreno) y en el frontend.
+- **Spec Activo:** [`specs/feat-021-aislamiento-territorial-rbac-multi-sede.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/specs/feat-021-aislamiento-territorial-rbac-multi-sede.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (277/277 tests en Vitest pasando al 100%, 35 archivos de prueba, Typecheck y Linter limpios).
 
 ---
 
@@ -218,8 +217,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** Ninguno (Hito 15 finalizado con éxito).
-- **Módulo objetivo:** En espera de especificación para Hito 16.
+- **Archivo:** `specs/feat-021-aislamiento-territorial-rbac-multi-sede.md`
+- **Módulo objetivo:** Aislamiento territorial RBAC (Location Scoping) en Dashboard, Reportes, Alertas, Mantenimiento y Catálogo.
 
 ---
 
@@ -273,6 +272,7 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 | 2026-10-04 | Antigravity | Implementación de ADR 0012 y `feat-018` (Hito 15) | Login formal, logout, multi-entorno (dev vs staging/prod), 43/43 E2E Playwright y 207 tests Vitest (Quality Gate 0) |
 | 2026-10-05 | Antigravity | Formalización de ADR 0015 y SDD `feat-020` (Hito 15.3) | Hash Router cliente (`/#/[modulo]`), data-testids estables en vistas/modales, bus `window.__DIAGNOSTICS__`, seed determinista y suite E2E de explorabilidad (49/49 Playwright + 263/263 Vitest, Quality Gate 0) |
 | 2026-10-05 | Antigravity | Ejecución `/learn` (Regla 24 en AGENTS.md) | Formalización de explorabilidad, rutas hash persistentes, ciclo de vida de modales y observabilidad en cliente para agentes |
+| 2026-10-06 | Antigravity | Implementación de `feat-021-aislamiento-territorial-rbac-multi-sede` | Aislamiento territorial RBAC multisede en Catálogo, Dashboard, Reportes, Alertas, Mantenimiento y UI. Suite `tests/server.location-scoping.test.ts` (13/13 tests pasando), Quality Gate 0 (277 tests Vitest). |
 
 
 

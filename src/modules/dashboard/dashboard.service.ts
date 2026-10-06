@@ -39,14 +39,14 @@ export interface DashboardRawData {
 }
 
 export interface IDashboardRepository {
-  getDashboardData(): Promise<DashboardRawData>;
+  getDashboardData(allowedInstalacionIds?: string[]): Promise<DashboardRawData>;
 }
 
 export class DashboardService {
   constructor(private readonly repository: IDashboardRepository) {}
 
-  async obtenerKpis(): Promise<DashboardKpisResponse> {
-    const data = await this.repository.getDashboardData();
+  async obtenerKpis(allowedInstalacionIds?: string[]): Promise<DashboardKpisResponse> {
+    const data = await this.repository.getDashboardData(allowedInstalacionIds);
 
     const instalacionesActivas = data.instalaciones.filter((i) => i.activa);
     const medidoresActivos = data.medidores.filter((m) => m.activo);
@@ -64,8 +64,8 @@ export class DashboardService {
     };
   }
 
-  async obtenerMedidoresDesatendidos(horasUmbral = 24): Promise<MedidorDesatendido[]> {
-    const data = await this.repository.getDashboardData();
+  async obtenerMedidoresDesatendidos(horasUmbral = 24, allowedInstalacionIds?: string[]): Promise<MedidorDesatendido[]> {
+    const data = await this.repository.getDashboardData(allowedInstalacionIds);
     const medidoresActivos = data.medidores.filter((m) => m.activo);
     const now = Date.now();
     const umbralMs = horasUmbral * 3600 * 1000;
@@ -108,8 +108,8 @@ export class DashboardService {
     return desatendidos;
   }
 
-  async obtenerConsumoPorInstalacion(): Promise<ConsumoPorInstalacion[]> {
-    const data = await this.repository.getDashboardData();
+  async obtenerConsumoPorInstalacion(allowedInstalacionIds?: string[]): Promise<ConsumoPorInstalacion[]> {
+    const data = await this.repository.getDashboardData(allowedInstalacionIds);
     const medidoresActivos = data.medidores.filter((m) => m.activo);
 
     // Agrupar por clave: `${instalacionId}:${recurso}`
@@ -169,8 +169,8 @@ export class DashboardService {
     return resultado;
   }
 
-  async obtenerActividadReciente(limit = 10): Promise<ActividadRecienteLectura[]> {
-    const data = await this.repository.getDashboardData();
+  async obtenerActividadReciente(limit = 10, allowedInstalacionIds?: string[]): Promise<ActividadRecienteLectura[]> {
+    const data = await this.repository.getDashboardData(allowedInstalacionIds);
     const medidoresMap = new Map(data.medidores.map((m) => [m.id, m]));
 
     const ordenadas = [...data.lecturas].sort(
