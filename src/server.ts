@@ -82,6 +82,14 @@ export interface BuildServerOptions {
   notificacionesService?: NotificacionesService;
 }
 
+/**
+ * Guardia de entorno para la carga de datos demo (feat-027).
+ * Habilitado solo en development/test. Bloqueado en staging/production.
+ */
+export function isDemoSeedEnabled(env: string): boolean {
+  return env !== "staging" && env !== "production";
+}
+
 export async function buildServer(options: BuildServerOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? (config.NODE_ENV === "test" ? false : { level: config.LOG_LEVEL }),
@@ -408,6 +416,13 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
 
   app.post("/api/demo/seed", async (_req, reply) => {
+    // Guardia fail-closed: demo solo en dev/test (feat-027)
+    if (!isDemoSeedEnabled(config.NODE_ENV)) {
+      return reply.status(403).send({
+        error: "DEMO_SEED_DISABLED",
+        message: "Carga de datos demo deshabilitada fuera de desarrollo.",
+      });
+    }
     try {
       // 1. Usuarios Demo con los 3 Roles: ADMIN, SUPERVISOR, OPERADOR
       const defaultPasswordHash = await hashPassword("demo1234");

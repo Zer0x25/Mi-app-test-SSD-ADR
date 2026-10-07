@@ -168,13 +168,13 @@
           </svg>
         </button>
 
-        <button class="btn btn-secondary btn-sm" id="btnSeedDemo" onclick="seedDemoData()">
+        <button class="btn btn-secondary btn-sm" id="btnSeedDemo" data-testid="btn-seed-demo" onclick="seedDemoData()" style="display: none;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
           Cargar Datos Demo
         </button>
-        <div id="networkStatusBadge" class="network-badge online" title="Conexión activa con el servidor">
+        <div id="networkStatusBadge" data-testid="network-status-badge" class="network-badge online" title="Verificando conexión con el servidor...">
           <span class="network-dot"></span>
           <span>En línea</span>
         </div>
@@ -321,7 +321,7 @@
         <button class="btn btn-outline" onclick="window.Theme.toggle()" style="width: 100%; justify-content: center; min-height: 44px;">
           🌓 Alternar Modo Claro / Oscuro
         </button>
-        <button class="btn btn-secondary" onclick="seedDemoData(); window.closeMobileMenu();" style="width: 100%; justify-content: center; min-height: 44px;">
+        <button class="btn btn-secondary" id="btnSeedDemoMobile" data-testid="btn-seed-demo-mobile" onclick="seedDemoData(); window.closeMobileMenu();" style="display: none; width: 100%; justify-content: center; min-height: 44px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>

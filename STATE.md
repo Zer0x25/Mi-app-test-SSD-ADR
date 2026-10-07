@@ -4,16 +4,22 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Gestión de Tipos con Bloqueo por Uso y Reasignación (feat-026)
+## 🧭 Fase Actual: Demo solo en Dev + Healthcheck Real de Conectividad (feat-027)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable. Tipos editables, archivables y eliminables solo sin medidores asociados (`TIPO_MEDIDOR_EN_USO` 409 / `TIPO_MEDIDOR_CON_MEDIDORES_NO_ELIMINABLE` 422); reasignación de medidores vía `PATCH /medidores/:id` con `tipoMedidorId`; mutaciones de tipos solo ADMIN; pestaña «Tipos de Medidor» en `#/parque`.
-- **Spec Activo:** [`specs/feat-026-tipos-edicion-eliminacion-reasignacion.md`](file:///home/zer0x/Escritorio/Proyects/Mi-app-test-SSD-ADR/specs/feat-026-tipos-edicion-eliminacion-reasignacion.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (334/334 tests en Vitest pasando al 100%, Typecheck y Linter limpios, 61/61 tests Playwright E2E pasando).
+- **Estado:** Estable. Botón «Cargar Datos Demo» (desktop + móvil) solo visible en dev (`devRoleSwitcher === true`, fail-closed `display:none`); `POST /api/demo/seed` bloqueado con `403 DEMO_SEED_DISABLED` en staging/production; badge `#networkStatusBadge` con healthcheck real `GET /readyz` (En línea / Modo Offline / Sin servidor / Servidor degradado, polling 30s, timeout 5s).
+- **Spec Activo:** [`specs/feat-027-demo-dev-only-y-health-real.md`](file:///home/zer0x/Escritorio/Proyects/Mi-app-test-SSD-ADR/specs/feat-027-demo-dev-only-y-health-real.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (338/338 tests en Vitest pasando al 100%, Typecheck y Linter limpios, 9/9 tests Playwright E2E afectados pasando).
 
 ---
 
 ## 📋 Registro de Hitos
+
+- [x] **Hito 15.9: Demo solo en Dev + Healthcheck Real (Completado: 2026-10-07)**
+  - Spec `feat-027` bajo SDD + Agentic TDD (Fase Roja 1/4, Fase Verde completa).
+  - Backend: `isDemoSeedEnabled(env)` + guardia `403 DEMO_SEED_DISABLED` en `POST /api/demo/seed` para staging/production; `GET /readyz` como base pública del healthcheck.
+  - Frontend: `#btnSeedDemo`/`#btnSeedDemoMobile` fail-closed (`display:none`, solo visibles con `devRoleSwitcher:true`) + guardia en `seedDemoData()`; `SyncManager.verificarSaludBackend()` contra `/readyz` (timeout 5s, polling 30s, `cache:no-store`, clic en badge re-verifica) con estados `En línea` / `Modo Offline` / `Sin servidor` / `Servidor degradado`; `api.salud.verificarReadyz()` + CSS `.degraded`; SW con bypass de `/readyz`+`/healthz` y `CACHE_NAME v3` (sin esto el SW servía `/readyz` cacheado y el badge quedaba fijo en "En línea").
+  - Quality Gate: `./scripts/verify.sh` salida 0 (338/338 Vitest) + 10/10 Playwright (`pwa-offline-resiliencia` 3/3 con nuevo test `Sin servidor` + `login-pantalla-real`) sin regresiones.
 
 - [x] **Hito 15.8: Gestión de Tipos con Bloqueo por Uso y Reasignación (Completado: 2026-10-07)**
   - Spec `feat-026` bajo SDD + Agentic TDD (Fase Roja 3/3, Fase Verde completa).
@@ -259,8 +265,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** `specs/feat-026-tipos-edicion-eliminacion-reasignacion.md`
-- **Módulo objetivo:** Gestión de tipos con bloqueo por uso y reasignación. Completado y verificado.
+- **Archivo:** `specs/feat-027-demo-dev-only-y-health-real.md`
+- **Módulo objetivo:** Demo solo en dev + badge de red con healthcheck real. Completado y verificado.
 
 ---
 
@@ -321,3 +327,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 
 | 2026-10-07 | OpenCode | Hardening fail-closed del simulador de rol (ADR 0012) | `roleSimulatorBar` y `mobile-simulator-section` nacen ocultos en `public/index.html` y solo JS los revela en dev; espejo del fix Edge. Quality Gate 0. |
+| 2026-10-07 | OpenCode | Implementación de `feat-027-demo-dev-only-y-health-real` | Demo solo en dev (botones ocultos + `403 DEMO_SEED_DISABLED` en staging/prod) y badge real con `GET /readyz` (En línea/Sin servidor/Degradado, polling 30s). Quality Gate 0 (338/338 Vitest + 9/9 E2E). |

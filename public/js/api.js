@@ -529,6 +529,23 @@ class ApiClient {
   config = {
     get: () => this.request("/api/config"),
   };
+
+  // --- Salud operativa (feat-027): healthcheck real frontend -> backend ---
+  salud = {
+    verificarReadyz: async (timeoutMs = 5000) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const inicio = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      try {
+        // no-store: el SW nunca debe servir un /readyz cacheado (feat-027 fix)
+        const res = await fetch("/readyz", { method: "GET", signal: controller.signal, cache: "no-store" });
+        const fin = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        return { ok: res.ok, status: res.status, latenciaMs: Math.round(fin - inicio) };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
 }
 
 // Instancia global unificada

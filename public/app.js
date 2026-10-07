@@ -34,15 +34,21 @@ async function cargarConfiguracionSistema() {
   const roleSimulatorBar = document.getElementById("roleSimulatorBar");
   const mobileSimulatorSection = document.querySelector(".mobile-simulator-section");
   const loginDevBox = document.getElementById("loginDevQuickAccess");
+  const btnSeedDemo = document.getElementById("btnSeedDemo");
+  const btnSeedDemoMobile = document.getElementById("btnSeedDemoMobile");
 
   if (!systemConfig.features?.devRoleSwitcher) {
     if (roleSimulatorBar) roleSimulatorBar.style.display = "none";
     if (mobileSimulatorSection) mobileSimulatorSection.style.display = "none";
     if (loginDevBox) loginDevBox.style.display = "none";
+    if (btnSeedDemo) btnSeedDemo.style.display = "none";
+    if (btnSeedDemoMobile) btnSeedDemoMobile.style.display = "none";
   } else {
     if (roleSimulatorBar) roleSimulatorBar.style.display = "";
     if (mobileSimulatorSection) mobileSimulatorSection.style.display = "";
     if (loginDevBox) loginDevBox.style.display = "block";
+    if (btnSeedDemo) btnSeedDemo.style.display = "";
+    if (btnSeedDemoMobile) btnSeedDemoMobile.style.display = "";
   }
 }
 
@@ -1061,10 +1067,19 @@ async function submitNuevoMedidor(event) {
 // 7. UTILIDAD DEMO & SEED
 // ------------------------------------------------------------------------------
 async function seedDemoData() {
+  // Defensa en profundidad: demo solo en dev (feat-027). El backend además responde 403 fuera de dev.
+  if (!systemConfig.features?.devRoleSwitcher) {
+    if (window.Toast) {
+      window.Toast.warning("La carga de datos demo solo está disponible en modo desarrollo.", "No disponible");
+    }
+    return;
+  }
   const btn = document.getElementById("btnSeedDemo");
-  const originalHtml = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = "Poblando base de datos...";
+  const originalHtml = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "Poblando base de datos...";
+  }
 
   try {
     const result = await window.api.demo.seed();
@@ -1082,8 +1097,10 @@ async function seedDemoData() {
   } catch (err) {
     window.Toast.error(err.message, "Error al cargar demo");
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
   }
 }
 

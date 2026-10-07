@@ -17,6 +17,7 @@ interface AppWindow {
   syncManager: {
     encolarLectura: (data: Record<string, unknown>, codigo: string) => void;
     sincronizar: () => Promise<unknown>;
+    verificarSaludBackend: () => Promise<unknown>;
   };
 }
 
@@ -102,5 +103,27 @@ test.describe("Flujo E2E: Resiliencia PWA, Detección de Red y Sincronización F
 
     // 8. Verificar que la cola se vacía exitosamente
     await expect(btnSync).toBeHidden({ timeout: 10000 });
+  });
+
+  test("debe mostrar Sin servidor si el backend cae con red local OK (feat-027, healthcheck real)", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForFunction(() => document.body.dataset.appReady === "true");
+
+    const badge = page.locator("#networkStatusBadge");
+    await expect(badge).toContainText("En línea", { timeout: 10000 });
+
+    // 1. Simular caída del backend con red local OK (el SW jamás debe servir /readyz cacheado)
+    await page.route("**/readyz", (route) => route.abort("failed"));
+    await page.evaluate(() => (window as unknown as AppWindow).syncManager.verificarSaludBackend());
+
+    // 2. El badge pasa a Sin servidor (no se queda en En línea ni cae a Modo Offline)
+    await expect(badge).toContainText("Sin servidor", { timeout: 10000 });
+    await expect(badge).toHaveClass(/degraded/);
+
+    // 3. Al recuperar el backend, vuelve a En línea
+    await page.unroute("**/readyz");
+    await page.evaluate(() => (window as unknown as AppWindow).syncManager.verificarSaludBackend());
+    await expect(badge).toContainText("En línea", { timeout: 10000 });
+    await expect(badge).toHaveClass(/online/);
   });
 });
