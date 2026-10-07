@@ -4,17 +4,37 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Ciclo de Vida Metrológico, Archivado (Soft Delete), Edición Segura y Ventana de Gracia (feat-022)
+## 🧭 Fase Actual: Alineación a Estándar OBIS/Origen/Factor por Activo (feat-025)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable, seguro y hermético. Ciclo de vida completo para Instalaciones y Medidores: códigos humanos cortos, edición resistente con IDs surrogates inmutables, archivado no destructivo (soft delete) con bloqueo de lecturas en medidores archivados, ventana de gracia / marcha blanca (30 días) para ADMIN con snapshot en auditoría y sellado cristalizado (> 30 días).
-- **Spec Activo:** [`specs/feat-022-archivar-editar-comisionamiento.md`](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/specs/feat-022-archivar-editar-comisionamiento.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (306/306 tests en Vitest pasando al 100%, 36 archivos de prueba, Typecheck y Linter limpios).
+- **Estado:** Estable. Factor override por activo (`factorInstalacion`), slot interoperable (`codigoExterno` único), trazabilidad de origen (`MANUAL/AJUSTE/IMPORTADA`); factor efectivo = instalación ?? tipo ?? 1 aplicado en lecturas; comportamiento legacy intacto con nulos.
+- **Spec Activo:** [`specs/feat-025-alineacion-estandar-obis-origen-factor.md`](file:///home/zer0x/Escritorio/Proyects/Mi-app-test-SSD-ADR/specs/feat-025-alineacion-estandar-obis-origen-factor.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (322/322 tests en Vitest pasando al 100%, Typecheck y Linter limpios, 59/59 tests Playwright E2E pasando).
 
 ---
 
 ## 📋 Registro de Hitos
 
+- [x] **Hito 15.7: Alineación a Estándar OBIS/Origen/Factor por Activo (Completado: 2026-10-07)**
+  - Spec `feat-025` bajo SDD + Agentic TDD (Fase Roja con fallos en externo-duplicado y origen, Fase Verde completa).
+  - Dominio: `Medidor.codigoExterno` único + `factorInstalacion` override (edición libre con snapshot en auditoría, error `MEDIDOR_CODIGO_EXTERNO_DUPLICADO` 409); `Lectura.origen` (`MANUAL` default, `AJUSTE`, `IMPORTADA`, propagado en batch-sync); factor efectivo instalación ?? tipo ?? 1 en `server.ts`.
+  - Frontend: alta/edición de medidor con externos + factor, bitácora con badge `RECARGA` (feat-024).
+  - Quality Gate: `./scripts/verify.sh` salida 0 (322/322 Vitest) + 59/59 Playwright (nueva suite `estandar-alineacion` 2/2) sin regresiones.
+
+- [x] **Hito 15.6: Tipos de Medición con Multiplicador, Nivel con Cota y Recargas de Tanque (Completado: 2026-10-07)**
+  - Spec `feat-024` implementado bajo SDD + Agentic TDD (Fase Roja 3/3 fallos en factor/capacidad/validación, Fase Verde 72/72 en suites de dominio).
+  - Dominio: `TipoMedidor.multiplicador` (default 1) + `capacidadMaxima` nullable; `Lectura.valor` real + `valorBruto` + `multiplicadorAplicado`, cota `NIVEL_FUERA_DE_RANGO` (422); `RegistroMantenimiento.RECARGA_TANQUE` con `volumenRecargado` + `nivelPosterior` y errores `VOLUMEN_RECARGA_REQUERIDO` (400), `NIVEL_POSTERIOR_REQUERIDO` (400), `RECARGA_SOLO_NIVEL` (422).
+  - Consumos: `ACUMULATIVO` max-min, `NIVEL` bajada+recargas, `INSTANTANEO` promedio (reportes + dashboard con recargas); alertas `SALTO_CONSUMO`/`FUGA_PROBABLE` solo en acumulativos.
+  - Frontend: modal tipo con factor + capacidad, modal mantenimiento con sección recarga + badge `RECARGA`, seed con diésel 5000 L.
+  - Quality Gate: `./scripts/verify.sh` salida 0 (318/318 Vitest) + 57/57 Playwright (nueva suite `tipos-medicion` 2/2) sin regresiones.
+
+- [x] **Hito 15.5: Módulo Parque Independiente y Dashboard Informativo (Completado: 2026-10-07)**
+  - Spec `feat-023` implementado íntegramente bajo SDD + Agentic TDD (Fase Roja con 6/6 fallos iniciales, Fase Verde con 6/6 en verde).
+  - Frontend Aurora UI:
+    - `public/index.html`: `viewAdmin` reducida a KPIs + desatendidos + consumos + actividad reciente (botones de alta eliminados, `seccionGestionParque` extraída). Nueva `viewParque` (`#/parque`, `nav-parque`/`mobile-nav-parque`) con header propio y card de gestión trasladada íntegra (IDs/testids preservados, unicidad garantizada).
+    - `public/app.js`: `ROUTE_HASH_MAP` + `parseRouteKeyFromHash` con `parque`, rama `parque` en `switchRole`, `aplicarPermisosUI` con tabs parque (OPERADOR oculto, SUPERVISOR sin sedes/tipos), `cargarDashboard` desacoplado de `cargarParqueAdmin`, mutaciones refrescando parque + dashboard.
+  - E2E: nueva suite `e2e/parque-modulo.spec.ts` (6/6 pasando) + actualización de `catalogo-aprovisionamiento`, `explorabilidad-agentes`, `login-rbac` y `responsive-mobile` a navegación por parque con selectores acotados `#viewParque`.
+  - Quality Gate: `./scripts/verify.sh` salida 0 (306/306 Vitest) + 55/55 Playwright E2E (49 previas + 6 nuevas) sin regresiones.
 - [x] **Hito 15.4: Ciclo de Vida Metrológico, Archivado (Soft Delete), Edición y Ventana de Gracia / Marcha Blanca 30 Días (Completado: 2026-10-06)**
   - Spec `feat-022` implementado íntegramente bajo Agentic TDD y Architecture Governance.
   - Base de Datos y Esquemas: campo `codigo` añadido a `Instalacion` en Prisma schema, DTOs de edición y respuesta Zod con cálculo dinámico de `enPeriodoGracia` y `diasRestantesGracia`.
@@ -233,8 +253,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** `specs/feat-021-aislamiento-territorial-rbac-multi-sede.md`
-- **Módulo objetivo:** Aislamiento territorial RBAC (Location Scoping) en Dashboard, Reportes, Alertas, Mantenimiento y Catálogo.
+- **Archivo:** `specs/feat-025-alineacion-estandar-obis-origen-factor.md`
+- **Módulo objetivo:** Alineación estándar (factor por activo, código externo, origen de lectura). Completado y verificado.
 
 ---
 

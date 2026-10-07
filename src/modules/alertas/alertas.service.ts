@@ -50,6 +50,7 @@ export interface MedidorParaEvaluacion {
   instalacionId: string;
   instalacionNombre: string;
   recurso: string;
+  tipoMedicion?: string;
   activo: boolean;
   lecturas: { valor: number; fechaLectura: Date }[];
 }
@@ -149,8 +150,12 @@ export class AlertasService {
           }
         }
 
-        // Regla 2: SALTO_CONSUMO
+        // Regla 2: SALTO_CONSUMO (solo medidores ACUMULATIVOS; en NIVEL/INSTANTANEO
+        // las bajadas y fluctuaciones son normales y generarían falsos positivos)
         if (regla.tipo === "SALTO_CONSUMO" && lecturasOrdenadas.length >= 3) {
+          if (medidor.tipoMedicion && medidor.tipoMedicion !== "ACUMULATIVO") {
+            continue;
+          }
           // Calcular deltas históricos
           const deltas: number[] = [];
           for (let i = 1; i < lecturasOrdenadas.length; i++) {
@@ -186,8 +191,12 @@ export class AlertasService {
           }
         }
 
-        // Regla 3: FUGA_PROBABLE
+        // Regla 3: FUGA_PROBABLE (solo ACUMULATIVO con flujo monótono; en NIVEL
+        // el consumo baja el stock y una subida es recarga, no fuga)
         if (regla.tipo === "FUGA_PROBABLE" && lecturasOrdenadas.length >= 3) {
+          if (medidor.tipoMedicion && medidor.tipoMedicion !== "ACUMULATIVO") {
+            continue;
+          }
           // Consumo continuo sin pausas
           const ultimasLecturas = lecturasOrdenadas.slice(-Math.max(3, regla.umbralValor));
           let esFuga = true;

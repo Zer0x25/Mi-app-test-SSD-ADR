@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medidores)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/#/parque");
     // Esperar a que la aplicación esté cargada e inicializada
     await page.waitForSelector("#mainNavbar", { state: "visible" });
     // Asegurar sesión ADMIN activa
@@ -11,6 +11,9 @@ test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medido
       await quickAdmin.click();
       await page.waitForTimeout(200);
     }
+    // El módulo Parque es la sede de altas (feat-023)
+    await page.getByTestId("nav-parque").click();
+    await expect(page.getByTestId("view-parque")).toBeVisible();
   });
 
   test("debe permitir aprovisionar una nueva sede/instalación y reflejarla en los selectores", async ({ page }) => {
@@ -18,8 +21,8 @@ test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medido
     const nombreSede = `Planta Norte E2E ${timestamp}`;
     const direccionSede = "Av. Panamericana Norte 8500";
 
-    // Abrir modal de nueva instalación
-    await page.locator("#btnOpenModalInstalacion").click();
+    // Abrir modal de nueva instalación desde el módulo Parque
+    await page.locator("#viewParque #btnOpenModalInstalacion").click();
     const modal = page.locator("#modalInstalacion");
     await expect(modal).toHaveClass(/open/);
 
@@ -44,8 +47,8 @@ test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medido
     const timestamp = Date.now();
     const nombreTipo = `Agua Salina E2E ${timestamp}`;
 
-    // Abrir modal de nuevo tipo
-    await page.locator("#btnOpenModalTipo").click();
+    // Abrir modal de nuevo tipo desde Parque
+    await page.locator("#viewParque #btnOpenModalTipo").click();
     const modal = page.locator("#modalTipo");
     await expect(modal).toHaveClass(/open/);
 
@@ -63,7 +66,7 @@ test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medido
     await expect(modal).not.toHaveClass(/open/);
 
     // Abrir modal de nuevo medidor para verificar que el tipo esté disponible en las opciones
-    await page.locator("#btnOpenModalMedidor").click();
+    await page.locator("#viewParque #btnOpenModalMedidor").click();
     const selectTipoMedidor = page.locator("#selectMedidorTipo");
     await expect(selectTipoMedidor).toContainText(nombreTipo);
 
@@ -75,8 +78,8 @@ test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medido
     const timestamp = Date.now();
     const codigoUnico = `MED-TEST-${timestamp.toString().slice(-6)}`;
 
-    // 1. Abrir modal y registrar medidor por primera vez
-    await page.locator("#btnOpenModalMedidor").click();
+    // 1. Abrir modal y registrar medidor por primera vez (desde Parque)
+    await page.locator("#viewParque #btnOpenModalMedidor").click();
     const modal = page.locator("#modalMedidor");
     await expect(modal).toHaveClass(/open/);
 
@@ -105,7 +108,7 @@ test.describe("E2E: Aprovisionamiento y Catálogo (Instalaciones, Tipos y Medido
     await expect(modal).not.toHaveClass(/open/);
 
     // 2. Intentar registrar un segundo medidor con el MISMO código para comprobar detección de conflicto (409)
-    await page.locator("#btnOpenModalMedidor").click();
+    await page.locator("#viewParque #btnOpenModalMedidor").click();
     await expect(modal).toHaveClass(/open/);
 
     if (optionsInst.length > 1) {

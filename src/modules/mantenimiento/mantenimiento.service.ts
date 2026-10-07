@@ -6,6 +6,9 @@ import {
   MedidorMantenimientoNotFoundError,
   LecturaRetiroInvalidaError,
   PrecintoNuevoRequeridoError,
+  VolumenRecargaRequeridoError,
+  NivelPosteriorRequeridoError,
+  RecargaSoloNivelError,
   InstalacionNoAsignadaError,
   TipoMantenimiento,
 } from "./mantenimiento.schema.js";
@@ -38,6 +41,8 @@ export interface MantenimientoEntity {
   lecturaRetiro?: number | null;
   motivoBaja?: string | null;
   nuevoMedidorCodigo?: string | null;
+  volumenRecargado?: number | null;
+  nivelPosterior?: number | null;
   observaciones?: string | null;
   createdAt: Date;
 }
@@ -89,6 +94,19 @@ export class MantenimientoService {
     // Regla 1: CAMBIO_PRECINTO exige nuevo precinto
     if (input.tipo === "CAMBIO_PRECINTO" && !input.numeroPrecintoNuevo) {
       throw new PrecintoNuevoRequeridoError(input.medidorId);
+    }
+
+    // Regla 1b: RECARGA_TANQUE solo en NIVEL y con volumen + nivel posterior
+    if (input.tipo === "RECARGA_TANQUE") {
+      if (medidor.tipoMedicion !== "NIVEL") {
+        throw new RecargaSoloNivelError(input.medidorId, medidor.tipoMedicion);
+      }
+      if (input.volumenRecargado === undefined || input.volumenRecargado === null || input.volumenRecargado <= 0) {
+        throw new VolumenRecargaRequeridoError(input.medidorId);
+      }
+      if (input.nivelPosterior === undefined || input.nivelPosterior === null || input.nivelPosterior < 0) {
+        throw new NivelPosteriorRequeridoError(input.medidorId);
+      }
     }
 
     // Regla 2: En baja o reemplazo, validar lectura de retiro si el medidor es acumulativo
@@ -149,6 +167,8 @@ export class MantenimientoService {
       lecturaRetiro: input.lecturaRetiro ?? null,
       motivoBaja: input.motivoBaja ?? null,
       nuevoMedidorCodigo: input.nuevoMedidorCodigo ?? null,
+      volumenRecargado: input.volumenRecargado ?? null,
+      nivelPosterior: input.nivelPosterior ?? null,
       observaciones: input.observaciones ?? null,
     });
 
@@ -204,6 +224,8 @@ export class MantenimientoService {
       lecturaRetiro: registro.lecturaRetiro ?? null,
       motivoBaja: registro.motivoBaja ?? null,
       nuevoMedidorCodigo: registro.nuevoMedidorCodigo ?? null,
+      volumenRecargado: registro.volumenRecargado ?? null,
+      nivelPosterior: registro.nivelPosterior ?? null,
       observaciones: registro.observaciones ?? null,
       createdAt: registro.createdAt,
     };
@@ -232,6 +254,8 @@ export class MantenimientoService {
       lecturaRetiro: registro.lecturaRetiro ?? null,
       motivoBaja: registro.motivoBaja ?? null,
       nuevoMedidorCodigo: registro.nuevoMedidorCodigo ?? null,
+      volumenRecargado: registro.volumenRecargado ?? null,
+      nivelPosterior: registro.nivelPosterior ?? null,
       observaciones: registro.observaciones ?? null,
       createdAt: registro.createdAt,
     }));

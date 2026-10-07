@@ -12,9 +12,14 @@ import {
 class InMemoryReportesRepository implements IReportesRepository {
   public rawItems: ReporteRawItem[] = [];
   public facturas: FacturaEntity[] = [];
+  public recargas: { medidorId: string; volumen: number; fecha: Date }[] = [];
 
   async getReporteRawData(): Promise<ReporteRawItem[]> {
     return this.rawItems;
+  }
+
+  async getRecargas(medidorIds: string[]): Promise<{ medidorId: string; volumen: number; fecha: Date }[]> {
+    return this.recargas.filter((r) => medidorIds.includes(r.medidorId));
   }
 
   async createFactura(data: Omit<FacturaEntity, "id" | "createdAt" | "updatedAt">): Promise<FacturaEntity> {
@@ -91,6 +96,62 @@ describe("ReportesService Suite (Agentic TDD)", () => {
           fechaFin: new Date("2026-10-01T00:00:00Z"),
         })
       ).rejects.toThrow(RangoFechasInvalidoError);
+    });
+
+    it("debe calcular consumo NIVEL como bajada neta más recargas (feat-024)", async () => {
+      const fechaInicio = new Date("2026-09-01T00:00:00Z");
+      const fechaFin = new Date("2026-09-30T23:59:59Z");
+      const medNivel = crypto.randomUUID();
+
+      repo.rawItems = [
+        {
+          medidorId: medNivel,
+          medidorCodigo: "MED-DIE-01",
+          instalacionId: instId,
+          instalacionNombre: "Patio Tanques",
+          recurso: "PETROLEO",
+          unidad: "LITROS",
+          tipoMedicion: "NIVEL",
+          lecturas: [
+            { valor: 4800, fechaLectura: new Date("2026-09-05T08:00:00Z") },
+            { valor: 4200, fechaLectura: new Date("2026-09-20T08:00:00Z") },
+          ],
+        },
+      ];
+      repo.recargas = [
+        { medidorId: medNivel, volumen: 1000, fecha: new Date("2026-09-12T08:00:00Z") },
+      ];
+
+      const res = await service.obtenerConsumoConsolidado({ fechaInicio, fechaFin });
+      expect(res).toHaveLength(1);
+      expect(res[0].consumoNeto).toBe(1600); // (4800-4200)+1000
+    });
+
+    it("debe calcular consumo INSTANTANEO como promedio (feat-024)", async () => {
+      const fechaInicio = new Date("2026-09-01T00:00:00Z");
+      const fechaFin = new Date("2026-09-30T23:59:59Z");
+      const medInst = crypto.randomUUID();
+
+      repo.rawItems = [
+        {
+          medidorId: medInst,
+          medidorCodigo: "MED-POT-01",
+          instalacionId: instId,
+          instalacionNombre: "Sala Eléctrica",
+          recurso: "LUZ",
+          unidad: "KWH",
+          tipoMedicion: "INSTANTANEO",
+          lecturas: [
+            { valor: 10, fechaLectura: new Date("2026-09-01T08:00:00Z") },
+            { valor: 20, fechaLectura: new Date("2026-09-15T08:00:00Z") },
+            { valor: 30, fechaLectura: new Date("2026-09-30T08:00:00Z") },
+          ],
+        },
+      ];
+
+      const res = await service.obtenerConsumoConsolidado({ fechaInicio, fechaFin });
+      expect(res).toHaveLength(1);
+      expect(res[0].consumoNeto).toBe(20);
     });
   });
 

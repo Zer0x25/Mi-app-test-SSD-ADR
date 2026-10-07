@@ -22,6 +22,7 @@ test.describe("Flujo E2E: Autenticación y Control de Acceso RBAC", () => {
 
     // 3. Verificar visibilidad de todas las pestañas de navegación para ADMIN
     await expect(page.locator("#tabAdminBtn")).toBeVisible();
+    await expect(page.locator("#tabParqueBtn")).toBeVisible();
     await expect(page.locator("#tabReportesBtn")).toBeVisible();
     await expect(page.locator("#tabAlertasBtn")).toBeVisible();
     await expect(page.locator("#tabMantenimientoBtn")).toBeVisible();
@@ -30,10 +31,13 @@ test.describe("Flujo E2E: Autenticación y Control de Acceso RBAC", () => {
     await expect(page.locator("#tabWebhooksBtn")).toBeVisible();
     await expect(page.locator("#tabOperadorBtn")).toBeVisible();
 
-    // 4. Verificar botones de acción administrativa en Dashboard
-    await expect(page.locator("#btnOpenModalMedidor")).toBeVisible();
-    await expect(page.locator("#btnOpenModalInstalacion")).toBeVisible();
-    await expect(page.locator("#btnOpenModalTipo")).toBeVisible();
+    // 4. Verificar botones de acción administrativa en el módulo Parque (feat-023: dashboard es solo informativo)
+    await expect(page.locator("#viewAdmin #btnOpenModalMedidor")).toHaveCount(0);
+    await page.getByTestId("nav-parque").click();
+    await expect(page.getByTestId("view-parque")).toBeVisible();
+    await expect(page.locator("#viewParque #btnOpenModalMedidor")).toBeVisible();
+    await expect(page.locator("#viewParque #btnOpenModalInstalacion")).toBeVisible();
+    await expect(page.locator("#viewParque #btnOpenModalTipo")).toBeVisible();
   });
 
   test("debe conmutar a rol OPERADOR, activando Modo Terreno y restringiendo módulos administrativos", async ({ page }) => {
@@ -56,6 +60,7 @@ test.describe("Flujo E2E: Autenticación y Control de Acceso RBAC", () => {
     await expect(page.locator("#tabUsuariosBtn")).toBeHidden();
     await expect(page.locator("#tabAuditoriaBtn")).toBeHidden();
     await expect(page.locator("#tabAdminBtn")).toBeHidden();
+    await expect(page.getByTestId("nav-parque")).toBeHidden();
   });
 
   test("debe conmutar a rol SUPERVISOR, permitiendo dashboard pero restringiendo administración global", async ({ page }) => {
@@ -69,12 +74,15 @@ test.describe("Flujo E2E: Autenticación y Control de Acceso RBAC", () => {
     await expect(userPill).toContainText("SUPERVISOR");
     await expect(userPill).toContainText("Carlos Supervisor");
 
-    // Supervisor no tiene acceso a Webhooks ni a crear instalaciones
+    // Supervisor no tiene acceso a Webhooks ni a crear instalaciones (botones viven en Parque)
     await expect(page.locator("#tabWebhooksBtn")).toBeHidden();
-    await expect(page.locator("#btnOpenModalInstalacion")).toBeHidden();
+    await page.getByTestId("nav-parque").click();
+    await expect(page.getByTestId("view-parque")).toBeVisible();
+    await expect(page.locator("#viewParque #btnOpenModalInstalacion")).toBeHidden();
 
-    // Pero sí ve Dashboard y Reportes
+    // Pero sí ve Dashboard, Parque y Reportes
     await expect(page.locator("#tabAdminBtn")).toBeVisible();
+    await expect(page.getByTestId("nav-parque")).toBeVisible();
     await expect(page.locator("#tabReportesBtn")).toBeVisible();
   });
 });

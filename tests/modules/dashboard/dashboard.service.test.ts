@@ -10,6 +10,7 @@ class InMemoryDashboardRepository implements IDashboardRepository {
     instalaciones: [],
     medidores: [],
     lecturas: [],
+    recargas: [],
   };
 
   async getDashboardData(allowedInstalacionIds?: string[]): Promise<DashboardRawData> {
@@ -21,10 +22,12 @@ class InMemoryDashboardRepository implements IDashboardRepository {
     const medidores = this.data.medidores.filter((m) => allowedSet.has(m.instalacionId));
     const medidoresIds = new Set(medidores.map((m) => m.id));
     const lecturas = this.data.lecturas.filter((l) => medidoresIds.has(l.medidorId));
+    const recargas = (this.data.recargas || []).filter((r) => medidoresIds.has(r.medidorId));
     return {
       instalaciones,
       medidores,
       lecturas,
+      recargas,
     };
   }
 }
@@ -122,6 +125,7 @@ describe("DashboardService Suite (Agentic TDD)", () => {
         },
         // medidor3Id nunca ha tenido lecturas
       ],
+      recargas: [],
     };
   });
 
@@ -180,6 +184,39 @@ describe("DashboardService Suite (Agentic TDD)", () => {
       );
       expect(consumoLuz).toBeDefined();
       expect(consumoLuz?.consumoNeto).toBe(0);
+    });
+
+    it("debe calcular consumo NIVEL como bajada más recargas (feat-024)", async () => {
+      repository.data.lecturas.push(
+        {
+          id: crypto.randomUUID(),
+          medidorId: medidor3Id,
+          valor: 4800,
+          fechaLectura: new Date(Date.now() - 72 * 3600 * 1000),
+          operadorId: crypto.randomUUID(),
+          notas: "Llenado",
+        },
+        {
+          id: crypto.randomUUID(),
+          medidorId: medidor3Id,
+          valor: 4200,
+          fechaLectura: new Date(Date.now() - 30 * 3600 * 1000),
+          operadorId: crypto.randomUUID(),
+          notas: "Consumo",
+        }
+      );
+      repository.data.recargas.push({
+        medidorId: medidor3Id,
+        volumen: 1000,
+        fecha: new Date(Date.now() - 40 * 3600 * 1000),
+      });
+
+      const consumos = await service.obtenerConsumoPorInstalacion();
+      const consumoDiesel = consumos.find(
+        (c) => c.instalacionId === inst2Id && c.recurso === "PETROLEO"
+      );
+      expect(consumoDiesel).toBeDefined();
+      expect(consumoDiesel?.consumoNeto).toBe(1600);
     });
   });
 

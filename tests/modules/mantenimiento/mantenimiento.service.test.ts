@@ -169,4 +169,78 @@ describe("MantenimientoService Suite (Agentic TDD)", () => {
       ).rejects.toThrow(MedidorMantenimientoNotFoundError);
     });
   });
+
+  describe("Recarga de Tanque (feat-024)", () => {
+    const medidorTanqueId = crypto.randomUUID();
+    const instTanqueId = crypto.randomUUID();
+
+    beforeEach(() => {
+      repo.medidores.set(medidorTanqueId, {
+        id: medidorTanqueId,
+        codigo: "MED-DIE-TANQUE",
+        instalacionId: instTanqueId,
+        instalacionNombre: "Patio Tanques",
+        tipoMedicion: "NIVEL",
+        activo: true,
+        precintoActual: null,
+        fechaUltimaCalibracion: null,
+        fechaProximaCalibracion: null,
+        ultimaLecturaValor: 4200,
+      });
+    });
+
+    it("debe registrar RECARGA_TANQUE válida en medidor NIVEL", async () => {
+      const res = await service.registrarMantenimiento({
+        medidorId: medidorTanqueId,
+        tipo: "RECARGA_TANQUE",
+        fechaMantenimiento: new Date(),
+        tecnicoResponsable: "Operador Combustible",
+        volumenRecargado: 1000,
+        nivelPosterior: 5000,
+      });
+      expect(res.tipo).toBe("RECARGA_TANQUE");
+      expect(res.volumenRecargado).toBe(1000);
+      expect(res.nivelPosterior).toBe(5000);
+    });
+
+    it("debe rechazar RECARGA_TANQUE sin volumen o sin nivel posterior", async () => {
+      const { VolumenRecargaRequeridoError, NivelPosteriorRequeridoError } = await import(
+        "../../../src/modules/mantenimiento/mantenimiento.schema.js"
+      );
+      await expect(
+        service.registrarMantenimiento({
+          medidorId: medidorTanqueId,
+          tipo: "RECARGA_TANQUE",
+          fechaMantenimiento: new Date(),
+          tecnicoResponsable: "Operador Turno",
+          nivelPosterior: 5000,
+        })
+      ).rejects.toThrow(VolumenRecargaRequeridoError);
+      await expect(
+        service.registrarMantenimiento({
+          medidorId: medidorTanqueId,
+          tipo: "RECARGA_TANQUE",
+          fechaMantenimiento: new Date(),
+          tecnicoResponsable: "Operador Turno",
+          volumenRecargado: 500,
+        })
+      ).rejects.toThrow(NivelPosteriorRequeridoError);
+    });
+
+    it("debe rechazar RECARGA_TANQUE sobre medidor no-NIVEL", async () => {
+      const { RecargaSoloNivelError } = await import(
+        "../../../src/modules/mantenimiento/mantenimiento.schema.js"
+      );
+      await expect(
+        service.registrarMantenimiento({
+          medidorId,
+          tipo: "RECARGA_TANQUE",
+          fechaMantenimiento: new Date(),
+          tecnicoResponsable: "Operador Turno",
+          volumenRecargado: 100,
+          nivelPosterior: 100,
+        })
+      ).rejects.toThrow(RecargaSoloNivelError);
+    });
+  });
 });

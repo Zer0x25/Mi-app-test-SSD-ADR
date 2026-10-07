@@ -59,6 +59,8 @@ class MockMedidorInfoService implements IMedidorInfoService {
       instalacionId: string;
       activo: boolean;
       tipoMedicion: "ACUMULATIVO" | "INSTANTANEO" | "NIVEL";
+      multiplicador: number;
+      capacidadMaxima?: number | null;
     }
   >();
 
@@ -103,6 +105,8 @@ describe("LecturasService Suite (Agentic TDD)", () => {
       instalacionId,
       activo: true,
       tipoMedicion: "ACUMULATIVO",
+      multiplicador: 1,
+      capacidadMaxima: null,
     });
 
     medidorService.medidores.set(medidorNivelId, {
@@ -110,6 +114,8 @@ describe("LecturasService Suite (Agentic TDD)", () => {
       instalacionId,
       activo: true,
       tipoMedicion: "NIVEL",
+      multiplicador: 1,
+      capacidadMaxima: null,
     });
   });
 
@@ -145,6 +151,8 @@ describe("LecturasService Suite (Agentic TDD)", () => {
         instalacionId,
         activo: false,
         tipoMedicion: "ACUMULATIVO",
+        multiplicador: 1,
+        capacidadMaxima: null,
       });
 
       await expect(
@@ -245,6 +253,124 @@ describe("LecturasService Suite (Agentic TDD)", () => {
       });
 
       expect(l2.valor).toBe(65);
+    });
+  });
+
+  describe("Multiplicador y cota de tanque (feat-024)", () => {
+    it("debe guardar valor real = bruto * multiplicador y validar decreciente sobre real", async () => {
+      const medidorFactorId = crypto.randomUUID();
+      medidorService.medidores.set(medidorFactorId, {
+        id: medidorFactorId,
+        instalacionId,
+        activo: true,
+        tipoMedicion: "ACUMULATIVO",
+        multiplicador: 20,
+        capacidadMaxima: null,
+      });
+      const t1 = new Date(Date.now() - 10000);
+      const t2 = new Date(Date.now() - 5000);
+
+      const l1 = await service.registrarLectura({
+        medidorId: medidorFactorId,
+        operadorId,
+        valor: 5, // dial
+        fechaLectura: t1,
+      });
+      expect(l1.valor).toBe(100);
+      expect(l1.valorBruto).toBe(5);
+      expect(l1.multiplicadorAplicado).toBe(20);
+
+      const l2 = await service.registrarLectura({
+        medidorId: medidorFactorId,
+        operadorId,
+        valor: 6,
+        fechaLectura: t2,
+      });
+      expect(l2.valor).toBe(120);
+
+      const { LecturaDecrecienteError: Decr } = await import(
+        "../../../src/modules/lecturas/lecturas.schema.js"
+      );
+      await expect(
+        service.registrarLectura({
+          medidorId: medidorFactorId,
+          operadorId,
+          valor: 4, // real 80 < 120
+          fechaLectura: new Date(),
+        })
+      ).rejects.toThrow(Decr);
+    });
+
+    it("debe rechazar nivel sobre la capacidad máxima con NIVEL_FUERA_DE_RANGO", async () => {      const medidorTanqueId = crypto.randomUUID();
+      medidorService.medidores.set(medidorTanqueId, {
+        id: medidorTanqueId,
+        instalacionId,
+        activo: true,
+        tipoMedicion: "NIVEL",
+        multiplicador: 1,
+        capacidadMaxima: 5000,
+      });
+      const { NivelFueraDeRangoError } = await import(
+        "../../../src/modules/lecturas/lecturas.schema.js"
+      );
+      await expect(
+        service.registrarLectura({
+          medidorId: medidorTanqueId,
+          operadorId,
+          valor: 5200,
+          fechaLectura: new Date(Date.now() - 1000),
+        })
+      ).rejects.toThrow(NivelFueraDeRangoError);
+
+      const ok = await service.registrarLectura({
+        medidorId: medidorTanqueId,
+        operadorId,
+        valor: 4800,
+        fechaLectura: new Date(Date.now() - 2000),
+      });
+      expect(ok.valor).toBe(4800);
+    });
+  });
+
+  describe("Factor por activo y origen (feat-025)", () => {
+    it("debe usar factorInstalacion por sobre el del tipo", async () => {
+      const medId = crypto.randomUUID();
+      medidorService.medidores.set(medId, {
+        id: medId,
+        instalacionId,
+        activo: true,
+        tipoMedicion: "ACUMULATIVO",
+        multiplicador: 20,
+        capacidadMaxima: null,
+      });
+      const l = await service.registrarLectura({
+        medidorId: medId,
+        operadorId,
+        valor: 5,
+        fechaLectura: new Date(Date.now() - 1000),
+      });
+      expect(l.valor).toBe(100);
+      expect(l.multiplicadorAplicado).toBe(20);
+    });
+
+    it("debe guardar origen MANUAL por defecto y AJUSTE cuando se indica", async () => {
+      const t1 = new Date(Date.now() - 3000);
+      const t2 = new Date(Date.now() - 2000);
+      const l1 = await service.registrarLectura({
+        medidorId: medidorAcumulativoId,
+        operadorId,
+        valor: 10,
+        fechaLectura: t1,
+      });
+      expect((l1 as unknown as Record<string, unknown>)["origen"]).toBe("MANUAL");
+      const l2 = await service.registrarLectura({
+        medidorId: medidorAcumulativoId,
+        operadorId,
+        valor: 20,
+        fechaLectura: t2,
+        origen: "AJUSTE",
+      } as unknown as Parameters<typeof service.registrarLectura>[0]);
+      expect((l2 as unknown as Record<string, unknown>)["origen"]).toBe("AJUSTE");
     });
   });
 

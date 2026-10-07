@@ -63,8 +63,11 @@ test.describe("Módulo Responsive & Adaptabilidad Móvil (Hito 13 / feat-016)", 
     await page.setViewportSize({ width: 320, height: 568 });
     await page.waitForTimeout(300);
 
-    // Abrir modal de nuevo medidor desde el dashboard
-    const btnNuevoMedidor = page.locator("#btnOpenModalMedidor");
+    // Abrir modal de nuevo medidor desde el módulo Parque (feat-023)
+    // En 320px el nav desktop está oculto: navegar por hash directo
+    await page.goto("/#/parque");
+    await expect(page.getByTestId("view-parque")).toBeVisible();
+    const btnNuevoMedidor = page.locator("#viewParque #btnOpenModalMedidor");
     await expect(btnNuevoMedidor).toBeVisible();
     await btnNuevoMedidor.click();
 

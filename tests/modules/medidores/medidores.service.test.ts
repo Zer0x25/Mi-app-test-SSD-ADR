@@ -69,6 +69,15 @@ class InMemoryMedidoresRepository implements IMedidoresRepository {
     return this.medidores.find((m) => m.codigo.trim().toLowerCase() === norm) || null;
   }
 
+  async findMedidorByCodigoExterno(codigoExterno: string): Promise<MedidorEntity | null> {
+    const norm = codigoExterno.trim().toLowerCase();
+    return (
+      this.medidores.find(
+        (m) => (m.codigoExterno || "").trim().toLowerCase() === norm && norm !== ""
+      ) || null
+    );
+  }
+
   async createMedidor(
     data: Omit<MedidorEntity, "id" | "createdAt" | "updatedAt">
   ): Promise<MedidorEntity> {
@@ -174,6 +183,96 @@ describe("MedidoresService Suite (Agentic TDD)", () => {
       expect(lista.length).toBe(1);
       expect(lista[0].nombre).toBe("Diésel Generador");
     });
+
+    it("debe crear un tipo con multiplicador personalizado (feat-024)", async () => {
+      const tipo = await service.crearTipoMedidor({
+        nombre: "Luz Trafo 100/5",
+        recurso: "LUZ",
+        unidad: "KWH",
+        tipoMedicion: "ACUMULATIVO",
+        multiplicador: 20,
+      } as unknown as Parameters<typeof service.crearTipoMedidor>[0]);
+
+      expect((tipo as unknown as Record<string, unknown>)["multiplicador"]).toBe(20);
+    });
+
+    it("debe crear un tipo NIVEL con capacidad máxima (feat-024)", async () => {
+      const tipo = await service.crearTipoMedidor({
+        nombre: "Estanque Diesel 5000",
+        recurso: "PETROLEO",
+        unidad: "LITROS",
+        tipoMedicion: "NIVEL",
+        multiplicador: 1,
+        capacidadMaxima: 5000,
+      } as unknown as Parameters<typeof service.crearTipoMedidor>[0]);
+
+      expect((tipo as unknown as Record<string, unknown>)["capacidadMaxima"]).toBe(5000);
+    });
+
+    it("debe rechazar multiplicador no positivo por Zod (feat-024)", async () => {
+      await expect(
+        service.crearTipoMedidor({
+          nombre: "Tipo Factor Malo",
+          recurso: "LUZ",
+          unidad: "KWH",
+          tipoMedicion: "ACUMULATIVO",
+          multiplicador: 0,
+        } as unknown as Parameters<typeof service.crearTipoMedidor>[0])
+      ).rejects.toThrow();
+    });
+
+    it("debe crear un medidor con codigoExterno y factorInstalacion (feat-025)", async () => {
+      const instId = crypto.randomUUID();
+      instalacionesVerif.instalaciones.set(instId, { id: instId, activa: true });
+      const tipo = await service.crearTipoMedidor({
+        nombre: "Tipo Std " + crypto.randomUUID().slice(0, 8),
+        recurso: "LUZ",
+        unidad: "KWH",
+        tipoMedicion: "ACUMULATIVO",
+        multiplicador: 1,
+      });
+      const med = await service.crearMedidor({
+        instalacionId: instId,
+        tipoMedidorId: tipo.id,
+        codigo: "MED-STD-01",
+        ubicacionInterna: "Sala Trafo",
+        codigoExterno: "OBIS-1-0:1.8.0-FF",
+        factorInstalacion: 20,
+      });
+      expect((med as unknown as Record<string, unknown>)["codigoExterno"]).toBe("OBIS-1-0:1.8.0-FF");
+      expect((med as unknown as Record<string, unknown>)["factorInstalacion"]).toBe(20);
+    });
+
+    it("debe rechazar codigoExterno duplicado con 409 (feat-025)", async () => {
+      const { MedidorCodigoExternoDuplicadoError } = await import(
+        "../../../src/modules/medidores/medidores.schema.js"
+      );
+      const instId = crypto.randomUUID();
+      instalacionesVerif.instalaciones.set(instId, { id: instId, activa: true });
+      const tipo = await service.crearTipoMedidor({
+        nombre: "Tipo Std Dup " + crypto.randomUUID().slice(0, 8),
+        recurso: "LUZ",
+        unidad: "KWH",
+        tipoMedicion: "ACUMULATIVO",
+        multiplicador: 1,
+      });
+      await service.crearMedidor({
+        instalacionId: instId,
+        tipoMedidorId: tipo.id,
+        codigo: "MED-STD-A",
+        ubicacionInterna: "Sala A",
+        codigoExterno: "EXT-DUP-01",
+      });
+      await expect(
+        service.crearMedidor({
+          instalacionId: instId,
+          tipoMedidorId: tipo.id,
+          codigo: "MED-STD-B",
+          ubicacionInterna: "Sala B",
+          codigoExterno: "EXT-DUP-01",
+        })
+      ).rejects.toThrow(MedidorCodigoExternoDuplicadoError);
+    });
   });
 
   describe("Medidores Físicos", () => {
@@ -275,6 +374,8 @@ describe("MedidoresService Suite (Agentic TDD)", () => {
         recurso: "OTRO",
         unidad: "OTRO",
         tipoMedicion: "INSTANTANEO",
+        multiplicador: 1,
+        capacidadMaxima: null,
         activo: false,
       });
 

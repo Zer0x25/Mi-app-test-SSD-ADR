@@ -49,6 +49,7 @@ export class PrismaAlertasRepository implements IAlertasRepository {
       instalacionId: m.instalacionId,
       instalacionNombre: m.instalacion.nombre,
       recurso: m.tipoMedidor.recurso,
+      tipoMedicion: m.tipoMedidor.tipoMedicion,
       activo: m.activo,
       lecturas: m.lecturas.map((l) => ({
         valor: l.valor,

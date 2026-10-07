@@ -36,6 +36,13 @@ export interface DashboardRawData {
   instalaciones: RawInstalacion[];
   medidores: RawMedidor[];
   lecturas: RawLectura[];
+  recargas: RawRecarga[];
+}
+
+export interface RawRecarga {
+  medidorId: string;
+  volumen: number;
+  fecha: Date;
 }
 
 export interface IDashboardRepository {
@@ -151,10 +158,32 @@ export class DashboardService {
           if (lecturas.length >= 2) {
             const min = lecturas[0].valor;
             const max = lecturas[lecturas.length - 1].valor;
-            consumoNetoTotal += max - min;
+            consumoNetoTotal += Math.max(0, max - min);
+          }
+        } else if (m.tipoMedicion === "NIVEL") {
+          const lecturas = data.lecturas
+            .filter((l) => l.medidorId === m.id)
+            .sort((a, b) => a.fechaLectura.getTime() - b.fechaLectura.getTime());
+
+          if (lecturas.length >= 1) {
+            const inicial = lecturas[0].valor;
+            const fin = lecturas[lecturas.length - 1].valor;
+            const bajada = Math.max(0, inicial - fin);
+            const recargaTotal = (data.recargas || [])
+              .filter((r) => r.medidorId === m.id)
+              .reduce((acc, r) => acc + r.volumen, 0);
+            consumoNetoTotal += bajada + recargaTotal;
+          }
+        } else if (m.tipoMedicion === "INSTANTANEO") {
+          const lecturas = data.lecturas.filter((l) => l.medidorId === m.id);
+          if (lecturas.length >= 1) {
+            const suma = lecturas.reduce((acc, l) => acc + l.valor, 0);
+            consumoNetoTotal += suma / lecturas.length;
           }
         }
       }
+
+      consumoNetoTotal = Number(consumoNetoTotal.toFixed(2));
 
       resultado.push({
         instalacionId: grupo.instalacionId,

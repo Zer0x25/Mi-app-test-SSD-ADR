@@ -18,6 +18,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       unidad: tipo.unidad as UnidadMedida,
       unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
+      multiplicador: (tipo as unknown as { multiplicador?: number }).multiplicador ?? 1,
+      capacidadMaxima: (tipo as unknown as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
     };
   }
 
@@ -30,6 +32,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       unidad: tipo.unidad as UnidadMedida,
       unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
+      multiplicador: (tipo as unknown as { multiplicador?: number }).multiplicador ?? 1,
+      capacidadMaxima: (tipo as unknown as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
     };
   }
 
@@ -42,6 +46,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
         recurso: data.recurso,
         unidad: data.unidad,
         tipoMedicion: data.tipoMedicion,
+        multiplicador: data.multiplicador ?? 1,
+        capacidadMaxima: data.capacidadMaxima ?? null,
         activo: data.activo,
       },
     });
@@ -51,6 +57,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       unidad: tipo.unidad as UnidadMedida,
       unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
+      multiplicador: (tipo as unknown as { multiplicador?: number }).multiplicador ?? 1,
+      capacidadMaxima: (tipo as unknown as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
     };
   }
 
@@ -62,6 +70,8 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       unidad: tipo.unidad as UnidadMedida,
       unidadMedida: tipo.unidad,
       tipoMedicion: tipo.tipoMedicion as TipoMedicion,
+      multiplicador: (tipo as unknown as { multiplicador?: number }).multiplicador ?? 1,
+      capacidadMaxima: (tipo as unknown as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
     }));
   }
 
@@ -103,34 +113,44 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
   async findMedidorByCodigo(codigo: string): Promise<MedidorEntity | null> {
     const m = await this.prisma.medidor.findUnique({ where: { codigo } });
     if (!m) return null;
-    return m;
+    return m as unknown as MedidorEntity;
+  }
+
+  async findMedidorByCodigoExterno(codigoExterno: string): Promise<MedidorEntity | null> {
+    const m = await this.prisma.medidor.findUnique({ where: { codigoExterno } });
+    if (!m) return null;
+    return m as unknown as MedidorEntity;
   }
 
   async createMedidor(
     data: Omit<MedidorEntity, "id" | "createdAt" | "updatedAt">
   ): Promise<MedidorEntity> {
-    return await this.prisma.medidor.create({
+    return (await this.prisma.medidor.create({
       data: {
         instalacionId: data.instalacionId,
         tipoMedidorId: data.tipoMedidorId,
         codigo: data.codigo,
+        codigoExterno: data.codigoExterno ?? null,
+        factorInstalacion: data.factorInstalacion ?? null,
         numeroSerie: data.numeroSerie,
         ubicacionInterna: data.ubicacionInterna,
         activo: data.activo,
       },
-    });
+    })) as unknown as MedidorEntity;
   }
 
   async updateMedidor(id: string, data: Partial<MedidorEntity>): Promise<MedidorEntity> {
-    return await this.prisma.medidor.update({
+    return (await this.prisma.medidor.update({
       where: { id },
       data: {
         ...(data.codigo !== undefined && { codigo: data.codigo }),
+        ...(data.codigoExterno !== undefined && { codigoExterno: data.codigoExterno }),
+        ...(data.factorInstalacion !== undefined && { factorInstalacion: data.factorInstalacion }),
         ...(data.numeroSerie !== undefined && { numeroSerie: data.numeroSerie }),
         ...(data.ubicacionInterna !== undefined && { ubicacionInterna: data.ubicacionInterna }),
         ...(data.activo !== undefined && { activo: data.activo }),
       },
-    });
+    })) as unknown as MedidorEntity;
   }
 
   async countLecturas(medidorId: string): Promise<number> {

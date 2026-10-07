@@ -63,6 +63,23 @@ export class PrismaReportesRepository implements IReportesRepository {
     }));
   }
 
+  async getRecargas(medidorIds: string[], fechaInicio: Date, fechaFin: Date): Promise<{ medidorId: string; volumen: number; fecha: Date }[]> {
+    if (medidorIds.length === 0) return [];
+    const regs = await this.prisma.registroMantenimiento.findMany({
+      where: {
+        medidorId: { in: medidorIds },
+        tipo: "RECARGA_TANQUE",
+        fechaMantenimiento: { gte: fechaInicio, lte: fechaFin },
+      },
+      select: { medidorId: true, volumenRecargado: true, fechaMantenimiento: true },
+    });
+    return regs.map((r) => ({
+      medidorId: r.medidorId,
+      volumen: (r as unknown as { volumenRecargado?: number | null }).volumenRecargado ?? 0,
+      fecha: r.fechaMantenimiento,
+    }));
+  }
+
   async createFactura(data: Omit<FacturaEntity, "id" | "createdAt" | "updatedAt">): Promise<FacturaEntity> {
     const created = await this.prisma.facturaServicio.create({
       data: {

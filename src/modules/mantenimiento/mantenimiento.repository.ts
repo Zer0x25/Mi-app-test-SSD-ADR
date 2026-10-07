@@ -61,7 +61,26 @@ export class PrismaMantenimientoRepository implements IMantenimientoRepository {
   async createRegistro(
     data: Omit<MantenimientoEntity, "id" | "createdAt">
   ): Promise<MantenimientoEntity> {
-    const created = await this.prisma.registroMantenimiento.create({
+    type PrismaCreated = {
+      id: string;
+      medidorId: string;
+      tipo: string;
+      fechaMantenimiento: Date;
+      tecnicoResponsable: string;
+      numeroPrecintoAnterior: string | null;
+      numeroPrecintoNuevo: string | null;
+      proximaCalibracion: Date | null;
+      certificadoCalibracion: string | null;
+      lecturaRetiro: number | null;
+      motivoBaja: string | null;
+      nuevoMedidorCodigo: string | null;
+      volumenRecargado: number | null;
+      nivelPosterior: number | null;
+      observaciones: string | null;
+      createdAt: Date;
+      medidor: { codigo: string; instalacion: { nombre: string } };
+    };
+    const created = (await this.prisma.registroMantenimiento.create({
       data: {
         medidorId: data.medidorId,
         tipo: data.tipo,
@@ -74,6 +93,8 @@ export class PrismaMantenimientoRepository implements IMantenimientoRepository {
         lecturaRetiro: data.lecturaRetiro,
         motivoBaja: data.motivoBaja,
         nuevoMedidorCodigo: data.nuevoMedidorCodigo,
+        volumenRecargado: data.volumenRecargado ?? null,
+        nivelPosterior: data.nivelPosterior ?? null,
         observaciones: data.observaciones,
       },
       include: {
@@ -81,7 +102,7 @@ export class PrismaMantenimientoRepository implements IMantenimientoRepository {
           include: { instalacion: true },
         },
       },
-    });
+    })) as unknown as PrismaCreated;
 
     return {
       id: created.id,
@@ -98,6 +119,8 @@ export class PrismaMantenimientoRepository implements IMantenimientoRepository {
       lecturaRetiro: created.lecturaRetiro,
       motivoBaja: created.motivoBaja,
       nuevoMedidorCodigo: created.nuevoMedidorCodigo,
+      volumenRecargado: created.volumenRecargado ?? null,
+      nivelPosterior: created.nivelPosterior ?? null,
       observaciones: created.observaciones,
       createdAt: created.createdAt,
     };
@@ -143,6 +166,8 @@ export class PrismaMantenimientoRepository implements IMantenimientoRepository {
       lecturaRetiro: r.lecturaRetiro,
       motivoBaja: r.motivoBaja,
       nuevoMedidorCodigo: r.nuevoMedidorCodigo,
+      volumenRecargado: (r as unknown as { volumenRecargado?: number | null }).volumenRecargado ?? null,
+      nivelPosterior: (r as unknown as { nivelPosterior?: number | null }).nivelPosterior ?? null,
       observaciones: r.observaciones,
       createdAt: r.createdAt,
     }));

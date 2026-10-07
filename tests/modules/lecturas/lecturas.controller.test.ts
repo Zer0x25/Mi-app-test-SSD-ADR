@@ -65,6 +65,8 @@ describe("LecturasController HTTP Integration Suite", () => {
             instalacionId,
             activo: true,
             tipoMedicion: "ACUMULATIVO",
+            multiplicador: 1,
+            capacidadMaxima: null,
           };
         }
         return null;

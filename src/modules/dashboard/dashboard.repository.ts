@@ -55,6 +55,14 @@ export class PrismaDashboardRepository implements IDashboardRepository {
       },
     });
 
+    const medidorIds = medidores.map((m) => m.id);
+    const regs = medidorIds.length > 0
+      ? await this.prisma.registroMantenimiento.findMany({
+          where: { medidorId: { in: medidorIds }, tipo: "RECARGA_TANQUE" },
+          select: { medidorId: true, volumenRecargado: true, fechaMantenimiento: true },
+        })
+      : [];
+
     return {
       instalaciones,
       medidores: medidores.map((m) => ({
@@ -69,6 +77,11 @@ export class PrismaDashboardRepository implements IDashboardRepository {
         activo: m.activo,
       })),
       lecturas,
+      recargas: regs.map((r) => ({
+        medidorId: r.medidorId,
+        volumen: (r as unknown as { volumenRecargado?: number | null }).volumenRecargado ?? 0,
+        fecha: r.fechaMantenimiento,
+      })),
     };
   }
 }

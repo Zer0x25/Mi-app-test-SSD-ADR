@@ -12,6 +12,7 @@ import {
   TipoMedidorInactivoError,
   MedidorNotFoundError,
   MedidorCodigoDuplicadoError,
+  MedidorCodigoExternoDuplicadoError,
   PeriodoGraciaExpiradoError,
   EliminacionFisicaProhibidaError,
   MedidorConLecturasNoEliminableError,
@@ -29,6 +30,8 @@ export interface TipoMedidorEntity {
   unidad: UnidadMedida;
   unidadMedida?: string;
   tipoMedicion: TipoMedicion;
+  multiplicador: number;
+  capacidadMaxima?: number | null;
   activo: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +42,8 @@ export interface MedidorEntity {
   instalacionId: string;
   tipoMedidorId: string;
   codigo: string;
+  codigoExterno?: string | null;
+  factorInstalacion?: number | null;
   numeroSerie?: string | null;
   ubicacionInterna: string;
   activo: boolean;
@@ -63,6 +68,7 @@ export interface IMedidoresRepository {
 
   findMedidorById(id: string): Promise<MedidorEntity | null>;
   findMedidorByCodigo(codigo: string): Promise<MedidorEntity | null>;
+  findMedidorByCodigoExterno?(codigoExterno: string): Promise<MedidorEntity | null>;
   countLecturas?(medidorId: string): Promise<number>;
   createMedidor(
     data: Omit<MedidorEntity, "id" | "createdAt" | "updatedAt">
@@ -113,11 +119,15 @@ export class MedidoresService {
       recurso: input.recurso,
       unidad,
       tipoMedicion: input.tipoMedicion,
+      multiplicador: input.multiplicador ?? 1,
+      capacidadMaxima: input.capacidadMaxima ?? null,
       activo: true,
     });
 
     return {
       ...tipo,
+      multiplicador: tipo.multiplicador ?? 1,
+      capacidadMaxima: tipo.capacidadMaxima ?? null,
       unidadMedida: tipo.unidad,
     };
   }
@@ -126,6 +136,8 @@ export class MedidoresService {
     const list = await this.repository.listTiposActivos();
     return list.map((tipo) => ({
       ...tipo,
+      multiplicador: tipo.multiplicador ?? 1,
+      capacidadMaxima: tipo.capacidadMaxima ?? null,
       unidadMedida: tipo.unidad,
     }));
   }
@@ -151,11 +163,22 @@ export class MedidoresService {
       throw new MedidorCodigoDuplicadoError(input.codigo);
     }
 
+    // 3b. Verificar unicidad de código externo (solo si se provee)
+    const codigoExterno = input.codigoExterno?.trim() || null;
+    if (codigoExterno && this.repository.findMedidorByCodigoExterno) {
+      const existenteExt = await this.repository.findMedidorByCodigoExterno(codigoExterno);
+      if (existenteExt) {
+        throw new MedidorCodigoExternoDuplicadoError(codigoExterno);
+      }
+    }
+
     // 4. Crear el medidor
     const creado = await this.repository.createMedidor({
       instalacionId: input.instalacionId,
       tipoMedidorId: input.tipoMedidorId,
       codigo: input.codigo.trim(),
+      codigoExterno,
+      factorInstalacion: input.factorInstalacion ?? null,
       numeroSerie: input.numeroSerie ? input.numeroSerie.trim() : null,
       ubicacionInterna: input.ubicacionInterna.trim(),
       activo: true,
@@ -172,16 +195,19 @@ export class MedidoresService {
 
   private mapResponse(m: MedidorEntity): MedidorResponse {
     const { enPeriodoGracia, diasRestantesGracia } = calcularPeriodoGracia(m.createdAt);
+    const tipo = m.tipoMedidor
+      ? {
+          ...m.tipoMedidor,
+          multiplicador: (m.tipoMedidor as { multiplicador?: number }).multiplicador ?? 1,
+          capacidadMaxima: (m.tipoMedidor as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
+          unidadMedida: m.tipoMedidor.unidad,
+        }
+      : undefined;
     return {
       ...m,
       enPeriodoGracia,
       diasRestantesGracia,
-      tipoMedidor: m.tipoMedidor
-        ? {
-            ...m.tipoMedidor,
-            unidadMedida: m.tipoMedidor.unidad,
-          }
-        : undefined,
+      tipoMedidor: tipo as MedidorResponse["tipoMedidor"],
       ultimaLectura: m.ultimaLectura
         ? {
             ...m.ultimaLectura,
@@ -239,8 +265,25 @@ export class MedidoresService {
       }
     }
 
+    if (input.codigoExterno !== undefined && input.codigoExterno !== null) {
+      const extTrim = input.codigoExterno.trim();
+      const actualExt = (actual.codigoExterno ?? null) as string | null;
+      if (extTrim !== (actualExt ?? "")) {
+        if (this.repository.findMedidorByCodigoExterno) {
+          const dupExt = await this.repository.findMedidorByCodigoExterno(extTrim);
+          if (dupExt && dupExt.id !== id) {
+            throw new MedidorCodigoExternoDuplicadoError(extTrim);
+          }
+        }
+      }
+    }
+
     const updated = await this.repository.updateMedidor(id, {
       ...(input.codigo !== undefined && { codigo: input.codigo.trim() }),
+      ...(input.codigoExterno !== undefined && {
+        codigoExterno: input.codigoExterno === null ? null : input.codigoExterno.trim(),
+      }),
+      ...(input.factorInstalacion !== undefined && { factorInstalacion: input.factorInstalacion }),
       ...(input.numeroSerie !== undefined && { numeroSerie: input.numeroSerie }),
       ...(input.ubicacionInterna !== undefined && { ubicacionInterna: input.ubicacionInterna.trim() }),
       ...(input.activo !== undefined && { activo: input.activo }),
@@ -253,8 +296,8 @@ export class MedidoresService {
         entidad: "Medidor",
         entidadId: id,
         detalles: {
-          antes: { codigo: actual.codigo, ubicacion: actual.ubicacionInterna, serie: actual.numeroSerie },
-          despues: { codigo: updated.codigo, ubicacion: updated.ubicacionInterna, serie: updated.numeroSerie },
+          antes: { codigo: actual.codigo, codigoExterno: (actual.codigoExterno ?? null) as unknown, factorInstalacion: (actual.factorInstalacion ?? null) as unknown, ubicacion: actual.ubicacionInterna, serie: actual.numeroSerie },
+          despues: { codigo: updated.codigo, codigoExterno: ((updated as unknown as { codigoExterno?: string | null }).codigoExterno ?? null), factorInstalacion: ((updated as unknown as { factorInstalacion?: number | null }).factorInstalacion ?? null), ubicacion: updated.ubicacionInterna, serie: updated.numeroSerie },
         },
         ip: context?.ip,
       });
@@ -360,6 +403,8 @@ export class MedidoresService {
           snapshot: {
             id: actual.id,
             codigo: actual.codigo,
+            codigoExterno: (actual.codigoExterno ?? null) as unknown,
+            factorInstalacion: (actual.factorInstalacion ?? null) as unknown,
             numeroSerie: actual.numeroSerie,
             ubicacionInterna: actual.ubicacionInterna,
             instalacionId: actual.instalacionId,

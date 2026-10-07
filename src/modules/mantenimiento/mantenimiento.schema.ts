@@ -42,12 +42,43 @@ export class InstalacionNoAsignadaError extends DomainError {
   }
 }
 
+export class VolumenRecargaRequeridoError extends DomainError {
+  readonly code = "VOLUMEN_RECARGA_REQUERIDO";
+  readonly statusCode = 400;
+
+  constructor(medidorId: string) {
+    super(`La recarga de tanque del medidor «${medidorId}» requiere volumenRecargado > 0.`, { medidorId });
+  }
+}
+
+export class NivelPosteriorRequeridoError extends DomainError {
+  readonly code = "NIVEL_POSTERIOR_REQUERIDO";
+  readonly statusCode = 400;
+
+  constructor(medidorId: string) {
+    super(`La recarga de tanque del medidor «${medidorId}» requiere nivelPosterior >= 0.`, { medidorId });
+  }
+}
+
+export class RecargaSoloNivelError extends DomainError {
+  readonly code = "RECARGA_SOLO_NIVEL";
+  readonly statusCode = 422;
+
+  constructor(medidorId: string, tipoMedicion: string) {
+    super(
+      `La recarga de tanque solo aplica a medidores NIVEL (medidor «${medidorId}» es ${tipoMedicion}).`,
+      { medidorId, tipoMedicion }
+    );
+  }
+}
+
 export const TipoMantenimientoEnum = z.enum([
   "CALIBRACION",
   "CAMBIO_PRECINTO",
   "REEMPLAZO_EQUIPO",
   "INSPECCION",
   "BAJA_TECNICA",
+  "RECARGA_TANQUE",
 ]);
 export type TipoMantenimiento = z.infer<typeof TipoMantenimientoEnum>;
 
@@ -63,6 +94,8 @@ export const RegistrarMantenimientoInputSchema = z.object({
   lecturaRetiro: z.number().nonnegative().optional().nullable(),
   motivoBaja: z.string().trim().optional().nullable(),
   nuevoMedidorCodigo: z.string().trim().optional().nullable(),
+  volumenRecargado: z.number().positive().optional().nullable(),
+  nivelPosterior: z.number().nonnegative().optional().nullable(),
   observaciones: z.string().trim().max(1000).optional().nullable(),
 });
 export type RegistrarMantenimientoInput = z.infer<typeof RegistrarMantenimientoInputSchema>;
@@ -89,6 +122,8 @@ export const MantenimientoResponseSchema = z.object({
   lecturaRetiro: z.number().nullable().optional(),
   motivoBaja: z.string().nullable().optional(),
   nuevoMedidorCodigo: z.string().nullable().optional(),
+  volumenRecargado: z.number().nullable().optional(),
+  nivelPosterior: z.number().nullable().optional(),
   observaciones: z.string().nullable().optional(),
   createdAt: z.date(),
 });

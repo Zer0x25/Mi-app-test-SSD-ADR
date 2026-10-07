@@ -470,10 +470,10 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
       // 4. Tipos de Medidor
       const tiposData = [
-        { nombre: "Agua Potable Red", recurso: "AGUA", unidad: "M3", tipoMedicion: "ACUMULATIVO" },
-        { nombre: "Electricidad Trifásica", recurso: "LUZ", unidad: "KWH", tipoMedicion: "ACUMULATIVO" },
-        { nombre: "Diésel Generador Respaldo", recurso: "PETROLEO", unidad: "LITROS", tipoMedicion: "NIVEL" },
-        { nombre: "Gas Natural Calderas", recurso: "GAS", unidad: "M3", tipoMedicion: "ACUMULATIVO" },
+        { nombre: "Agua Potable Red", recurso: "AGUA", unidad: "M3", tipoMedicion: "ACUMULATIVO", multiplicador: 1, capacidadMaxima: null },
+        { nombre: "Electricidad Trifásica", recurso: "LUZ", unidad: "KWH", tipoMedicion: "ACUMULATIVO", multiplicador: 1, capacidadMaxima: null },
+        { nombre: "Diésel Generador Respaldo", recurso: "PETROLEO", unidad: "LITROS", tipoMedicion: "NIVEL", multiplicador: 1, capacidadMaxima: 5000 },
+        { nombre: "Gas Natural Calderas", recurso: "GAS", unidad: "M3", tipoMedicion: "ACUMULATIVO", multiplicador: 1, capacidadMaxima: null },
       ];
 
       const tiposMap = new Map<string, string>();
@@ -481,6 +481,15 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         let tipo = await prisma.tipoMedidor.findUnique({ where: { nombre: t.nombre } });
         if (!tipo) {
           tipo = await prisma.tipoMedidor.create({ data: { ...t, activo: true } });
+        } else {
+          // Backfill idempotente de factor y capacidad (feat-024)
+          const cur = tipo as unknown as { multiplicador?: number | null; capacidadMaxima?: number | null };
+          if ((cur.multiplicador ?? 1) !== t.multiplicador || (cur.capacidadMaxima ?? null) !== t.capacidadMaxima) {
+            tipo = await prisma.tipoMedidor.update({
+              where: { id: tipo.id },
+              data: { multiplicador: t.multiplicador, capacidadMaxima: t.capacidadMaxima },
+            });
+          }
         }
         tiposMap.set(t.nombre, tipo.id);
       }
@@ -652,14 +661,20 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         include: { tipoMedidor: true },
       });
       if (!medidor) return null;
+      const tipo = medidor.tipoMedidor as unknown as { tipoMedicion: string; multiplicador?: number | null; capacidadMaxima?: number | null };
+      const med = medidor as unknown as { factorInstalacion?: number | null };
+      // Factor efectivo: override por activo, si no el del tipo, si no 1 (feat-025)
+      const efectivo = med.factorInstalacion ?? tipo.multiplicador ?? 1;
       return {
         id: medidor.id,
         instalacionId: medidor.instalacionId,
         activo: medidor.activo,
-        tipoMedicion: medidor.tipoMedidor.tipoMedicion as
+        tipoMedicion: tipo.tipoMedicion as
           | "ACUMULATIVO"
           | "INSTANTANEO"
           | "NIVEL",
+        multiplicador: efectivo,
+        capacidadMaxima: tipo.capacidadMaxima ?? null,
       };
     },
   };

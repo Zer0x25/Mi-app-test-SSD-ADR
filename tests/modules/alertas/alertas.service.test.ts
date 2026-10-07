@@ -194,8 +194,6 @@ describe("AlertasService Suite (Agentic TDD)", () => {
   describe("Detección de Salto Atípico de Consumo", () => {
     it("debe disparar SALTO_CONSUMO cuando el delta excede el 50% del promedio histórico", async () => {
       const ahora = new Date("2026-10-03T12:00:00Z");
-      // Promedios históricos de deltas = ~10 por período (100 -> 110 -> 120 -> 130)
-      // Último delta = 200 - 130 = 70 (salto superior a +50% respecto al promedio de 10)
       repo.medidores = [
         {
           id: medidor1Id,
@@ -203,6 +201,7 @@ describe("AlertasService Suite (Agentic TDD)", () => {
           instalacionId: instId,
           instalacionNombre: "Planta Norte",
           recurso: "LUZ",
+          tipoMedicion: "ACUMULATIVO",
           activo: true,
           lecturas: [
             { valor: 100, fechaLectura: new Date(ahora.getTime() - 24 * 3600 * 1000) },
@@ -219,6 +218,31 @@ describe("AlertasService Suite (Agentic TDD)", () => {
       const salto = nuevosIncidentes.find((i) => i.tipo === "SALTO_CONSUMO");
       expect(salto).toBeDefined();
       expect(salto?.severidad).toBe("WARNING");
+    });
+
+    it("NO debe disparar SALTO_CONSUMO ni FUGA_PROBABLE en medidor NIVEL con bajada normal (feat-024)", async () => {
+      const ahora = new Date("2026-10-03T12:00:00Z");
+      repo.medidores = [
+        {
+          id: medidor1Id,
+          codigo: "MED-DIE-01",
+          instalacionId: instId,
+          instalacionNombre: "Patio Tanques",
+          recurso: "PETROLEO",
+          tipoMedicion: "NIVEL",
+          activo: true,
+          lecturas: [
+            { valor: 4800, fechaLectura: new Date(ahora.getTime() - 72 * 3600 * 1000) },
+            { valor: 4600, fechaLectura: new Date(ahora.getTime() - 48 * 3600 * 1000) },
+            { valor: 4400, fechaLectura: new Date(ahora.getTime() - 24 * 3600 * 1000) },
+            { valor: 4200, fechaLectura: new Date(ahora.getTime() - 1 * 3600 * 1000) },
+          ],
+        },
+      ];
+
+      const nuevos = await service.evaluarReglas(ahora);
+      expect(nuevos.find((i) => i.tipo === "SALTO_CONSUMO")).toBeUndefined();
+      expect(nuevos.find((i) => i.tipo === "FUGA_PROBABLE")).toBeUndefined();
     });
   });
 

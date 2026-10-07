@@ -2,14 +2,18 @@ import { z } from "zod";
 import { DomainError } from "../../core/errors.js";
 export { MedidorNotFoundError } from "../medidores/medidores.schema.js";
 
-// ==============================================================================
+// ==============
 // DTOs para Lecturas
 // ==============================================================================
+
+export const OrigenLecturaEnum = z.enum(["MANUAL", "AJUSTE", "IMPORTADA"]);
+export type OrigenLectura = z.infer<typeof OrigenLecturaEnum>;
 
 export const RegistrarLecturaInputSchema = z.object({
   medidorId: z.string().uuid("Identificador de medidor inválido"),
   operadorId: z.string().uuid("Identificador de operador inválido").optional(),
   valor: z.number().nonnegative("El valor de la medición no puede ser negativo"),
+  origen: OrigenLecturaEnum.optional().default("MANUAL"),
   fechaLectura: z.coerce.date().optional(),
   timestamp: z.coerce.date().optional(),
   fecha: z.coerce.date().optional(),
@@ -25,13 +29,16 @@ export const RegistrarLecturaInputSchema = z.object({
     .optional(),
 });
 
-export type RegistrarLecturaInput = z.infer<typeof RegistrarLecturaInputSchema>;
+export type RegistrarLecturaInput = z.input<typeof RegistrarLecturaInputSchema>;
 
 export const LecturaResponseSchema = z.object({
   id: z.string().uuid(),
   medidorId: z.string().uuid(),
   operadorId: z.string().uuid(),
   valor: z.number(),
+  valorBruto: z.number().nullable().optional(),
+  multiplicadorAplicado: z.number().nullable().optional(),
+  origen: OrigenLecturaEnum.default("MANUAL"),
   fechaLectura: z.date(),
   timestamp: z.date().optional(),
   fecha: z.date().optional(),
@@ -51,6 +58,7 @@ export const BatchSyncItemSchema = z.object({
   medidorId: z.string().uuid("Identificador de medidor inválido"),
   operadorId: z.string().uuid("Identificador de operador inválido"),
   valor: z.number().nonnegative("El valor de la medición no puede ser negativo"),
+  origen: OrigenLecturaEnum.optional().default("MANUAL"),
   fechaLectura: z.coerce.date().optional(),
   notas: z
     .string()
@@ -65,8 +73,8 @@ export const BatchSyncLecturasInputSchema = z.object({
     .min(1, "Debe enviar al menos una lectura para sincronizar"),
 });
 
-export type BatchSyncItem = z.infer<typeof BatchSyncItemSchema>;
-export type BatchSyncLecturasInput = z.infer<typeof BatchSyncLecturasInputSchema>;
+export type BatchSyncItem = z.input<typeof BatchSyncItemSchema>;
+export type BatchSyncLecturasInput = z.input<typeof BatchSyncLecturasInputSchema>;
 
 export const BatchSyncResultItemSchema = z.object({
   localId: z.string(),
@@ -102,6 +110,7 @@ export type LecturasErrorCode =
   | "LECTURA_DECRECIENTE_PROHIBIDA"
   | "LECTURA_FECHA_FUTURA"
   | "LECTURA_DUPLICADA_EN_PERIODO"
+  | "NIVEL_FUERA_DE_RANGO"
   | "LECTURA_NOT_FOUND";
 
 export class MedidorInactivoError extends DomainError {
@@ -154,6 +163,17 @@ export class LecturaDuplicadaError extends DomainError {
     super(
       `Ya existe una lectura registrada para el medidor '${medidorId}' en la fecha y hora '${fechaLectura.toISOString()}'.`,
       { medidorId, fechaLectura }
+    );
+  }
+}
+
+export class NivelFueraDeRangoError extends DomainError {
+  readonly code = "NIVEL_FUERA_DE_RANGO";
+  readonly statusCode = 422;
+  constructor(medidorId: string, valorReal: number, capacidadMaxima: number) {
+    super(
+      `El nivel ${valorReal} supera la capacidad máxima ${capacidadMaxima} del tanque '${medidorId}'.`,
+      { medidorId, valorReal, capacidadMaxima }
     );
   }
 }

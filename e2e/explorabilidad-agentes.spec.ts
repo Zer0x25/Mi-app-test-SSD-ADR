@@ -55,6 +55,12 @@ test.describe("E2E: Explorabilidad de Rutas, Localización DOM y Observabilidad 
     await expect(page.getByTestId("view-notificaciones")).toBeVisible();
     await expect(page.getByTestId("nav-notificaciones")).toHaveClass(/active/);
 
+    // 8b. Navegar a Parque (Sedes & Medidores)
+    await page.goto("/#/parque");
+    await expect(page.getByTestId("view-parque")).toBeVisible();
+    await expect(page.getByTestId("nav-parque")).toHaveClass(/active/);
+    await expect(page.getByTestId("view-admin")).toBeHidden();
+
     // 9. Navegar a Dashboard
     await page.goto("/#/dashboard");
     await expect(page.getByTestId("view-admin")).toBeVisible();
@@ -96,10 +102,10 @@ test.describe("E2E: Explorabilidad de Rutas, Localización DOM y Observabilidad 
   });
 
   test("CA-2 y CA-3: controles localizables, modales con data-state y roles accesibles", async ({ page }) => {
-    await page.goto("/#/dashboard");
+    await page.goto("/#/parque");
     await page.waitForSelector("#mainNavbar", { state: "visible" });
 
-    // Localizar botón de nueva instalación usando data-testid
+    // Localizar botón de nueva instalación usando data-testid (vive en Parque, feat-023)
     const btnNuevaInstalacion = page.getByTestId("btn-nueva-instalacion");
     await expect(btnNuevaInstalacion).toBeVisible();
 

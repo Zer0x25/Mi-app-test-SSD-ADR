@@ -43,6 +43,7 @@ class MockDashboardRepo implements IDashboardRepository {
         notas: "Lectura tarde",
       },
     ],
+    recargas: [],
   };
 
   async getDashboardData(): Promise<DashboardRawData> {

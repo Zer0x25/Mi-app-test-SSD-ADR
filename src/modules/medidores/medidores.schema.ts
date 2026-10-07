@@ -34,9 +34,20 @@ export const CrearTipoMedidorInputSchema = z.object({
   unidad: UnidadMedidaEnum.optional(),
   unidadMedida: UnidadMedidaEnum.optional(),
   tipoMedicion: TipoMedicionEnum,
+  multiplicador: z
+    .number()
+    .positive("El multiplicador debe ser mayor a 0")
+    .max(1000000, "El multiplicador no puede exceder 1.000.000")
+    .default(1),
+  capacidadMaxima: z
+    .number()
+    .positive("La capacidad máxima debe ser mayor a 0")
+    .max(100000000, "La capacidad máxima no puede exceder 100.000.000")
+    .nullable()
+    .optional(),
 });
 
-export type CrearTipoMedidorInput = z.infer<typeof CrearTipoMedidorInputSchema>;
+export type CrearTipoMedidorInput = z.input<typeof CrearTipoMedidorInputSchema>;
 
 export const TipoMedidorResponseSchema = z.object({
   id: z.string().uuid(),
@@ -45,6 +56,8 @@ export const TipoMedidorResponseSchema = z.object({
   unidad: UnidadMedidaEnum,
   unidadMedida: z.string().optional(),
   tipoMedicion: TipoMedicionEnum,
+  multiplicador: z.number().positive().default(1),
+  capacidadMaxima: z.number().positive().nullable().optional(),
   activo: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -64,6 +77,19 @@ export const CrearMedidorInputSchema = z.object({
     .trim()
     .min(3, "El código debe tener al menos 3 caracteres")
     .max(50, "El código no puede exceder 50 caracteres"),
+  codigoExterno: z
+    .string()
+    .trim()
+    .min(3, "El código externo debe tener al menos 3 caracteres")
+    .max(100, "El código externo no puede exceder 100 caracteres")
+    .nullable()
+    .optional(),
+  factorInstalacion: z
+    .number()
+    .positive("El factor de instalación debe ser mayor a 0")
+    .max(1000000, "El factor de instalación no puede exceder 1.000.000")
+    .nullable()
+    .optional(),
   numeroSerie: z.string().trim().max(100).optional(),
   ubicacionInterna: z
     .string()
@@ -80,6 +106,19 @@ export const EditarMedidorInputSchema = z.object({
     .trim()
     .min(3, "El código debe tener al menos 3 caracteres")
     .max(50, "El código no puede exceder 50 caracteres")
+    .optional(),
+  codigoExterno: z
+    .string()
+    .trim()
+    .min(3, "El código externo debe tener al menos 3 caracteres")
+    .max(100, "El código externo no puede exceder 100 caracteres")
+    .nullable()
+    .optional(),
+  factorInstalacion: z
+    .number()
+    .positive("El factor de instalación debe ser mayor a 0")
+    .max(1000000, "El factor de instalación no puede exceder 1.000.000")
+    .nullable()
     .optional(),
   numeroSerie: z.string().trim().max(100).nullable().optional(),
   ubicacionInterna: z
@@ -98,6 +137,8 @@ export const MedidorResponseSchema = z.object({
   instalacionId: z.string().uuid(),
   tipoMedidorId: z.string().uuid(),
   codigo: z.string(),
+  codigoExterno: z.string().nullable().optional(),
+  factorInstalacion: z.number().nullable().optional(),
   numeroSerie: z.string().nullable().optional(),
   ubicacionInterna: z.string(),
   activo: z.boolean(),
@@ -129,6 +170,7 @@ export type MedidoresErrorCode =
   | "TIPO_MEDIDOR_INACTIVO"
   | "MEDIDOR_NOT_FOUND"
   | "MEDIDOR_CODIGO_DUPLICADO"
+  | "MEDIDOR_CODIGO_EXTERNO_DUPLICADO"
   | "PERIODO_GRACIA_EXPIRADO"
   | "ELIMINACION_FISICA_PROHIBIDA"
   | "MEDIDOR_CON_LECTURAS_NO_ELIMINABLE";
@@ -170,6 +212,14 @@ export class MedidorCodigoDuplicadoError extends DomainError {
   readonly statusCode = 409;
   constructor(codigo: string) {
     super(`Ya existe un medidor con el código '${codigo}'.`, { codigo });
+  }
+}
+
+export class MedidorCodigoExternoDuplicadoError extends DomainError {
+  readonly code = "MEDIDOR_CODIGO_EXTERNO_DUPLICADO";
+  readonly statusCode = 409;
+  constructor(codigoExterno: string) {
+    super(`Ya existe un medidor con el código externo '${codigoExterno}'.`, { codigoExterno });
   }
 }
 

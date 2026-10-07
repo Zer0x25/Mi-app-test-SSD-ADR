@@ -25,6 +25,12 @@ export interface ReporteRawItem {
   lecturas: ReporteLecturaRaw[];
 }
 
+export interface RecargaRawItem {
+  medidorId: string;
+  volumen: number;
+  fecha: Date;
+}
+
 export interface FacturaEntity {
   id: string;
   instalacionId: string;
@@ -46,6 +52,7 @@ export interface FacturaEntity {
 
 export interface IReportesRepository {
   getReporteRawData(filtro: FiltroReporteConsumo, allowedInstalacionIds?: string[]): Promise<ReporteRawItem[]>;
+  getRecargas(medidorIds: string[], fechaInicio: Date, fechaFin: Date): Promise<RecargaRawItem[]>;
   createFactura(data: Omit<FacturaEntity, "id" | "createdAt" | "updatedAt">): Promise<FacturaEntity>;
   listFacturas(instalacionId?: string, allowedInstalacionIds?: string[]): Promise<FacturaEntity[]>;
 }
@@ -68,6 +75,15 @@ export class ReportesService {
 
     const rawItems = await this.repository.getReporteRawData(filtro, allowedInstalacionIds);
 
+    const medidorIds = rawItems.map((i) => i.medidorId);
+    const recargas = medidorIds.length > 0
+      ? await this.repository.getRecargas(medidorIds, filtro.fechaInicio, filtro.fechaFin)
+      : [];
+    const recargasPorMedidor = new Map<string, number>();
+    for (const r of recargas) {
+      recargasPorMedidor.set(r.medidorId, (recargasPorMedidor.get(r.medidorId) || 0) + r.volumen);
+    }
+
     const resultado: ItemConsumoConsolidado[] = [];
 
     for (const item of rawItems) {
@@ -84,11 +100,14 @@ export class ReportesService {
 
       if (item.tipoMedicion === "ACUMULATIVO") {
         consumoNeto = Math.max(0, Number((lecturaFinal - lecturaInicial).toFixed(2)));
+      } else if (item.tipoMedicion === "NIVEL") {
+        const bajadaNeta = Math.max(0, Number((lecturaInicial - lecturaFinal).toFixed(2)));
+        const recargaTotal = Number((recargasPorMedidor.get(item.medidorId) || 0).toFixed(2));
+        consumoNeto = Number((bajadaNeta + recargaTotal).toFixed(2));
       } else {
-        // En medidores no acumulativos, sumar o calcular neto según lecturas
-        consumoNeto = Number(
-          ordenadas.reduce((acc, curr) => acc + curr.valor, 0).toFixed(2)
-        );
+        // INSTANTANEO (potencia/caudal): promedio del periodo
+        const suma = ordenadas.reduce((acc, curr) => acc + curr.valor, 0);
+        consumoNeto = Number((suma / ordenadas.length).toFixed(2));
       }
 
       resultado.push({

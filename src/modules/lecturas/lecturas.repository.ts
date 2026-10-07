@@ -26,15 +26,18 @@ export class PrismaLecturasRepository implements ILecturasRepository {
   }
 
   async create(data: Omit<LecturaEntity, "id" | "createdAt">): Promise<LecturaEntity> {
-    return await this.prisma.lectura.create({
+    return (await this.prisma.lectura.create({
       data: {
         medidorId: data.medidorId,
         operadorId: data.operadorId,
         valor: data.valor,
+        valorBruto: data.valorBruto ?? null,
+        multiplicadorAplicado: data.multiplicadorAplicado ?? null,
+        origen: data.origen ?? "MANUAL",
         fechaLectura: data.fechaLectura,
         notas: data.notas,
       },
-    });
+    })) as unknown as LecturaEntity;
   }
 
   async listByMedidor(medidorId: string): Promise<LecturaEntity[]> {

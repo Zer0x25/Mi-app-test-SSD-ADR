@@ -16,6 +16,10 @@ class MockReportesRepository implements IReportesRepository {
     return this.rawItems;
   }
 
+  async getRecargas(): Promise<{ medidorId: string; volumen: number; fecha: Date }[]> {
+    return [];
+  }
+
   async createFactura(data: Omit<FacturaEntity, "id" | "createdAt" | "updatedAt">): Promise<FacturaEntity> {
     const factura: FacturaEntity = {
       id: crypto.randomUUID(),
