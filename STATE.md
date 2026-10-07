@@ -314,3 +314,4 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 
 
+| 2026-10-07 | OpenCode | Hardening fail-closed del simulador de rol (ADR 0012) | `roleSimulatorBar` y `mobile-simulator-section` nacen ocultos en `public/index.html` y solo JS los revela en dev; espejo del fix Edge. Quality Gate 0. |
