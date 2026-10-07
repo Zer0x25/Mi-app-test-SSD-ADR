@@ -1,6 +1,8 @@
 import {
   CrearTipoMedidorInput,
   CrearTipoMedidorInputSchema,
+  EditarTipoMedidorInput,
+  EditarTipoMedidorInputSchema,
   TipoMedidorResponse,
   CrearMedidorInput,
   CrearMedidorInputSchema,
@@ -10,6 +12,8 @@ import {
   TipoMedidorNombreDuplicadoError,
   TipoMedidorNotFoundError,
   TipoMedidorInactivoError,
+  TipoMedidorEnUsoError,
+  TipoMedidorConMedidoresNoEliminableError,
   MedidorNotFoundError,
   MedidorCodigoDuplicadoError,
   MedidorCodigoExternoDuplicadoError,
@@ -65,6 +69,10 @@ export interface IMedidoresRepository {
     data: Omit<TipoMedidorEntity, "id" | "createdAt" | "updatedAt">
   ): Promise<TipoMedidorEntity>;
   listTiposActivos(): Promise<TipoMedidorEntity[]>;
+  listTipos(estado?: "activos" | "archivados" | "todos"): Promise<TipoMedidorEntity[]>;
+  updateTipo(id: string, data: Partial<TipoMedidorEntity>): Promise<TipoMedidorEntity>;
+  deleteTipoFisico(id: string): Promise<boolean>;
+  countMedidoresByTipo(tipoId: string): Promise<number>;
 
   findMedidorById(id: string): Promise<MedidorEntity | null>;
   findMedidorByCodigo(codigo: string): Promise<MedidorEntity | null>;
@@ -132,14 +140,158 @@ export class MedidoresService {
     };
   }
 
-  async listarTiposMedidor(): Promise<TipoMedidorResponse[]> {
-    const list = await this.repository.listTiposActivos();
+  async listarTiposMedidor(estado?: "activos" | "archivados" | "todos"): Promise<TipoMedidorResponse[]> {
+    const list = await this.repository.listTipos(estado ?? "activos");
     return list.map((tipo) => ({
       ...tipo,
       multiplicador: tipo.multiplicador ?? 1,
       capacidadMaxima: tipo.capacidadMaxima ?? null,
       unidadMedida: tipo.unidad,
     }));
+  }
+
+  async obtenerTipoPorId(id: string): Promise<TipoMedidorResponse> {
+    const tipo = await this.repository.findTipoById(id);
+    if (!tipo) {
+      throw new TipoMedidorNotFoundError(id);
+    }
+    return {
+      ...tipo,
+      multiplicador: tipo.multiplicador ?? 1,
+      capacidadMaxima: tipo.capacidadMaxima ?? null,
+      unidadMedida: tipo.unidad,
+    };
+  }
+
+  async editarTipoMedidor(
+    id: string,
+    rawInput: EditarTipoMedidorInput,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<TipoMedidorResponse> {
+    const input = EditarTipoMedidorInputSchema.parse(rawInput);
+    const actual = await this.repository.findTipoById(id);
+    if (!actual) {
+      throw new TipoMedidorNotFoundError(id);
+    }
+    const enUso = await this.repository.countMedidoresByTipo(id);
+    if (enUso > 0) {
+      throw new TipoMedidorEnUsoError(actual.nombre, enUso, "editar");
+    }
+    if (input.nombre !== undefined && input.nombre.trim().toLowerCase() !== actual.nombre.trim().toLowerCase()) {
+      const dup = await this.repository.findTipoByNombre(input.nombre);
+      if (dup && dup.id !== id) {
+        throw new TipoMedidorNombreDuplicadoError(input.nombre);
+      }
+    }
+    const unidad = (input.unidad ?? input.unidadMedida ?? undefined) as UnidadMedida | undefined;
+    const updated = await this.repository.updateTipo(id, {
+      ...(input.nombre !== undefined && { nombre: input.nombre.trim() }),
+      ...(input.recurso !== undefined && { recurso: input.recurso }),
+      ...(unidad !== undefined && { unidad }),
+      ...(input.tipoMedicion !== undefined && { tipoMedicion: input.tipoMedicion }),
+      ...(input.multiplicador !== undefined && { multiplicador: input.multiplicador }),
+      ...(input.capacidadMaxima !== undefined && { capacidadMaxima: input.capacidadMaxima }),
+      ...(input.activo !== undefined && { activo: input.activo }),
+    });
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "TIPO_MEDIDOR_EDITADO",
+        entidad: "TipoMedidor",
+        entidadId: id,
+        detalles: { antes: { nombre: actual.nombre }, despues: { nombre: updated.nombre } },
+        ip: context?.ip,
+      });
+    }
+    return {
+      ...updated,
+      multiplicador: updated.multiplicador ?? 1,
+      capacidadMaxima: updated.capacidadMaxima ?? null,
+      unidadMedida: updated.unidad,
+    };
+  }
+
+  async archivarTipo(
+    id: string,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<TipoMedidorResponse> {
+    const actual = await this.repository.findTipoById(id);
+    if (!actual) {
+      throw new TipoMedidorNotFoundError(id);
+    }
+    const enUso = await this.repository.countMedidoresByTipo(id);
+    if (enUso > 0) {
+      throw new TipoMedidorEnUsoError(actual.nombre, enUso, "archivar");
+    }
+    const updated = await this.repository.updateTipo(id, { activo: false });
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "TIPO_MEDIDOR_ARCHIVADO",
+        entidad: "TipoMedidor",
+        entidadId: id,
+        detalles: { nombre: actual.nombre },
+        ip: context?.ip,
+      });
+    }
+    return {
+      ...updated,
+      multiplicador: updated.multiplicador ?? 1,
+      capacidadMaxima: updated.capacidadMaxima ?? null,
+      unidadMedida: updated.unidad,
+    };
+  }
+
+  async restaurarTipo(
+    id: string,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<TipoMedidorResponse> {
+    const actual = await this.repository.findTipoById(id);
+    if (!actual) {
+      throw new TipoMedidorNotFoundError(id);
+    }
+    const updated = await this.repository.updateTipo(id, { activo: true });
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "TIPO_MEDIDOR_RESTAURADO",
+        entidad: "TipoMedidor",
+        entidadId: id,
+        detalles: { nombre: actual.nombre },
+        ip: context?.ip,
+      });
+    }
+    return {
+      ...updated,
+      multiplicador: updated.multiplicador ?? 1,
+      capacidadMaxima: updated.capacidadMaxima ?? null,
+      unidadMedida: updated.unidad,
+    };
+  }
+
+  async eliminarTipoFisico(
+    id: string,
+    context?: { usuarioId?: string; ip?: string }
+  ): Promise<boolean> {
+    const actual = await this.repository.findTipoById(id);
+    if (!actual) {
+      throw new TipoMedidorNotFoundError(id);
+    }
+    const enUso = await this.repository.countMedidoresByTipo(id);
+    if (enUso > 0) {
+      throw new TipoMedidorConMedidoresNoEliminableError(id, enUso);
+    }
+    if (this.auditoriaLogger) {
+      await this.auditoriaLogger.registrarEvento({
+        usuarioId: context?.usuarioId,
+        accion: "TIPO_MEDIDOR_ELIMINADO",
+        entidad: "TipoMedidor",
+        entidadId: id,
+        detalles: { snapshot: { id: actual.id, nombre: actual.nombre } },
+        ip: context?.ip,
+      });
+    }
+    return await this.repository.deleteTipoFisico(id);
   }
 
   async crearMedidor(rawInput: CrearMedidorInput): Promise<MedidorResponse> {
@@ -278,7 +430,18 @@ export class MedidoresService {
       }
     }
 
+    if (input.tipoMedidorId !== undefined && input.tipoMedidorId !== actual.tipoMedidorId) {
+      const nuevoTipo = await this.repository.findTipoById(input.tipoMedidorId);
+      if (!nuevoTipo) {
+        throw new TipoMedidorNotFoundError(input.tipoMedidorId);
+      }
+      if (!nuevoTipo.activo) {
+        throw new TipoMedidorInactivoError(input.tipoMedidorId);
+      }
+    }
+
     const updated = await this.repository.updateMedidor(id, {
+      ...(input.tipoMedidorId !== undefined && { tipoMedidorId: input.tipoMedidorId }),
       ...(input.codigo !== undefined && { codigo: input.codigo.trim() }),
       ...(input.codigoExterno !== undefined && {
         codigoExterno: input.codigoExterno === null ? null : input.codigoExterno.trim(),
@@ -296,8 +459,8 @@ export class MedidoresService {
         entidad: "Medidor",
         entidadId: id,
         detalles: {
-          antes: { codigo: actual.codigo, codigoExterno: (actual.codigoExterno ?? null) as unknown, factorInstalacion: (actual.factorInstalacion ?? null) as unknown, ubicacion: actual.ubicacionInterna, serie: actual.numeroSerie },
-          despues: { codigo: updated.codigo, codigoExterno: ((updated as unknown as { codigoExterno?: string | null }).codigoExterno ?? null), factorInstalacion: ((updated as unknown as { factorInstalacion?: number | null }).factorInstalacion ?? null), ubicacion: updated.ubicacionInterna, serie: updated.numeroSerie },
+          antes: { codigo: actual.codigo, tipoMedidorId: actual.tipoMedidorId, codigoExterno: (actual.codigoExterno ?? null) as unknown, factorInstalacion: (actual.factorInstalacion ?? null) as unknown, ubicacion: actual.ubicacionInterna, serie: actual.numeroSerie },
+          despues: { codigo: updated.codigo, tipoMedidorId: updated.tipoMedidorId, codigoExterno: ((updated as unknown as { codigoExterno?: string | null }).codigoExterno ?? null), factorInstalacion: ((updated as unknown as { factorInstalacion?: number | null }).factorInstalacion ?? null), ubicacion: updated.ubicacionInterna, serie: updated.numeroSerie },
         },
         ip: context?.ip,
       });

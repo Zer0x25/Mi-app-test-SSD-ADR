@@ -4,16 +4,22 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 
 ---
 
-## 🧭 Fase Actual: Alineación a Estándar OBIS/Origen/Factor por Activo (feat-025)
+## 🧭 Fase Actual: Gestión de Tipos con Bloqueo por Uso y Reasignación (feat-026)
 
 - **Proyecto:** `Medidores`
-- **Estado:** Estable. Factor override por activo (`factorInstalacion`), slot interoperable (`codigoExterno` único), trazabilidad de origen (`MANUAL/AJUSTE/IMPORTADA`); factor efectivo = instalación ?? tipo ?? 1 aplicado en lecturas; comportamiento legacy intacto con nulos.
-- **Spec Activo:** [`specs/feat-025-alineacion-estandar-obis-origen-factor.md`](file:///home/zer0x/Escritorio/Proyects/Mi-app-test-SSD-ADR/specs/feat-025-alineacion-estandar-obis-origen-factor.md)
-- **Última verificación de Quality Gate:** Superada con código de salida 0 (322/322 tests en Vitest pasando al 100%, Typecheck y Linter limpios, 59/59 tests Playwright E2E pasando).
+- **Estado:** Estable. Tipos editables, archivables y eliminables solo sin medidores asociados (`TIPO_MEDIDOR_EN_USO` 409 / `TIPO_MEDIDOR_CON_MEDIDORES_NO_ELIMINABLE` 422); reasignación de medidores vía `PATCH /medidores/:id` con `tipoMedidorId`; mutaciones de tipos solo ADMIN; pestaña «Tipos de Medidor» en `#/parque`.
+- **Spec Activo:** [`specs/feat-026-tipos-edicion-eliminacion-reasignacion.md`](file:///home/zer0x/Escritorio/Proyects/Mi-app-test-SSD-ADR/specs/feat-026-tipos-edicion-eliminacion-reasignacion.md)
+- **Última verificación de Quality Gate:** Superada con código de salida 0 (334/334 tests en Vitest pasando al 100%, Typecheck y Linter limpios, 61/61 tests Playwright E2E pasando).
 
 ---
 
 ## 📋 Registro de Hitos
+
+- [x] **Hito 15.8: Gestión de Tipos con Bloqueo por Uso y Reasignación (Completado: 2026-10-07)**
+  - Spec `feat-026` bajo SDD + Agentic TDD (Fase Roja 3/3, Fase Verde completa).
+  - Dominio: `editarTipoMedidor`/`archivarTipo`/`restaurarTipo`/`eliminarTipoFisico` con `countMedidoresByTipo`; en uso → `TIPO_MEDIDOR_EN_USO` (409) o `TIPO_MEDIDOR_CON_MEDIDORES_NO_ELIMINABLE` (422); `editarMedidor` acepta `tipoMedidorId` (reasignación validada, auditada en `MEDIDOR_EDITADO`); auditoría `TIPO_MEDIDOR_*`; RBAC tipos solo ADMIN; `GET /tipos-medidor?estado=`.
+  - Frontend: pestaña «Tipos de Medidor» en `#/parque` con tabla y acciones, modal `modalEditarTipo`, select de reasignación en `modalEditarMedidor`.
+  - Quality Gate: `./scripts/verify.sh` salida 0 (334/334 Vitest) + 61/61 Playwright (nueva suite `tipos-gestion` 2/2) sin regresiones.
 
 - [x] **Hito 15.7: Alineación a Estándar OBIS/Origen/Factor por Activo (Completado: 2026-10-07)**
   - Spec `feat-025` bajo SDD + Agentic TDD (Fase Roja con fallos en externo-duplicado y origen, Fase Verde completa).
@@ -253,8 +259,8 @@ Este archivo actúa como **memoria persistente y tablero de control** para human
 ---
 
 ## 🎯 Especificación Activa
-- **Archivo:** `specs/feat-025-alineacion-estandar-obis-origen-factor.md`
-- **Módulo objetivo:** Alineación estándar (factor por activo, código externo, origen de lectura). Completado y verificado.
+- **Archivo:** `specs/feat-026-tipos-edicion-eliminacion-reasignacion.md`
+- **Módulo objetivo:** Gestión de tipos con bloqueo por uso y reasignación. Completado y verificado.
 
 ---
 

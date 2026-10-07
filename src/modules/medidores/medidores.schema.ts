@@ -49,6 +49,37 @@ export const CrearTipoMedidorInputSchema = z.object({
 
 export type CrearTipoMedidorInput = z.input<typeof CrearTipoMedidorInputSchema>;
 
+export const EditarTipoMedidorInputSchema = z
+  .object({
+    nombre: z
+      .string()
+      .trim()
+      .min(3, "El nombre debe tener al menos 3 caracteres")
+      .max(100, "El nombre no puede exceder 100 caracteres")
+      .optional(),
+    recurso: RecursoMedidorEnum.optional(),
+    unidad: UnidadMedidaEnum.optional(),
+    unidadMedida: UnidadMedidaEnum.optional(),
+    tipoMedicion: TipoMedicionEnum.optional(),
+    multiplicador: z
+      .number()
+      .positive("El multiplicador debe ser mayor a 0")
+      .max(1000000, "El multiplicador no puede exceder 1.000.000")
+      .optional(),
+    capacidadMaxima: z
+      .number()
+      .positive("La capacidad máxima debe ser mayor a 0")
+      .max(100000000, "La capacidad máxima no puede exceder 100.000.000")
+      .nullable()
+      .optional(),
+    activo: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "Debe indicar al menos un campo a modificar",
+  });
+
+export type EditarTipoMedidorInput = z.infer<typeof EditarTipoMedidorInputSchema>;
+
 export const TipoMedidorResponseSchema = z.object({
   id: z.string().uuid(),
   nombre: z.string(),
@@ -101,6 +132,7 @@ export const CrearMedidorInputSchema = z.object({
 export type CrearMedidorInput = z.infer<typeof CrearMedidorInputSchema>;
 
 export const EditarMedidorInputSchema = z.object({
+  tipoMedidorId: z.string().uuid("Identificador de tipo de medidor inválido").optional(),
   codigo: z
     .string()
     .trim()
@@ -168,6 +200,8 @@ export type MedidoresErrorCode =
   | "TIPO_MEDIDOR_NOT_FOUND"
   | "TIPO_MEDIDOR_NOMBRE_DUPLICADO"
   | "TIPO_MEDIDOR_INACTIVO"
+  | "TIPO_MEDIDOR_EN_USO"
+  | "TIPO_MEDIDOR_CON_MEDIDORES_NO_ELIMINABLE"
   | "MEDIDOR_NOT_FOUND"
   | "MEDIDOR_CODIGO_DUPLICADO"
   | "MEDIDOR_CODIGO_EXTERNO_DUPLICADO"
@@ -196,6 +230,28 @@ export class TipoMedidorInactivoError extends DomainError {
   readonly statusCode = 422;
   constructor(id: string) {
     super(`El tipo de medidor '${id}' se encuentra inactivo.`, { id });
+  }
+}
+
+export class TipoMedidorEnUsoError extends DomainError {
+  readonly code = "TIPO_MEDIDOR_EN_USO";
+  readonly statusCode = 409;
+  constructor(nombre: string, count: number, operacion: string) {
+    super(
+      `No se puede ${operacion} el tipo '${nombre}' porque tiene ${count} medidor(es) asociado(s). Reasigne los medidores a otro tipo primero.`,
+      { nombre, count, operacion }
+    );
+  }
+}
+
+export class TipoMedidorConMedidoresNoEliminableError extends DomainError {
+  readonly code = "TIPO_MEDIDOR_CON_MEDIDORES_NO_ELIMINABLE";
+  readonly statusCode = 422;
+  constructor(id: string, count: number) {
+    super(
+      `No se puede eliminar el tipo de medidor '${id}' porque tiene ${count} medidor(es) asociado(s). Reasigne los medidores a otro tipo primero.`,
+      { id, count }
+    );
   }
 }
 

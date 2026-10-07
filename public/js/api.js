@@ -305,11 +305,29 @@ class ApiClient {
   // --- Dominio: Medidores & Tipos ---
   medidores = {
     getAll: (estado = "activos") => this.request(`/api/medidores?estado=${encodeURIComponent(estado)}`),
-    getTipos: () => this.request("/api/tipos-medidor"),
+    getTipos: (estado = "activos") => this.request(`/api/tipos-medidor?estado=${encodeURIComponent(estado)}`),
+    getTipoById: (id) => this.request(`/api/tipos-medidor/${encodeURIComponent(id)}`),
     createTipo: (payload) =>
       this.request("/api/tipos-medidor", {
         method: "POST",
         body: JSON.stringify(payload),
+      }),
+    updateTipo: (id, payload) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    archivarTipo: (id) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}/archivar`, {
+        method: "PATCH",
+      }),
+    restaurarTipo: (id) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}/restaurar`, {
+        method: "PATCH",
+      }),
+    deleteTipo: (id) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}`, {
+        method: "DELETE",
       }),
     getByInstalacion: (instalacionId, estado = "activos") =>
       this.request(`/api/medidores?instalacionId=${encodeURIComponent(instalacionId)}&estado=${encodeURIComponent(estado)}`),

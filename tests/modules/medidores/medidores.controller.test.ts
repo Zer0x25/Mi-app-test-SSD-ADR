@@ -43,6 +43,29 @@ class MockMedidoresRepo implements IMedidoresRepository {
     return this.tipos.filter((t) => t.activo);
   }
 
+  async listTipos(estado: "activos" | "archivados" | "todos" = "activos"): Promise<TipoMedidorEntity[]> {
+    if (estado === "activos") return this.tipos.filter((t) => t.activo);
+    if (estado === "archivados") return this.tipos.filter((t) => !t.activo);
+    return [...this.tipos];
+  }
+
+  async updateTipo(id: string, data: Partial<TipoMedidorEntity>): Promise<TipoMedidorEntity> {
+    const idx = this.tipos.findIndex((t) => t.id === id);
+    const updated = { ...this.tipos[idx], ...data, updatedAt: new Date() };
+    this.tipos[idx] = updated;
+    return updated;
+  }
+
+  async deleteTipoFisico(id: string): Promise<boolean> {
+    const prev = this.tipos.length;
+    this.tipos = this.tipos.filter((t) => t.id !== id);
+    return this.tipos.length < prev;
+  }
+
+  async countMedidoresByTipo(tipoId: string): Promise<number> {
+    return this.medidores.filter((m) => m.tipoMedidorId === tipoId).length;
+  }
+
   async findMedidorById(id: string): Promise<MedidorEntity | null> {
     return this.medidores.find((m) => m.id === id) || null;
   }

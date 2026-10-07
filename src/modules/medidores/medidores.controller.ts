@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { MedidoresService } from "./medidores.service.js";
 import { isDomainError } from "../../core/errors.js";
-import { CrearTipoMedidorInput, CrearMedidorInput, EditarMedidorInput } from "./medidores.schema.js";
+import { CrearTipoMedidorInput, CrearMedidorInput, EditarMedidorInput, EditarTipoMedidorInput } from "./medidores.schema.js";
 
 export function createMedidoresController(service: MedidoresService): FastifyPluginAsync {
   return async function (fastify: FastifyInstance) {
@@ -31,9 +31,11 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
     fastify.post("/medidores/tipos", handleCrearTipo);
 
 
-    const handleListarTipos = async (_request: FastifyRequest, reply: FastifyReply) => {
+    const handleListarTipos = async (request: FastifyRequest<{ Querystring: { estado?: "activos" | "archivados" | "todos" } }>, reply: FastifyReply) => {
       try {
-        const result = await service.listarTiposMedidor();
+        const user = (request as unknown as { user?: { rol: string } }).user;
+        const estado = user && user.rol === "ADMIN" ? (request.query.estado ?? "activos") : "activos";
+        const result = await service.listarTiposMedidor(estado);
         return reply.status(200).send(result);
       } catch (error) {
         if (isDomainError(error)) {
@@ -52,6 +54,127 @@ export function createMedidoresController(service: MedidoresService): FastifyPlu
 
     fastify.get("/tipos-medidor", handleListarTipos);
     fastify.get("/medidores/tipos", handleListarTipos);
+
+    const handleTipoById = async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const result = await service.obtenerTipoPorId(request.params.id);
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        }
+        return reply.status(404).send({ error: "NOT_FOUND", message: "Tipo de medidor no encontrado" });
+      }
+    };
+
+    fastify.get("/tipos-medidor/:id", handleTipoById);
+
+    const handleEditarTipo = async (
+      request: FastifyRequest<{ Params: { id: string }; Body: EditarTipoMedidorInput }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        const user = (request as unknown as { user?: { id?: string } }).user;
+        const result = await service.editarTipoMedidor(request.params.id, request.body, {
+          usuarioId: user?.id,
+          ip: request.ip,
+        });
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        }
+        return reply.status(500).send({
+          error: "INTERNAL_SERVER_ERROR",
+          message: "Error interno del servidor",
+        });
+      }
+    };
+
+    fastify.patch("/tipos-medidor/:id", handleEditarTipo);
+
+    const handleArchivarTipo = async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const user = (request as unknown as { user?: { id?: string } }).user;
+        const result = await service.archivarTipo(request.params.id, {
+          usuarioId: user?.id,
+          ip: request.ip,
+        });
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        }
+        return reply.status(500).send({
+          error: "INTERNAL_SERVER_ERROR",
+          message: "Error interno del servidor",
+        });
+      }
+    };
+
+    fastify.patch("/tipos-medidor/:id/archivar", handleArchivarTipo);
+
+    const handleRestaurarTipo = async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const user = (request as unknown as { user?: { id?: string } }).user;
+        const result = await service.restaurarTipo(request.params.id, {
+          usuarioId: user?.id,
+          ip: request.ip,
+        });
+        return reply.status(200).send(result);
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        }
+        return reply.status(500).send({
+          error: "INTERNAL_SERVER_ERROR",
+          message: "Error interno del servidor",
+        });
+      }
+    };
+
+    fastify.patch("/tipos-medidor/:id/restaurar", handleRestaurarTipo);
+
+    const handleEliminarTipo = async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      try {
+        const user = (request as unknown as { user?: { id?: string } }).user;
+        await service.eliminarTipoFisico(request.params.id, {
+          usuarioId: user?.id,
+          ip: request.ip,
+        });
+        return reply.status(200).send({ success: true, message: "Tipo de medidor eliminado definitivamente" });
+      } catch (error) {
+        if (isDomainError(error)) {
+          return reply.status(error.statusCode).send({
+            error: error.code,
+            message: error.message,
+            details: error.details,
+          });
+        }
+        return reply.status(500).send({
+          error: "INTERNAL_SERVER_ERROR",
+          message: "Error interno del servidor",
+        });
+      }
+    };
+
+    fastify.delete("/tipos-medidor/:id", handleEliminarTipo);
 
     // --------------------------------------------------------------------------
     // Medidores Físicos

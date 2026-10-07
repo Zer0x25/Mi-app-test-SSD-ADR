@@ -63,7 +63,12 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
   }
 
   async listTiposActivos(): Promise<TipoMedidorEntity[]> {
-    const list = await this.prisma.tipoMedidor.findMany({ where: { activo: true } });
+    return this.listTipos("activos");
+  }
+
+  async listTipos(estado: "activos" | "archivados" | "todos" = "activos"): Promise<TipoMedidorEntity[]> {
+    const where = estado === "activos" ? { activo: true } : estado === "archivados" ? { activo: false } : {};
+    const list = await this.prisma.tipoMedidor.findMany({ where });
     return list.map((tipo) => ({
       ...tipo,
       recurso: tipo.recurso as RecursoMedidor,
@@ -73,6 +78,39 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
       multiplicador: (tipo as unknown as { multiplicador?: number }).multiplicador ?? 1,
       capacidadMaxima: (tipo as unknown as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
     }));
+  }
+
+  async updateTipo(id: string, data: Partial<TipoMedidorEntity>): Promise<TipoMedidorEntity> {
+    const tipo = await this.prisma.tipoMedidor.update({
+      where: { id },
+      data: {
+        ...(data.nombre !== undefined && { nombre: data.nombre }),
+        ...(data.recurso !== undefined && { recurso: data.recurso }),
+        ...(data.unidad !== undefined && { unidad: data.unidad }),
+        ...(data.tipoMedicion !== undefined && { tipoMedicion: data.tipoMedicion }),
+        ...(data.multiplicador !== undefined && { multiplicador: data.multiplicador }),
+        ...(data.capacidadMaxima !== undefined && { capacidadMaxima: data.capacidadMaxima }),
+        ...(data.activo !== undefined && { activo: data.activo }),
+      },
+    });
+    return {
+      ...tipo,
+      recurso: tipo.recurso as RecursoMedidor,
+      unidad: tipo.unidad as UnidadMedida,
+      unidadMedida: tipo.unidad,
+      tipoMedicion: tipo.tipoMedicion as TipoMedicion,
+      multiplicador: (tipo as unknown as { multiplicador?: number }).multiplicador ?? 1,
+      capacidadMaxima: (tipo as unknown as { capacidadMaxima?: number | null }).capacidadMaxima ?? null,
+    };
+  }
+
+  async deleteTipoFisico(id: string): Promise<boolean> {
+    const res = await this.prisma.tipoMedidor.delete({ where: { id } });
+    return !!res;
+  }
+
+  async countMedidoresByTipo(tipoId: string): Promise<number> {
+    return await this.prisma.medidor.count({ where: { tipoMedidorId: tipoId } });
   }
 
   async findMedidorById(id: string): Promise<MedidorEntity | null> {
@@ -143,6 +181,7 @@ export class PrismaMedidoresRepository implements IMedidoresRepository {
     return (await this.prisma.medidor.update({
       where: { id },
       data: {
+        ...(data.tipoMedidorId !== undefined && { tipoMedidorId: data.tipoMedidorId }),
         ...(data.codigo !== undefined && { codigo: data.codigo }),
         ...(data.codigoExterno !== undefined && { codigoExterno: data.codigoExterno }),
         ...(data.factorInstalacion !== undefined && { factorInstalacion: data.factorInstalacion }),

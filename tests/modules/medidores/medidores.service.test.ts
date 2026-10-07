@@ -60,6 +60,30 @@ class InMemoryMedidoresRepository implements IMedidoresRepository {
     return this.tipos.filter((t) => t.activo);
   }
 
+  async listTipos(estado: "activos" | "archivados" | "todos" = "activos"): Promise<TipoMedidorEntity[]> {
+    if (estado === "activos") return this.tipos.filter((t) => t.activo);
+    if (estado === "archivados") return this.tipos.filter((t) => !t.activo);
+    return [...this.tipos];
+  }
+
+  async updateTipo(id: string, data: Partial<TipoMedidorEntity>): Promise<TipoMedidorEntity> {
+    const idx = this.tipos.findIndex((t) => t.id === id);
+    if (idx === -1) throw new Error("Not found");
+    const updated = { ...this.tipos[idx], ...data, updatedAt: new Date() };
+    this.tipos[idx] = updated;
+    return updated;
+  }
+
+  async deleteTipoFisico(id: string): Promise<boolean> {
+    const prev = this.tipos.length;
+    this.tipos = this.tipos.filter((t) => t.id !== id);
+    return this.tipos.length < prev;
+  }
+
+  async countMedidoresByTipo(tipoId: string): Promise<number> {
+    return this.medidores.filter((m) => m.tipoMedidorId === tipoId).length;
+  }
+
   async findMedidorById(id: string): Promise<MedidorEntity | null> {
     return this.medidores.find((m) => m.id === id) || null;
   }
@@ -581,6 +605,88 @@ describe("MedidoresService Suite (Agentic TDD)", () => {
 
       const buscado = await repository.findMedidorById(medidor.id);
       expect(buscado).toBeNull();
+    });
+  });
+
+  describe("Edición y eliminación de tipos con bloqueo por uso (feat-026)", () => {
+    it("debe bloquear la edición del tipo si tiene un medidor asignado", async () => {
+      const { TipoMedidorEnUsoError } = await import(
+        "../../../src/modules/medidores/medidores.schema.js"
+      );
+      const instId = crypto.randomUUID();
+      instalacionesVerif.instalaciones.set(instId, { id: instId, activa: true });
+      const tipoA = await service.crearTipoMedidor({
+        nombre: "Tipo Bloq " + crypto.randomUUID().slice(0, 8),
+        recurso: "AGUA",
+        unidad: "LITROS",
+        tipoMedicion: "ACUMULATIVO",
+      });
+      await service.crearMedidor({
+        instalacionId: instId,
+        tipoMedidorId: tipoA.id,
+        codigo: "MED-BLOQ-01",
+        ubicacionInterna: "Sala X",
+      });
+      await expect(
+        (service as unknown as { editarTipoMedidor: (id: string, input: unknown) => Promise<unknown> }).editarTipoMedidor(tipoA.id, { nombre: "Nuevo nombre" })
+      ).rejects.toThrow(TipoMedidorEnUsoError);
+    });
+
+    it("debe permitir reasignar el medidor a otro tipo y luego editar/eliminar el tipo liberado", async () => {
+      const instId = crypto.randomUUID();
+      instalacionesVerif.instalaciones.set(instId, { id: instId, activa: true });
+      const tipoA = await service.crearTipoMedidor({
+        nombre: "Tipo A " + crypto.randomUUID().slice(0, 8),
+        recurso: "AGUA",
+        unidad: "LITROS",
+        tipoMedicion: "ACUMULATIVO",
+      });
+      const tipoB = await service.crearTipoMedidor({
+        nombre: "Tipo B " + crypto.randomUUID().slice(0, 8),
+        recurso: "AGUA",
+        unidad: "LITROS",
+        tipoMedicion: "ACUMULATIVO",
+      });
+      const med = await service.crearMedidor({
+        instalacionId: instId,
+        tipoMedidorId: tipoA.id,
+        codigo: "MED-REASIG-01",
+        ubicacionInterna: "Sala Y",
+      });
+      const reasignado = await service.editarMedidor(med.id, {
+        tipoMedidorId: tipoB.id,
+      } as unknown as Parameters<typeof service.editarMedidor>[1]);
+      expect(reasignado.tipoMedidorId).toBe(tipoB.id);
+      const editado = await (service as unknown as { editarTipoMedidor: (id: string, input: unknown) => Promise<{ nombre: string }> }).editarTipoMedidor(tipoA.id, { nombre: "Tipo A Renombrado" });
+      expect(editado.nombre).toBe("Tipo A Renombrado");
+      const eliminado = await (service as unknown as { eliminarTipoFisico: (id: string) => Promise<boolean> }).eliminarTipoFisico(tipoA.id);
+      expect(eliminado).toBe(true);
+    });
+
+    it("debe bloquear el archivado y la eliminación física del tipo en uso", async () => {
+      const { TipoMedidorEnUsoError } = await import(
+        "../../../src/modules/medidores/medidores.schema.js"
+      );
+      const instId = crypto.randomUUID();
+      instalacionesVerif.instalaciones.set(instId, { id: instId, activa: true });
+      const tipo = await service.crearTipoMedidor({
+        nombre: "Tipo Uso " + crypto.randomUUID().slice(0, 8),
+        recurso: "LUZ",
+        unidad: "KWH",
+        tipoMedicion: "ACUMULATIVO",
+      });
+      await service.crearMedidor({
+        instalacionId: instId,
+        tipoMedidorId: tipo.id,
+        codigo: "MED-USO-01",
+        ubicacionInterna: "Sala Z",
+      });
+      await expect(
+        (service as unknown as { archivarTipo: (id: string) => Promise<unknown> }).archivarTipo(tipo.id)
+      ).rejects.toThrow(TipoMedidorEnUsoError);
+      await expect(
+        (service as unknown as { eliminarTipoFisico: (id: string) => Promise<unknown> }).eliminarTipoFisico(tipo.id)
+      ).rejects.toThrow();
     });
   });
 });

@@ -264,6 +264,21 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
         }
       }
 
+      // Regla RBAC 2.2: Gestión del catálogo de Tipos de Medidor solo permitido para ADMIN
+      if (
+        (request.method === "POST" ||
+          request.method === "PATCH" ||
+          request.method === "DELETE") &&
+        request.url.startsWith("/api/tipos-medidor")
+      ) {
+        if (user.rol !== "ADMIN") {
+          return reply.status(403).send({
+            error: "ACCESO_DENEGADO",
+            message: `Acceso denegado: el rol «${user.rol}» no tiene permisos para crear o modificar tipos de medidor.`,
+          });
+        }
+      }
+
       // Regla RBAC 3: Gestión de Usuarios solo permitido para ADMIN
       if (request.url.startsWith("/api/usuarios")) {
         if (user.rol !== "ADMIN") {
